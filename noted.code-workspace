@@ -1,8 +1,17 @@
 {
-	"folders": [
-		{
-			"path": "."
-		}
-	],
-	"settings": {}
+  "folders": [
+    {
+      "name": "Noted Frontend",
+      "path": "./frontend",
+    },
+    {
+      "name": "Noted API",
+      "path": "./api",
+    },
+    {
+      "name": "Noted",
+      "path": ".",
+    },
+  ],
+  "settings": {},
 }
