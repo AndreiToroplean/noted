@@ -2,11 +2,11 @@
   "folders": [
     {
       "name": "Noted Frontend",
-      "path": "./frontend",
+      "path": "./noted-frontend",
     },
     {
       "name": "Noted API",
-      "path": "./api",
+      "path": "./noted-api",
     },
     {
       "name": "Noted",

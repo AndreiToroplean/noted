@@ -1,0 +1,6 @@
+# Ignore runtime files
+data/
+__pycache__/
+.pytest_cache/
+*.py[cod]
+.env
