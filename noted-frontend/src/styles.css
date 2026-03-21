@@ -1,1 +1,24 @@
 @import "tailwindcss";
+
+:root {
+  /* Base cell surfaces */
+  --cell-base: #312e2a;
+  --cell-free-time: #662344;
+  --cell-not-done: #681100;
+  --cell-tag-d: #494949;
+
+  /* Tag-based accent colors ("[T]", "[M]", etc.) */
+  --checkbox-base: #2c2115;
+  --checkbox-free-time: #9b0c56;
+  --checkbox-not-done: #980000;
+  --checkbox-tag-t: #7f6000;
+  --checkbox-tag-co: #9c894d;
+  --checkbox-tag-cr: #974845;
+  --checkbox-tag-m: #351c75;
+  --checkbox-tag-c: #104769;
+  --checkbox-tag-l: #2e3f49;
+  --checkbox-tag-s: #6fb373;
+  --checkbox-tag-k: #002f35;
+  --checkbox-tag-r: #40701c;
+  --checkbox-tag-d: #000000;
+}
