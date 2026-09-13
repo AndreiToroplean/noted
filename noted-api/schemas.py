@@ -99,3 +99,12 @@ class SettingsIn(BaseModel):
     break_end: dt.time | None = None
     departure: dt.time | None = None
     expected_minutes: int = 0
+
+
+class OvertimeIn(BaseModel):
+    since: dt.date | None = None
+    minutes: int = 0
+
+
+class OvertimeOut(OvertimeIn):
+    pass

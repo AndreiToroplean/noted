@@ -8,6 +8,7 @@ entry stores a duration because durations are solved for on read.
 
 import datetime as dt
 from enum import StrEnum
+from typing import ClassVar
 
 from sqlmodel import Field, SQLModel
 
@@ -111,3 +112,20 @@ class Break(SQLModel, table=True):
     start: dt.time | None = None
     end: dt.time | None = None
     minutes: int | None = None
+
+
+class OvertimeBaseline(SQLModel, table=True):
+    """Where the running overtime total counts from.
+
+    One row. A total accumulated over years is only useful if a bad day can be
+    corrected out of it, so the user can declare "as of this date I was `minutes`
+    ahead" and have everything before it stop counting.
+    """
+
+    ROW_ID: ClassVar[int] = 1
+
+    id: int = Field(default=ROW_ID, primary_key=True)
+    #: Count days from here. Unset means from the very first day recorded.
+    since: dt.date | None = None
+    #: The balance already carried at that point.
+    minutes: int = 0

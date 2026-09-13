@@ -111,9 +111,14 @@ the user consults to remember what a prefix meant, and where a colour can be cha
 
 ## 5. Categories
 
-A small curated vocabulary saying what *kind* of thing an entry is: `T`, `M`, `C`, `L`,
-`K`, `R`, `CR`, `Co`, `Tr`, `D`, `S`. Each carries a meaning and a hand-picked colour, both
-editable. Unlike projects, the set is closed and the colours are chosen, not sampled.
+A small curated vocabulary saying what *kind* of thing an entry is. Each carries a meaning
+and a hand-picked colour. Unlike projects, the set is closed and the colours are chosen,
+not sampled.
+
+The vocabulary a new database starts with is seed data, in `noted-api/seed.py` — a starting
+point, not a fixed list. **The settings screen is where categories are edited**: name,
+meaning and colour, and adding or removing one. The meanings start empty because the
+spreadsheet never recorded them; filling them in is the first thing that screen is for.
 
 ## 6. Time
 
@@ -144,7 +149,8 @@ Default hours are **per weekday**, because Friday is short:
 | Sat/Sun | —       | —             | —         | non-working |
 
 The settings screen shows a row per weekday plus a control to copy one day's values across
-the whole week.
+the whole week. It also holds the category list (§5) and the overtime baseline (§6.3) —
+everything seeded rather than authored.
 
 Defaults are **snapshot onto each day as it is created**, never read live, and the expected
 duration is stored per day. Changing a setting must not rewrite days already recorded.
@@ -156,9 +162,9 @@ worked = (departure − arrival) − Σ breaks
 delta  = worked − expected
 ```
 
-Deltas are shown per day, per week, and as a running total. The running total needs a
-defined starting point and should be resettable — a figure accumulated over years is
-only useful if one bad day can be corrected out of it.
+Deltas are shown per day, per week, and as a running total. The running total counts from
+a resettable baseline — a figure accumulated over years is only useful if one bad day
+can be corrected out of it. Stored as `OvertimeBaseline`, behind `GET`/`PUT /overtime`.
 
 ### 6.4 How long an entry took
 
@@ -214,8 +220,9 @@ The colour rules are the whole visual language, in priority order:
 2. **Time** — arrival, breaks, departure. Magenta.
 3. **Task** — the category colours one part of the row, the project another.
 
-Colours come from the CSS custom properties in the frontend's `styles.css`, which are
-lifted from the spreadsheet and are the app's identity.
+The chrome colours — surfaces, and the failed and time states — are CSS custom properties
+in the frontend's `styles.css`. Category and project colours are not: they are the user's
+data, stored and editable, and a new database starts with the ones in `noted-api/seed.py`.
 
 ## 9. Importing the history
 

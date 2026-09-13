@@ -18,7 +18,9 @@ python -m uvicorn app:app --reload
 ```
 
 Serves on `http://127.0.0.1:8000`; interactive docs at `/docs`. The database is created at
-`data/noted.db` on first run, seeded with the default per-weekday hours.
+`data/noted.db` on first run and seeded from `seed.py` — default hours per weekday, the
+category vocabulary, and an overtime total starting at zero. `python seed.py` builds or
+tops up that database without touching anything already in it.
 
 ## Endpoints
 
@@ -34,6 +36,8 @@ Serves on `http://127.0.0.1:8000`; interactive docs at `/docs`. The database is 
 | `PUT`   | `/categories/{name}`  | Add or edit one                                    |
 | `GET`   | `/settings`           | Default hours, one row per weekday                 |
 | `PUT`   | `/settings/{weekday}` | Edit one weekday (0 = Monday)                      |
+| `GET`   | `/overtime`           | Where the running overtime total counts from       |
+| `PUT`   | `/overtime`           | Reset it                                           |
 
 A week is addressed by the date of its Monday; any other date is a 400. There are no
 per-entry endpoints on purpose — the client sends the week back whole.

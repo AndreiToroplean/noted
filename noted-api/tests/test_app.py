@@ -1,9 +1,3 @@
-import sys
-from pathlib import Path
-
-# Ensure the api directory is importable when tests are run from the repo root
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-
 import pytest
 from fastapi.testclient import TestClient
 
@@ -37,14 +31,11 @@ def test_empty_week_still_returns_seven_days(client):
 
 
 def test_unsaved_days_are_seeded_from_the_weekday_defaults(client):
+    defaults = {row["weekday"]: row for row in client.get("/settings").json()}
     days = client.get(f"/journal/{WEEK}").json()["days"]
-    monday, friday, saturday = days[0], days[4], days[5]
-    assert monday["departure"] == "17:00:00"
-    assert monday["expected_minutes"] == 420
-    # Friday is short, which is the whole reason defaults are per weekday.
-    assert friday["departure"] == "16:00:00"
-    assert friday["expected_minutes"] == 360
-    assert saturday["expected_minutes"] == 0
+    for weekday, day in enumerate(days):
+        assert day["departure"] == defaults[weekday]["departure"]
+        assert day["expected_minutes"] == defaults[weekday]["expected_minutes"]
 
 
 @pytest.mark.parametrize("path", ["not-a-date", TUESDAY])
@@ -100,9 +91,11 @@ def test_an_undeclared_project_is_refused(client):
     assert "has not been declared" in r.text
 
 
-def test_an_unsaved_day_takes_the_default_expected_minutes(client):
+def test_a_day_saved_without_expected_minutes_takes_the_weekday_default(client):
+    expected = next(row for row in client.get("/settings").json() if row["weekday"] == 0)
     client.put(f"/journal/{WEEK}", json={"days": [{"date": WEEK, "entries": []}]})
-    assert client.get(f"/journal/{WEEK}").json()["days"][0]["expected_minutes"] == 420
+    monday = client.get(f"/journal/{WEEK}").json()["days"][0]
+    assert monday["expected_minutes"] == expected["expected_minutes"]
 
 
 def test_declaring_a_project_twice_makes_two_projects(client):
@@ -153,9 +146,12 @@ def test_settings_are_editable_per_weekday(client):
 
 def test_editing_settings_does_not_rewrite_a_day_already_recorded(client):
     client.put(f"/journal/{WEEK}", json={"days": [{"date": WEEK, "entries": []}]})
-    client.put("/settings/0", json={"departure": "20:00:00", "expected_minutes": 600})
+    recorded = client.get(f"/journal/{WEEK}").json()["days"][0]["expected_minutes"]
+
+    client.put("/settings/0", json={"departure": "20:00:00", "expected_minutes": recorded + 120})
+
     monday = client.get(f"/journal/{WEEK}").json()["days"][0]
-    assert monday["expected_minutes"] == 420
+    assert monday["expected_minutes"] == recorded
 
 
 def test_the_current_week_is_always_listed(client):
@@ -169,3 +165,26 @@ def test_saved_weeks_are_listed_newest_first(client):
     weeks = client.get("/weeks").json()
     assert weeks[:2] == sorted(weeks, reverse=True)[:2]
     assert "2026-02-09" in weeks and "2026-03-02" in weeks
+
+
+def test_an_edited_category_colour_is_not_reseeded(client):
+    client.put("/categories/M", json={"meaning": "Meeting", "colour": "#ffffff"})
+    db.reset()  # as if the process restarted
+    row = next(r for r in client.get("/categories").json() if r["name"] == "M")
+    assert row["colour"] == "#ffffff"
+    assert row["meaning"] == "Meeting"
+
+
+def test_a_fresh_database_starts_with_no_overtime(client):
+    r = client.get("/overtime")
+    assert r.status_code == 200
+    assert r.json()["minutes"] == 0
+    assert r.json()["since"] is None
+
+
+def test_the_overtime_total_can_be_reset(client):
+    # A figure accumulated over years is only useful if one bad day can be
+    # corrected out of it.
+    r = client.put("/overtime", json={"minutes": 120, "since": "2026-01-05"})
+    assert r.status_code == 200
+    assert client.get("/overtime").json() == {"minutes": 120, "since": "2026-01-05"}

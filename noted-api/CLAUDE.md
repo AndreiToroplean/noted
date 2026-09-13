@@ -26,16 +26,27 @@ the route, so nothing downstream has to wonder. Keep that pattern: reject bad in
 it enters.
 
 **Layout.** `models.py` is the stored schema (SQLModel tables), `schemas.py` is what
-crosses the wire, `db.py` owns the engine, `app.py` the routes. The two model layers are
+crosses the wire, `db.py` owns the engine, `seed.py` the content a new database starts
+with, `app.py` the routes. The two model layers are
 deliberately separate: a week is written back whole, so entries arrive without ids — their
 order in the list *is* their position — and come back with ids on read.
 
-**The database** is one SQLite file at `data/noted.db`, created on first run along with
-the default per-weekday hours. There are no migrations yet; while the schema is still
-moving, delete the file and let it rebuild.
+**The database** is one SQLite file at `data/noted.db`, gitignored, and never committed.
+What *is* committed is `seed.py`: the default hours, the category vocabulary and the
+overtime baseline a new user starts from. It runs on first open and by hand via
+`python seed.py`, and only ever fills in what is missing, so it never overwrites an edit.
+Anything a user is expected to change belongs there rather than in the code that reads it.
+
+There are no migrations yet; while the schema is still moving, delete the database file
+and let it rebuild.
 
 **Tests** live in `tests/`, use `TestClient`, and point `db.DATABASE_PATH` at a `tmp_path`
-fixture so they never touch real data. Any new endpoint gets a test covering its success case and its
-validation failures.
+fixture so they never touch real data. Tests come before the code they describe. Any new
+endpoint gets a test covering its success case and its validation failures.
+
+Test the behaviour, not the seed data. `seed.py`'s contents are the user's to change, so a
+test asserting that `[M]` is `#351c75` is a test of a value that is allowed to move; assert
+instead that seeding fills gaps, is idempotent, and leaves edits alone, and compare a day's
+hours against what `/settings` reports rather than against a literal.
 
 **Runtime data is not committed** — `data/` is gitignored, as are `.venv/` and caches.

@@ -12,12 +12,14 @@ from fastapi.middleware.cors import CORSMiddleware
 from sqlmodel import Session, col, delete, select
 
 import db
-from models import Break, Category, Day, DayStatus, Entry, Project, Settings
+from models import Break, Category, Day, DayStatus, Entry, OvertimeBaseline, Project, Settings
 from schemas import (
     BreakOut,
     CategoryIn,
     DayOut,
     EntryOut,
+    OvertimeIn,
+    OvertimeOut,
     ProjectIn,
     ProjectPatch,
     SettingsIn,
@@ -235,6 +237,26 @@ def update_settings(weekday: int, payload: SettingsIn, session: Session = Depend
     row = session.get(Settings, weekday) or Settings(weekday=weekday)
     for field, value in payload.model_dump().items():
         setattr(row, field, value)
+    session.add(row)
+    session.commit()
+    session.refresh(row)
+    return row
+
+
+# --- Overtime ---------------------------------------------------------------
+
+
+@app.get("/overtime", response_model=OvertimeOut)
+def read_overtime(session: Session = Depends(db.session)):
+    """Where the running total counts from."""
+    return session.get(OvertimeBaseline, OvertimeBaseline.ROW_ID) or OvertimeBaseline()
+
+
+@app.put("/overtime", response_model=OvertimeOut)
+def reset_overtime(payload: OvertimeIn, session: Session = Depends(db.session)):
+    row = session.get(OvertimeBaseline, OvertimeBaseline.ROW_ID) or OvertimeBaseline()
+    row.since = payload.since
+    row.minutes = payload.minutes
     session.add(row)
     session.commit()
     session.refresh(row)
