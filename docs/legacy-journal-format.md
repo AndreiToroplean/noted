@@ -331,7 +331,10 @@ order:
 4. **Project** — the narrow strip column takes a colour derived from the project name.
 
 The default surfaces are `#312e2a` for content and `#2c2115` for the checkbox column.
-Category colours are carried in the frontend's `src/styles.css` as `--checkbox-tag-*`.
+`Tr` was used but never given a rule, so it had no colour of its own.
+
+Those category colours are carried into Noted as the seed data in `noted-api/seed.py`,
+where they become ordinary rows the user can repaint.
 
 Project colours were computed from the label rather than stored; see
 [4.2](#42-projects) for the formula.

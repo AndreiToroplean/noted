@@ -2,6 +2,8 @@ import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
 
+import { settle } from 'testing/settle';
+
 import { API_BASE, Day, Week } from 'app/services/api';
 import { AppData } from 'app/services/app-data';
 
@@ -26,12 +28,6 @@ function week(): Week {
   };
 }
 
-/** Let the pending response propagate into the resource, then run effects. */
-async function settle() {
-  await new Promise(resolve => setTimeout(resolve));
-  TestBed.tick();
-}
-
 describe('AppData', () => {
   let data: AppData;
   let http: HttpTestingController;
@@ -44,6 +40,7 @@ describe('AppData', () => {
     http = TestBed.inject(HttpTestingController);
 
     TestBed.tick();
+    http.expectOne(`${API_BASE}/categories`).flush([]);
     http.expectOne(`${API_BASE}/weeks`).flush([MONDAY]);
     await settle();
     http.expectOne(`${API_BASE}/journal/${MONDAY}`).flush(week());

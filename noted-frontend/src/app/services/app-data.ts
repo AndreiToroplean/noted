@@ -1,7 +1,7 @@
 import { HttpClient, httpResource } from '@angular/common/http';
-import { Injectable, effect, inject, linkedSignal, signal } from '@angular/core';
+import { Injectable, computed, effect, inject, linkedSignal, signal } from '@angular/core';
 
-import { API_BASE, IsoDate, Week, toWrite } from 'app/services/api';
+import { API_BASE, Category, IsoDate, Week, toWrite } from 'app/services/api';
 
 /**
  * How long the week sits still before it is written back. Long enough that
@@ -13,6 +13,19 @@ const SAVE_DEBOUNCE_MS = 800;
 @Injectable({ providedIn: 'root' })
 export class AppData {
   private readonly http = inject(HttpClient);
+
+  /**
+   * The category vocabulary, colours included. They live in the database rather
+   * than in CSS because they are the user's data: he renames them and repaints
+   * them, and the app must not have an opinion baked into a stylesheet.
+   */
+  readonly categories = httpResource<Category[]>(() => `${API_BASE}/categories`, {
+    defaultValue: [],
+  });
+
+  readonly categoriesByName = computed(
+    () => new Map(this.categories.value().map(category => [category.name, category])),
+  );
 
   readonly weeks = httpResource<IsoDate[]>(() => `${API_BASE}/weeks`, { defaultValue: [] });
 

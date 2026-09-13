@@ -8,41 +8,38 @@ body {
 }
 
 body {
-  color: #ffffff;
-  background-color: var(--cell-base);
+  color: var(--app-on-surface);
+  background-color: var(--app-surface);
 }
 
+/*
+ * The app's own colours, lifted from the spreadsheet this replaces.
+ *
+ * Only the chrome lives here — the surfaces, and the two states the journal
+ * signals by colour. Category and project colours are deliberately absent: they
+ * are the user's data, they are edited in the app, and they come from the
+ * database. See `noted-api/seed.py` for the ones a new database starts with.
+ */
 :root {
-  /* Base cell surfaces */
+  /* Surfaces */
   --cell-base: #312e2a;
-  --cell-free-time: #662344;
-  --cell-not-done: #681100;
-  --cell-tag-d: #494949;
-
-  /* Tag-based accent colors ("[T]", "[M]", etc.) */
   --checkbox-base: #2c2115;
+
+  /* Time — arrival, breaks, departure */
+  --cell-free-time: #662344;
   --checkbox-free-time: #9b0c56;
+
+  /* Failed — a past day's unfinished work */
+  --cell-not-done: #681100;
   --checkbox-not-done: #980000;
-  --checkbox-tag-t: #7f6000;
-  --checkbox-tag-co: #9c894d;
-  --checkbox-tag-cr: #974845;
-  --checkbox-tag-m: #351c75;
-  --checkbox-tag-c: #104769;
-  --checkbox-tag-l: #2e3f49;
-  --checkbox-tag-s: #6fb373;
-  --checkbox-tag-k: #002f35;
-  --checkbox-tag-r: #40701c;
-  --checkbox-tag-d: #000000;
 
   /*
-   * Which of the palette above plays which role in the UI chrome. The journal
-   * colours are the app's identity; these aliases are the only place that
-   * decides how they map onto Material, so a re-theme happens here and nowhere
-   * else.
+   * Which colour plays which UI role. This is the only place that decides, so a
+   * re-theme happens here and nowhere else.
    */
   --app-surface: var(--cell-base);
   --app-surface-raised: var(--checkbox-base);
-  --app-accent: var(--checkbox-tag-s);
+  --app-accent: #6fb373;
   --app-on-surface: #ffffff;
   --app-on-accent: #04220a;
   --app-outline: color-mix(in srgb, var(--app-on-surface) 25%, transparent);

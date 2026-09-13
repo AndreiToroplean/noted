@@ -15,7 +15,8 @@
     "target": "ES2022",
     "module": "preserve",
     "paths": {
-      "app/*": ["./src/app/*"]
+      "app/*": ["./src/app/*"],
+      "testing/*": ["./src/testing/*"]
     }
   },
   "angularCompilerOptions": {

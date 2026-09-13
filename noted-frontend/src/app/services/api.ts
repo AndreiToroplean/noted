@@ -56,6 +56,12 @@ export interface Week {
   days: Day[];
 }
 
+export interface Category {
+  name: string;
+  meaning: string;
+  colour: string;
+}
+
 export interface Project {
   id: number;
   path: string;

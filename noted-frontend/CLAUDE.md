@@ -48,11 +48,14 @@ spreadsheet and are the app's identity, so pull from them rather than inventing 
 values or hardcoding hex. The `--app-*` aliases in that file are the single place that
 decides which palette colour plays which UI role; change the mapping there.
 
+Only chrome lives in CSS. Category and project colours come from the API, because they are
+the user's data and he edits them — read them off `AppData`, never off a stylesheet.
+
 **Tests** sit next to what they cover as `<name>.spec.ts` and are written before the code
 they describe. Vitest with `TestBed`; components get their inputs through
 `componentRef.setInput`, and anything touching the API uses `provideHttpClientTesting`
-rather than a live server. A flushed response needs a turn of the event loop before
-`TestBed.tick()` sees it — `app-data.spec.ts` has the helper.
+rather than a live server. A flushed response needs a turn of the event loop before it
+reaches the resource that asked for it; `await settle()` from `testing/settle` covers that.
 
 **Strictness.** TypeScript `strict` plus `strictTemplates`, `noImplicitReturns`, and
 `noPropertyAccessFromIndexSignature` are on. Keep them on; don't reach for `any` (it lints

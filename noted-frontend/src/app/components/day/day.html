@@ -13,11 +13,21 @@
 
   <ul class="flex-1 list-none p-0">
     @for (entry of data.entries; track entry.id) {
-      <li class="px-2 py-1 text-sm" [class.opacity-60]="entry.done">
-        <div>{{ entry.text }}</div>
-        @if (entry.note) {
-          <div class="text-xs opacity-60">{{ entry.note }}</div>
+      <li class="flex gap-2 px-2 py-1 text-sm" [class.opacity-60]="entry.done">
+        @let colour = colourOf(entry.category);
+        @if (colour) {
+          <span
+            class="mt-1 h-3 w-3 shrink-0 rounded-sm"
+            [attr.data-category]="entry.category"
+            [style.background-color]="colour"
+          ></span>
         }
+        <div>
+          <div>{{ entry.text }}</div>
+          @if (entry.note) {
+            <div class="text-xs opacity-60">{{ entry.note }}</div>
+          }
+        </div>
       </li>
     }
   </ul>
