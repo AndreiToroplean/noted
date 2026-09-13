@@ -228,6 +228,7 @@ data, stored and editable, and a new database starts with the ones in `noted-api
 
 The historical weeks are imported **early**, right after the backend exists, so the UI
 is designed against real entries rather than a handful of invented ones.
+`noted-api/importer.py` does the reading; what it does not yet do is hours.
 
 The import is **iterative and re-runnable**. Getting the legacy parsing right will take
 several passes, so it must be safe to wipe and re-import rather than being a one-way door.
