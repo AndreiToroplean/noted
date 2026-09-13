@@ -1,6 +1,6 @@
 # Noted — frontend
 
-Angular 21 SPA. See the root `CLAUDE.md` for the domain model; it matters more than
+Angular 22 SPA. See the root `CLAUDE.md` for the domain model; it matters more than
 anything here.
 
 ## Commands
@@ -15,7 +15,9 @@ npm run format
 
 ## Stack
 
-- **Angular 21**, standalone components, zoneless.
+- **Angular 22**, standalone components, zoneless. Change detection is OnPush by
+  default, so never write `changeDetection:` in a `@Component` — opting out is a lint
+  error and restating the default is noise.
 - **Angular Material** for components, themed from the palette in `src/styles.css` via
   the `--mat-sys-*` tokens. Add a component's module to a component's `imports`; there is
   no shared barrel module.
@@ -35,15 +37,22 @@ is `app-`.
 
 **Templates** use built-in control flow (`@if`, `@for`, `@let`), never `*ngIf` / `*ngFor`.
 
-**Imports** resolve from `src` (`baseUrl`), so import as `app/components/day/day`, not with
-deep relative paths. Prettier sorts imports into groups — the grouping is configured in
-`.prettierrc.json` and is enforced, so let `npm run format` arrange them.
+**Imports** of app code are written as `app/components/day/day`, not as deep relative
+paths; `tsconfig.json` maps `app/*` for it. Prettier sorts imports into groups — the
+grouping is configured in `.prettierrc.json` and is enforced, so let `npm run format`
+arrange them.
 
 **Styling.** Layout and spacing in Tailwind utility classes in the template. Colours come
 from the CSS custom properties in `src/styles.css` — those are lifted from the original
 spreadsheet and are the app's identity, so pull from them rather than inventing new
 values or hardcoding hex. The `--app-*` aliases in that file are the single place that
 decides which palette colour plays which UI role; change the mapping there.
+
+**Tests** sit next to what they cover as `<name>.spec.ts` and are written before the code
+they describe. Vitest with `TestBed`; components get their inputs through
+`componentRef.setInput`, and anything touching the API uses `provideHttpClientTesting`
+rather than a live server. A flushed response needs a turn of the event loop before
+`TestBed.tick()` sees it — `app-data.spec.ts` has the helper.
 
 **Strictness.** TypeScript `strict` plus `strictTemplates`, `noImplicitReturns`, and
 `noPropertyAccessFromIndexSignature` are on. Keep them on; don't reach for `any` (it lints
@@ -57,8 +66,10 @@ src/app/
   components/
     topbar/  week/  day/  footer/  week-selector/
   services/
+    api.ts          # wire types and the API's address
     app-data.ts     # root-provided signal store
 ```
 
-`AppData` is the single root-provided store. It currently holds a hardcoded list of weeks
-as a placeholder; that goes away once it talks to the API.
+`AppData` is the single root-provided store: it reads the week being edited from the API
+and writes the whole week back once the edits settle. `api.ts` holds the wire types, which
+mirror `noted-api/schemas.py`.
