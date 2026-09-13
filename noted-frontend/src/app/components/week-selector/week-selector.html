@@ -1,10 +1,9 @@
-<p-tabs
-  [value]="(appData.selectedWeek() | date: 'yyyy-MM-dd') || ''"
-  (valueChange)="setSelectedWeek($event)"
+<mat-tab-group
+  [selectedIndex]="selectedIndex()"
+  (selectedIndexChange)="selectWeek($event)"
+  headerPosition="below"
 >
-  <p-tablist>
-    @for (week of appData.weeks(); track week) {
-      <p-tab [value]="(week | date: 'yyyy-MM-dd') || ''"> {{ week | date: 'dd/MM/yyyy' }} </p-tab>
-    }
-  </p-tablist>
-</p-tabs>
+  @for (week of appData.weeks(); track week.getTime()) {
+    <mat-tab [label]="(week | date: 'dd/MM/yyyy') || ''" />
+  }
+</mat-tab-group>

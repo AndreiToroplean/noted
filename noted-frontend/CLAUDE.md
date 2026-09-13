@@ -16,9 +16,9 @@ npm run format
 ## Stack
 
 - **Angular 21**, standalone components, zoneless.
-- **Angular Material** for components. PrimeNG was the original choice and is being
-  removed; if you find a `primeng` import, it's residue to migrate, not a pattern to
-  follow.
+- **Angular Material** for components, themed from the palette in `src/styles.css` via
+  the `--mat-sys-*` tokens. Add a component's module to a component's `imports`; there is
+  no shared barrel module.
 - **Tailwind v4** for layout and spacing, via `@import 'tailwindcss'` in `src/styles.css`.
   There is no `tailwind.config`; configure in CSS.
 
@@ -42,8 +42,8 @@ deep relative paths. Prettier sorts imports into groups — the grouping is conf
 **Styling.** Layout and spacing in Tailwind utility classes in the template. Colours come
 from the CSS custom properties in `src/styles.css` — those are lifted from the original
 spreadsheet and are the app's identity, so pull from them rather than inventing new
-values or hardcoding hex. Angular Material's theme should be seeded from the same
-properties so Material components and journal content look like one app.
+values or hardcoding hex. The `--app-*` aliases in that file are the single place that
+decides which palette colour plays which UI role; change the mapping there.
 
 **Strictness.** TypeScript `strict` plus `strictTemplates`, `noImplicitReturns`, and
 `noPropertyAccessFromIndexSignature` are on. Keep them on; don't reach for `any` (it lints

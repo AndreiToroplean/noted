@@ -1,10 +1,9 @@
 import { DatePipe, UpperCasePipe } from '@angular/common';
 import { Component, input } from '@angular/core';
-import { TableModule } from 'primeng/table';
 
 @Component({
   selector: 'app-day',
-  imports: [UpperCasePipe, DatePipe, TableModule],
+  imports: [UpperCasePipe, DatePipe],
   templateUrl: './day.html',
 })
 export class Day {
