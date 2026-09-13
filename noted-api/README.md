@@ -24,6 +24,7 @@ Serves on `http://127.0.0.1:8000`; interactive docs at `/docs`. The database is 
 
 | Method  | Path                  | What                                              |
 | ------- | --------------------- | ------------------------------------------------- |
+| `GET`   | `/weeks`              | The Mondays that have anything stored, newest first |
 | `GET`   | `/journal/{monday}`   | The week's seven days, entries and breaks          |
 | `PUT`   | `/journal/{monday}`   | Replace that whole week                            |
 | `GET`   | `/projects`           | Every declared project                             |

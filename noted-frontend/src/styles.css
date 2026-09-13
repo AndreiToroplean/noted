@@ -85,6 +85,11 @@ body {
   background-color: var(--app-surface);
 }
 
+.day-time {
+  /* Arrival, breaks and departure are one visual family — see specification §8. */
+  color: var(--checkbox-free-time);
+}
+
 .day-header {
   background-color: var(--app-surface-raised);
   border-bottom: 1px solid var(--app-outline);

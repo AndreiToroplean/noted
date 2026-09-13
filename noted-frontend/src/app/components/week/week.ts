@@ -1,6 +1,7 @@
-import { Component, computed, effect, input } from '@angular/core';
+import { Component, computed, input } from '@angular/core';
 
 import { Day } from 'app/components/day/day';
+import { Day as DayData, Week as WeekData } from 'app/services/api';
 
 @Component({
   selector: 'app-week',
@@ -8,22 +9,17 @@ import { Day } from 'app/components/day/day';
   templateUrl: './week.html',
 })
 export class Week {
-  readonly week = input.required<Date>();
+  readonly week = input.required<WeekData>();
 
-  protected readonly weekDates = computed<Date[]>(() => {
-    const startDate = this.week();
-    return Array.from({ length: 7 }, (_, i) => {
-      const date = new Date(startDate);
-      date.setDate(startDate.getDate() + i);
-      return date;
-    });
-  });
+  /**
+   * The weekend shows only when it holds something, so an ordinary week is five
+   * columns rather than five and two apologies.
+   */
+  protected readonly visibleDays = computed<DayData[]>(() =>
+    this.week().days.filter((day, index) => index < 5 || hasContent(day)),
+  );
+}
 
-  constructor() {
-    effect(() => {
-      // Validate that the date is a Monday
-      const dayOfWeek = this.week().getDay();
-      if (dayOfWeek !== 1) console.warn(`The provided date ${this.week()} is not a Monday.`);
-    });
-  }
+function hasContent(day: DayData): boolean {
+  return day.entries.length > 0 || day.breaks.length > 0;
 }

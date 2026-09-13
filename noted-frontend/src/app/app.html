@@ -1,8 +1,7 @@
-<div class="w-full h-full flex flex-col">
+<div class="flex h-full w-full flex-col">
   <app-topbar />
-  @let selectedWeek = this.appData.selectedWeek();
-  @if (selectedWeek) {
-    <app-week [week]="selectedWeek" />
+  @if (appData.week(); as week) {
+    <app-week [week]="week" />
   }
   <app-footer class="mt-auto" />
 </div>

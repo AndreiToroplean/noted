@@ -156,3 +156,16 @@ def test_editing_settings_does_not_rewrite_a_day_already_recorded(client):
     client.put("/settings/0", json={"departure": "20:00:00", "expected_minutes": 600})
     monday = client.get(f"/journal/{WEEK}").json()["days"][0]
     assert monday["expected_minutes"] == 420
+
+
+def test_the_current_week_is_always_listed(client):
+    # A fresh database still needs somewhere for the app to start.
+    assert len(client.get("/weeks").json()) == 1
+
+
+def test_saved_weeks_are_listed_newest_first(client):
+    client.put("/journal/2026-02-09", json={"days": [{"date": "2026-02-11", "entries": []}]})
+    client.put("/journal/2026-03-02", json={"days": [{"date": "2026-03-02", "entries": []}]})
+    weeks = client.get("/weeks").json()
+    assert weeks[:2] == sorted(weeks, reverse=True)[:2]
+    assert "2026-02-09" in weeks and "2026-03-02" in weeks

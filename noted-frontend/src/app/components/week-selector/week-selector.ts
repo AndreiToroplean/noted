@@ -13,13 +13,12 @@ import { AppData } from 'app/services/app-data';
 export class WeekSelector {
   protected readonly appData = inject(AppData);
 
-  protected readonly selectedIndex = computed(() => {
-    const selected = this.appData.selectedWeek()?.getTime();
-    return this.appData.weeks().findIndex(week => week.getTime() === selected);
-  });
+  protected readonly selectedIndex = computed(() =>
+    this.appData.weeks.value().indexOf(this.appData.selectedWeek() ?? ''),
+  );
 
   protected selectWeek(index: number) {
-    const week = this.appData.weeks()[index];
+    const week = this.appData.weeks.value()[index];
     if (week) this.appData.selectedWeek.set(week);
   }
 }

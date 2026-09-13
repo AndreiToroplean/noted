@@ -1,1 +1,12 @@
-NOTED
+<div class="flex items-center gap-3 px-3 py-2">
+  <span class="font-semibold tracking-widest">NOTED</span>
+  <span class="ml-auto text-xs opacity-70">
+    @if (appData.saveFailed()) {
+      Could not save
+    } @else if (appData.saving()) {
+      Saving…
+    } @else if (appData.loading()) {
+      Loading…
+    }
+  </span>
+</div>

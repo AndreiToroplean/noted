@@ -53,6 +53,22 @@ def week_dates(start: date) -> list[date]:
 # --- The journal ------------------------------------------------------------
 
 
+@app.get("/weeks", response_model=list[date])
+def list_weeks(session: Session = Depends(db.session)):
+    """The Mondays that have anything stored, newest first.
+
+    There is no week table — a week is a date range — so this is a query over
+    the days. The current week is always included, so the app has somewhere to
+    start on a fresh database.
+    """
+    mondays = {
+        day - timedelta(days=day.weekday()) for day in session.exec(select(Day.date)).all()
+    }
+    today = date.today()
+    mondays.add(today - timedelta(days=today.weekday()))
+    return sorted(mondays, reverse=True)
+
+
 @app.get("/journal/{week}", response_model=WeekOut)
 def read_week(week: str, session: Session = Depends(db.session)):
     """The seven days of a week.

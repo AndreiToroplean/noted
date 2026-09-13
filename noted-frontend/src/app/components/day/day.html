@@ -1,8 +1,30 @@
+@let data = day();
+
 <section class="day flex h-full flex-col">
   <header class="day-header px-2 py-1 text-center">
-    <div class="text-sm font-semibold tracking-wide">{{ date() | date: 'EEEE' | uppercase }}</div>
-    <div class="text-xs opacity-70">{{ date() | date: 'dd/MM/yyyy' }}</div>
+    <div class="text-sm font-semibold tracking-wide">
+      {{ data.date | date: 'EEEE' | uppercase }}
+    </div>
+    <div class="text-xs opacity-70">{{ data.date | date: 'dd/MM/yyyy' }}</div>
+    @if (data.arrival) {
+      <div class="day-time text-xs">{{ data.arrival | slice: 0 : 5 }}</div>
+    }
   </header>
-  <!-- Entries land here once the editor exists. -->
-  <div class="flex-1"></div>
+
+  <ul class="flex-1 list-none p-0">
+    @for (entry of data.entries; track entry.id) {
+      <li class="px-2 py-1 text-sm" [class.opacity-60]="entry.done">
+        <div>{{ entry.text }}</div>
+        @if (entry.note) {
+          <div class="text-xs opacity-60">{{ entry.note }}</div>
+        }
+      </li>
+    }
+  </ul>
+
+  @if (data.departure) {
+    <footer class="day-time px-2 py-1 text-center text-xs">
+      {{ data.departure | slice: 0 : 5 }}
+    </footer>
+  }
 </section>
