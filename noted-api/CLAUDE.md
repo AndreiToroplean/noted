@@ -25,11 +25,17 @@ arrive.
 the route, so nothing downstream has to wonder. Keep that pattern: reject bad input where
 it enters.
 
-**Pydantic models for payloads**, not bare `dict`. The API should know the shape of a
-journal week rather than passing an opaque blob through to storage.
+**Layout.** `models.py` is the stored schema (SQLModel tables), `schemas.py` is what
+crosses the wire, `db.py` owns the engine, `app.py` the routes. The two model layers are
+deliberately separate: a week is written back whole, so entries arrive without ids — their
+order in the list *is* their position — and come back with ids on read.
 
-**Tests** live in `tests/`, use `TestClient`, and point storage at a `tmp_path` fixture so
-they never touch real data. Any new endpoint gets a test covering its success case and its
+**The database** is one SQLite file at `data/noted.db`, created on first run along with
+the default per-weekday hours. There are no migrations yet; while the schema is still
+moving, delete the file and let it rebuild.
+
+**Tests** live in `tests/`, use `TestClient`, and point `db.DATABASE_PATH` at a `tmp_path`
+fixture so they never touch real data. Any new endpoint gets a test covering its success case and its
 validation failures.
 
 **Runtime data is not committed** — `data/` is gitignored, as are `.venv/` and caches.
