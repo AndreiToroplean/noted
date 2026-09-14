@@ -130,6 +130,13 @@ class ParsedDay:
     #: Annotations that look like clock markers but matched no rule. Never drop
     #: these quietly: breaks went missing that way once.
     unread: list[str] = field(default_factory=list)
+    #: The figures written on the markers themselves, as in `[# 1h15 (-15m)]`.
+    #: They should add up to the day's `=>`; where they do not, the day is worth
+    #: looking at by hand.
+    stated: list[int] = field(default_factory=list)
+    #: Every annotation, paired with what it was taken to mean, in the order it
+    #: was written. Shown when a day's overtime has to be decided by hand.
+    reading: list[tuple[str, str]] = field(default_factory=list)
 
 
 @dataclass
@@ -205,9 +212,18 @@ def read_markers(entries: list[ParsedEntry]) -> ParsedDay:
             continue
 
         inner = entry.text.strip()[1:-1].strip()
-        if not consume_marker(inner, day, first=not kept and not day.breaks):
+        before = (day.arrival, day.departure, len(day.breaks), day.explicit_overtime)
+        if consume_marker(inner, day, first=not kept and not day.breaks):
+            read = effect_of(before, day)
+            if stated := STATED.search(inner):
+                minutes = parse_duration(stated.group(2)) or 0
+                day.stated.append(-minutes if stated.group(1) == "-" else minutes)
+                read += f", written as {stated.group(1)}{stated.group(2)}"
+            day.reading.append((entry.text.strip(), read))
+        else:
             if TIME_ISH.search(inner):
                 day.unread.append(entry.text.strip())
+                day.reading.append((entry.text.strip(), "not read"))
             kept.append(entry)
 
     day.entries = kept
@@ -223,6 +239,33 @@ def read_markers(entries: list[ParsedEntry]) -> ParsedDay:
                 break
 
     return day
+
+
+def describe_break(pause: ParsedBreak) -> str:
+    """One break, the way it reads: a span, a length, or a length and a reason."""
+    if pause.start and pause.end:
+        span = f"{pause.start:%H:%M} to {pause.end:%H:%M}"
+    elif pause.minutes is not None:
+        span = f"{pause.minutes // 60}h{pause.minutes % 60:02d}" if pause.minutes >= 60             else f"{pause.minutes}m"
+    else:
+        span = "no length given"
+    said = f" ({pause.description})" if pause.description else ""
+    return f"{'lunch' if pause.is_noon else 'break'}, {span}{said}"
+
+
+def effect_of(before, day: ParsedDay) -> str:
+    """What one marker did to the day, for showing beside the marker itself."""
+    arrival, departure, breaks, override = before
+    said = []
+    if day.explicit_overtime != override:
+        said.append(f"day filed as {day.explicit_overtime:+d}m")
+    if day.arrival != arrival:
+        said.append(f"arrived {day.arrival:%H:%M}")
+    if day.departure != departure:
+        said.append(f"left {day.departure:%H:%M}")
+    for pause in day.breaks[breaks:]:
+        said.append(describe_break(pause))
+    return ", ".join(said) or "read, but said nothing"
 
 
 def consume_marker(inner: str, day: ParsedDay, first: bool) -> bool:

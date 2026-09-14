@@ -183,3 +183,34 @@ def test_a_markers_parenthesised_figure_is_not_a_description():
     day = markers("[# 30m (+30m)]")
     assert day.breaks[0].minutes == 30
     assert day.breaks[0].description is None
+
+
+def test_each_marker_records_what_it_was_read_as():
+    # The conflict prompt shows the column as written; to choose, the owner has
+    # to see what each line was taken to mean.
+    day = markers("[-> 9:45]", "[T] Work.", "[# 1h30]", "[-> 18:45 (+15m => -30m)]")
+    assert day.reading == [
+        ("[-> 9:45]", "arrived 09:45"),
+        ("[# 1h30]", "lunch, 1h30"),
+        ("[-> 18:45 (+15m => -30m)]", "day filed as -30m, left 18:45, written as +15m"),
+    ]
+
+
+def test_a_marker_that_was_not_read_says_so():
+    day = markers("[T] Work.", "[+45m]")
+    assert day.reading == [("[+45m]", "not read")]
+
+
+def test_a_marker_reports_the_figure_it_was_written_with():
+    # The written contributions should add up to the day's `=>`. Showing each
+    # one is what makes a disagreement decidable.
+    day = markers("[# 1h15 (-15m)]")
+    assert day.reading == [("[# 1h15 (-15m)]", "lunch, 1h15, written as -15m")]
+
+
+def test_the_figures_written_on_the_markers_are_added_up():
+    # Here the parts say -15m while the day was filed as +1h. Showing the
+    # sum is what explains a disagreement.
+    day = markers("[-> 9:45 (-15m)]", "[# 30m (+30m)]", "[-1h]", "[-> 19:00 (+30m => +1h)]")
+    assert day.stated == [-15, 30, 30]
+    assert day.explicit_overtime == 60
