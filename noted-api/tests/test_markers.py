@@ -176,3 +176,10 @@ def test_a_deduction_with_no_description_is_still_a_break():
 
 def test_a_described_deduction_leaves_nothing_unread():
     assert markers("[Tidy the desk (-30m)]").unread == []
+
+
+def test_a_markers_parenthesised_figure_is_not_a_description():
+    # `(+30m)` is what the marker did to the day, not a note about the break.
+    day = markers("[# 30m (+30m)]")
+    assert day.breaks[0].minutes == 30
+    assert day.breaks[0].description is None

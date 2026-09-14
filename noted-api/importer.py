@@ -93,6 +93,9 @@ DEDUCTION = re.compile(rf"^(.*?)\(\s*-\s*({DURATION})\s*\)$")
 TIME_ISH = re.compile(rf"{DURATION}|{CLOCK}|=>")
 OVERRIDE = re.compile(rf"=>\s*([+-]?)\s*({DURATION})")
 FIRST_DURATION = re.compile(rf"({DURATION})")
+#: What a marker says it did to the day's overtime, as in `[# 1h15 (-15m)]`. The
+#: written figures should add up to the day's `=>`.
+STATED = re.compile(rf"\(\s*([+-])\s*({DURATION})\s*(?:=>|\))")
 
 #: A day made of nothing but one of these is not a working day.
 STATUSES = [
@@ -262,6 +265,7 @@ def consume_marker(inner: str, day: ParsedDay, first: bool) -> bool:
         found = FIRST_DURATION.search(rest)
         minutes = parse_duration(found.group(1)) if found else DEFAULT_LUNCH
         said = (rest[: found.start()] + rest[found.end() :] if found else rest).strip()
+        said = STATED.sub("", said).strip()
         day.breaks.append(ParsedBreak(True, minutes=minutes, description=said or None))
         return True
 
