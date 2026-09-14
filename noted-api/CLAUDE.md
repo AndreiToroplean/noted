@@ -7,7 +7,11 @@ Python / FastAPI backend. See the root `CLAUDE.md` for the domain model.
 ```powershell
 ./run.ps1              # creates .venv if missing, installs deps, runs uvicorn --reload
 python -m pytest       # tests
+python -m pyright      # types, configured by pyrightconfig.json
 ```
+
+Keep `python -m pyright` clean. It is the same check the editor runs, so an error
+left in place is one the owner sees every time the file is open.
 
 Serves on `http://127.0.0.1:8000`; interactive docs at `/docs`.
 

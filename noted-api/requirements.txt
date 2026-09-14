@@ -4,3 +4,4 @@ uvicorn[standard]
 pytest
 httpx
 requests
+pyright
