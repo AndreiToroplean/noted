@@ -19,9 +19,16 @@ It is optional, and looks like this:
     # Paths that were genuinely new even though they were written without a `+`.
     declare = ["atlas.2"]
 
-Where a day carries an explicit `=> +1h` overtime and the recomputed figure
-disagrees, the run records it in `data/import-report.txt` rather than stopping.
-Reading that report and fixing the parsing is what the next pass is for.
+Run in a terminal, it **asks** rather than guesses. Two things it cannot decide
+alone: whether a project used without a `+` is new or a second spelling of one
+that exists, and which figure to keep where a day's hand-written `=> +1h`
+disagrees with the recomputation. For the second it prints the day — hours,
+breaks, entries — so the choice can be made by looking at it.
+
+Answers go to `importer-decisions.toml` and are not asked again, so a re-run
+after fixing the parsing only stops at what is genuinely new. Delete that file
+to start the questions over. `--batch` never asks and leaves every conflict as
+the spreadsheet had it.
 """
 
 import argparse
@@ -30,6 +37,7 @@ import tomllib
 from pathlib import Path
 import random
 import re
+import sys
 import xml.etree.ElementTree as ET
 import zipfile
 from dataclasses import dataclass, field
@@ -320,6 +328,163 @@ def load_rules(path: str = RULES_PATH) -> Rules:
     return Rules(merge=raw.get("merge", {}), declare=set(raw.get("declare", [])))
 
 
+NEW = "*new*"
+WRITTEN = "written"
+RECOMPUTED = "recomputed"
+
+DECISIONS_PATH = "importer-decisions.toml"
+
+
+def quote_key(key: str) -> str:
+    """A TOML bare key cannot hold a dot; `atlas.2` is a name, not a nesting."""
+    return '"' + key.replace('"', '\\"') + '"'
+
+
+@dataclass
+class Decisions:
+    """What the person answered last time, so they are asked once and not again.
+
+    Written by the importer rather than by hand — `importer-rules.toml` is the
+    hand-written half. Both are gitignored: they are one person's reading of
+    their own history.
+    """
+
+    projects: dict[str, str] = field(default_factory=dict)
+    overtime: dict[str, str] = field(default_factory=dict)
+
+    @classmethod
+    def load(cls, path=DECISIONS_PATH) -> "Decisions":
+        try:
+            with open(path, "rb") as handle:
+                raw = tomllib.load(handle)
+        except FileNotFoundError:
+            return cls()
+        return cls(projects=raw.get("projects", {}), overtime=raw.get("overtime", {}))
+
+    def save(self, path=DECISIONS_PATH):
+        lines = [
+            "# Written by importer.py as questions get answered. Safe to delete:",
+            "# deleting it only means being asked again.",
+            "",
+            "[projects]",
+        ]
+        for name, answer in sorted(self.projects.items()):
+            lines.append(f"{quote_key(name)} = {quote_key(answer)}")
+        lines += ["", "[overtime]"]
+        for date, answer in sorted(self.overtime.items()):
+            lines.append(f"{quote_key(date)} = {quote_key(answer)}")
+        Path(path).write_text("\n".join(lines) + "\n", encoding="utf-8")
+
+
+class Resolver:
+    """Answers the questions an import raises, asking a person when it must.
+
+    `ask` is a callable taking the question, the options and the context to
+    show. Passing None makes the run non-interactive: nothing is invented, the
+    spreadsheet's own reading stands, and `unresolved` counts what was left.
+    """
+
+    def __init__(self, decisions: Decisions, ask=None, rules: Rules | None = None):
+        self.decisions = decisions
+        self.ask = ask
+        self.rules = rules or Rules()
+        self.unresolved = 0
+        self.asked = 0
+        #: Paths somebody has actually ruled on, by rule, by memory, or just now.
+        self.settled: set[str] = set()
+
+    def project(self, path: str, known: list[str], date) -> str:
+        if path in self.rules.merge:
+            self.settled.add(path)
+            return self.rules.merge[path]
+        if path in self.rules.declare:
+            self.settled.add(path)
+            return path
+
+        answer = self.decisions.projects.get(path)
+        if answer is None:
+            if self.ask is None:
+                self.unresolved += 1
+                return path
+            answer = self.ask(
+                question=f"Project {path!r} was used without being declared.",
+                options=[(NEW, f"a new project called {path}")]
+                + [(name, f"the same as {name}") for name in known],
+                context=[f"First seen {date}." if date else ""],
+            )
+            self.decisions.projects[path] = answer
+            self.asked += 1
+
+        self.settled.add(path)
+        return path if answer == NEW else answer
+
+    def overtime(self, date: str, written: int, recomputed: int, lines: list[str]) -> int | None:
+        """The figure to record as an override, or None to let the day compute."""
+        answer = self.decisions.overtime.get(date)
+        if answer is None:
+            if self.ask is None:
+                self.unresolved += 1
+                return None
+            answer = self.ask(
+                question=f"{date}: written {written:+d}m, recomputed {recomputed:+d}m.",
+                options=[
+                    (WRITTEN, f"keep what was written, {written:+d}m"),
+                    (RECOMPUTED, f"keep the recomputation, {recomputed:+d}m"),
+                ],
+                context=lines,
+            )
+            self.decisions.overtime[date] = answer
+            self.asked += 1
+
+        return written if answer == WRITTEN else None
+
+
+def describe_day(date, day: ParsedDay, arrival, departure, breaks, expected) -> list[str]:
+    """The day, readably, so a choice can be made by looking at it."""
+    lines = [f"{date:%A %d %B %Y}", ""]
+    lines.append(f"  arrived {arrival:%H:%M}" if arrival else "  arrival not recorded")
+    for pause in breaks:
+        if pause.start and pause.end:
+            span = f"{pause.start:%H:%M}-{pause.end:%H:%M}"
+        elif pause.minutes is not None:
+            span = f"{pause.minutes}m"
+        else:
+            span = "open"
+        lines.append(f"  {'lunch' if pause.is_noon else 'break'} {span}")
+    lines.append(f"  left {departure:%H:%M}" if departure else "  departure not recorded")
+    lines.append("")
+    for entry in day.entries:
+        mark = "x" if getattr(entry, "done", False) else " "
+        label = f"[{entry.category}] " if entry.category else ""
+        lines.append(f"  [{mark}] {label}{entry.text}"[:100])
+    lines.append("")
+    lines.append(f"  expected {expected}m")
+    return lines
+
+
+def ask_on_terminal(question: str, options, context) -> str:
+    """Show the day, then the choices, and wait."""
+    print()
+    print("-" * 72)
+    for line in context:
+        print(line)
+    print()
+    print(question)
+    for index, (_, label) in enumerate(options, start=1):
+        print(f"  {index}) {label}")
+
+    while True:
+        try:
+            reply = input("choose [1]: ").strip()
+        except EOFError:
+            return options[0][0]
+        if not reply:
+            return options[0][0]
+        if reply.isdigit() and 1 <= int(reply) <= len(options):
+            return options[int(reply) - 1][0]
+        print(f"  enter 1 to {len(options)}.")
+
+
 def worked_minutes(day: ParsedDay, arrival: dt.time, departure: dt.time) -> int:
     """Time present, less every break. See specification §6.3."""
     present = minutes_of(departure) - minutes_of(arrival)
@@ -346,10 +511,17 @@ def wipe(session: Session):
     session.commit()
 
 
-def run(path: str, session: Session, reset: bool = False, rules: Rules | None = None):
+def run(
+    path: str,
+    session: Session,
+    reset: bool = False,
+    rules: Rules | None = None,
+    resolver: Resolver | None = None,
+):
     if reset:
         wipe(session)
     rules = rules or load_rules()
+    resolver = resolver or Resolver(Decisions(), ask=None, rules=rules)
 
     projects: dict[str, Project] = {
         project.path: project for project in session.exec(select(Project))
@@ -395,16 +567,6 @@ def run(path: str, session: Session, reset: bool = False, rules: Rules | None = 
             if day.status != "working":
                 expected = 0
 
-            session.add(
-                Day(
-                    date=date,
-                    status=DayStatus(day.status),
-                    arrival=arrival,
-                    departure=departure,
-                    expected_minutes=expected,
-                )
-            )
-
             # A weekday with no `#` marker still had lunch — that is what made
             # the owner's own totals come out right.
             breaks = list(day.breaks)
@@ -414,6 +576,35 @@ def run(path: str, session: Session, reset: bool = False, rules: Rules | None = 
                 and not any(pause.is_noon for pause in breaks)
             ):
                 breaks.append(ParsedBreak(True, minutes=DEFAULT_LUNCH))
+
+            # Where the day was filed by hand, check the recomputation agrees,
+            # and where it does not, let the person looking at it decide.
+            override = None
+            if day.explicit_overtime is not None and arrival and departure:
+                computed = worked_minutes(ParsedDay(breaks=breaks), arrival, departure) - expected
+                if computed != day.explicit_overtime:
+                    disagreements.append(
+                        f"{date}  written {day.explicit_overtime:+d}m, "
+                        f"recomputed {computed:+d}m  "
+                        f"({arrival:%H:%M}-{departure:%H:%M}, expected {expected}m)"
+                    )
+                    override = resolver.overtime(
+                        date.isoformat(),
+                        written=day.explicit_overtime,
+                        recomputed=computed,
+                        lines=describe_day(date, day, arrival, departure, breaks, expected),
+                    )
+
+            session.add(
+                Day(
+                    date=date,
+                    status=DayStatus(day.status),
+                    arrival=arrival,
+                    departure=departure,
+                    expected_minutes=expected,
+                    overtime_override=override,
+                )
+            )
 
             for position, pause in enumerate(breaks):
                 session.add(
@@ -435,9 +626,17 @@ def run(path: str, session: Session, reset: bool = False, rules: Rules | None = 
                     project = projects.get(path_name)
                     if project is None:
                         # The spreadsheet only coloured an undeclared project
-                        # red, so plenty exist without a `+`.
-                        if not parsed.declares and path_name not in rules.declare:
-                            undeclared.add(path_name)
+                        # red, so plenty exist without a `+`. Whether this is a
+                        # new project or a second spelling of an old one is a
+                        # judgement only the owner can make.
+                        if not parsed.declares:
+                            path_name = resolver.project(
+                                path_name, known=sorted(projects), date=date
+                            )
+                            project = projects.get(path_name)
+                            if parsed.project not in resolver.settled:
+                                undeclared.add(path_name)
+                    if project is None:
                         project = Project(
                             path=path_name, colour=sample_colour(), declared_on=date
                         )
@@ -463,17 +662,6 @@ def run(path: str, session: Session, reset: bool = False, rules: Rules | None = 
 
             counts["days"] += 1
 
-            # Where the day was filed by hand, check the recomputation agrees.
-            if day.explicit_overtime is not None and arrival and departure:
-                day_breaks = ParsedDay(breaks=breaks)
-                computed = worked_minutes(day_breaks, arrival, departure) - expected
-                if computed != day.explicit_overtime:
-                    disagreements.append(
-                        f"{date}  written {day.explicit_overtime:+d}m, "
-                        f"recomputed {computed:+d}m  "
-                        f"({arrival:%H:%M}-{departure:%H:%M}, expected {expected}m)"
-                    )
-
         session.commit()
 
     return counts, undeclared, disagreements
@@ -488,42 +676,56 @@ def main():
         help="wipe what a previous import wrote before starting",
     )
     parser.add_argument("--rules", default=RULES_PATH, help=f"default: {RULES_PATH}")
+    parser.add_argument("--decisions", default=DECISIONS_PATH, help=f"default: {DECISIONS_PATH}")
+    parser.add_argument(
+        "--batch",
+        action="store_true",
+        help="never ask; leave every conflict as the spreadsheet had it",
+    )
     args = parser.parse_args()
 
     rules = load_rules(args.rules)
-    with Session(db.engine()) as session:
-        counts, undeclared, disagreements = run(
-            args.workbook, session, reset=args.reset, rules=rules
-        )
+    decisions = Decisions.load(args.decisions)
+    interactive = not args.batch and sys.stdin.isatty()
+    resolver = Resolver(decisions, ask=ask_on_terminal if interactive else None, rules=rules)
+
+    try:
+        with Session(db.engine()) as session:
+            counts, undeclared, disagreements = run(
+                args.workbook, session, reset=args.reset, rules=rules, resolver=resolver
+            )
+    finally:
+        # Save even on a Ctrl-C, so a long session of answers is never lost.
+        if resolver.asked:
+            decisions.save(args.decisions)
+            print(f"\nSaved {resolver.asked} answers to {args.decisions}.")
 
     print(
-        f"{counts['weeks']} weeks, {counts['days']} days, {counts['entries']} entries, "
+        f"\n{counts['weeks']} weeks, {counts['days']} days, {counts['entries']} entries, "
         f"{counts['meta']} annotations, {counts['breaks']} breaks."
     )
-    if rules.merge or rules.declare:
-        print(f"Applied {len(rules.merge)} merges and {len(rules.declare)} declarations.")
-    else:
-        print(f"No {args.rules} found: every judgement call left as the spreadsheet had it.")
 
     if undeclared:
         print(f"\n{len(undeclared)} projects were used before being declared:")
         for path in sorted(undeclared):
             print(f"  {path}")
-        print("Near-duplicates here are what the `+` rule exists to prevent; a [merge]")
-        print(f"line in {args.rules} folds one into another.")
 
     if disagreements:
         Path(REPORT_PATH).parent.mkdir(parents=True, exist_ok=True)
         Path(REPORT_PATH).write_text(
-            "Days whose hand-written overtime disagrees with the recomputation.\n"
-            "Either the original slipped or the parser has a gap, and the second\n"
-            "is worth fixing before importing again.\n\n"
+            "Days whose hand-written overtime disagrees with the recomputation.\n\n"
             + "\n".join(disagreements)
             + "\n",
             encoding="utf-8",
         )
-        print(f"\n{len(disagreements)} days disagree with their written total.")
-        print(f"See {REPORT_PATH}.")
+        print(f"\n{len(disagreements)} days disagreed with their written total.")
+        print(f"All of them are listed in {REPORT_PATH}.")
+
+    if resolver.unresolved:
+        print(
+            f"\n{resolver.unresolved} conflicts were left as the spreadsheet had them. "
+            "Run without --batch, in a terminal, to decide them."
+        )
 
 
 if __name__ == "__main__":

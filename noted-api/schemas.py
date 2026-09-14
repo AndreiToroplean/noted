@@ -58,6 +58,7 @@ class DayIn(BaseModel):
     departure: dt.time | None = None
     #: Left unset, the weekday's default is snapshot onto the day as it is stored.
     expected_minutes: int | None = None
+    overtime_override: int | None = None
     entries: list[EntryIn] = []
     breaks: list[BreakIn] = []
 

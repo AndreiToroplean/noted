@@ -49,8 +49,16 @@ python importer.py "C:\path\to\Journal.ods" --reset
 ```
 
 `--reset` wipes what a previous import wrote, so it is safe to run again after correcting
-the parsing. Judgement calls go in `importer-rules.toml` (gitignored); disagreements
-between a written overtime total and the recomputed one land in `data/import-report.txt`.
+the parsing.
+
+Run from a terminal it asks about what it cannot decide: a project used without a `+` that
+might be a new one or a misspelling of an existing one, and a day whose hand-written
+overtime disagrees with the recomputation (it prints the day so the choice can be made by
+looking at it). Answers are remembered in `importer-decisions.toml` and not asked twice;
+delete that file to be asked again. `--batch` never asks.
+
+Standing judgement calls can also be written by hand in `importer-rules.toml`. Both files
+are gitignored — they are one person's reading of their own history, not part of the app.
 
 ## Tests
 

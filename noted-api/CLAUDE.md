@@ -40,9 +40,13 @@ Anything a user is expected to change belongs there rather than in the code that
 **The importer** is re-runnable: `--reset` wipes what it wrote and starts again, because
 getting the legacy parsing right takes several passes. Judgement calls about the owner's
 own history — two spellings of one project, a path that was new without saying so — go in
-`importer-rules.toml`, which is gitignored on purpose: it is a reading of one person's
-history, not part of the app. Days whose hand-written overtime disagrees with the
-recomputation are written to `data/import-report.txt` rather than stopping the run.
+`importer-rules.toml`; answers given interactively are remembered in
+`importer-decisions.toml`. Both are gitignored on purpose: they are a reading of one
+person's history, not part of the app.
+
+The importer asks rather than guesses, but only when a person is there: `Resolver(ask=None)`
+is the non-interactive mode and must never invent an answer — it leaves the spreadsheet's
+own reading standing and counts what it skipped.
 
 There are no migrations yet; while the schema is still moving, delete the database file
 and let it rebuild.
