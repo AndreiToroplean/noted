@@ -259,6 +259,7 @@ Marker entries record the shape of the working day. Their position in the column
 | `[# 0m]`                    | middle   | noon break **skipped**                 |
 | `[-15m]`, `[-1h]`, `[20m]`  | middle   | another break, as a duration           |
 | `[15:00 -> 15:20]`          | middle   | another break, as a range              |
+| `[19:30 -> 23:15 (-3h45)]`  | middle   | another break, as a range with its length |
 | `[Errand in town (-1h45)]` | middle | time given up, with the reason         |
 | `[(-30m)]`                  | middle   | time given up, no reason recorded      |
 | `[# Lunch w/ a friend]`       | middle   | noon break of the default length, with context |
@@ -277,6 +278,18 @@ annotation or two before the clock —
 can be it. Once work has started, an arrow is the departure, however many annotations
 follow it; where several appear, the last one wins, which is how an evening session
 written after a first `[-> 19:30]` extends the day.
+
+A ranged break may carry its own length in parentheses, as in
+`[19:30 -> 23:15 (-3h45)]`. The bounds are what counts — the figure is the owner checking
+his own arithmetic, and it is read the same way as any other written figure.
+
+This is the form to prefer for an evening away from the desk. Closing the day at 19:30 and
+reopening it with a second arrival at 23:15 says two departures and relies on the last one
+winning; one ranged break says the same thing once, and says it in bounds rather than in
+deltas.
+
+Both ends of a range are clock times with no date, so a break may run past midnight just
+as the day may: `[23:30 -> 0:30]` is an hour away, not a negative one.
 
 ### 5.1 Durations
 

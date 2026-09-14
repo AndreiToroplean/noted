@@ -241,3 +241,29 @@ def test_an_arrow_after_the_first_task_is_a_departure():
     day = markers("[T] Work.", "[-> 18:45]", "[Back home]")
     assert day.arrival is None
     assert day.departure == dt.time(18, 45)
+
+
+def test_a_ranged_break_can_state_its_own_length():
+    # `[19:30 -> 23:15 (-3h45)]` — the way an evening away from the desk should
+    # be written, rather than closing the day and reopening it with a second
+    # arrival. The bounds are the truth; the figure is the owner checking them.
+    day = markers("[T] Work.", "[19:30 -> 23:15 (-3h45)]", "[T] Night work.")
+    assert len(day.breaks) == 1
+    pause = day.breaks[0]
+    assert pause.is_noon is False
+    assert (pause.start, pause.end) == (dt.time(19, 30), dt.time(23, 15))
+    assert day.stated == [-225]
+    assert day.unread == []
+
+
+def test_a_ranged_break_is_its_span_long():
+    # 09:45 to 02:45 is 17h present, less the 3h45 away.
+    day = markers("[T] Work.", "[19:30 -> 23:15 (-3h45)]")
+    assert importer.worked_minutes(day, dt.time(9, 45), dt.time(2, 45)) == 13 * 60 + 15
+
+
+def test_a_break_running_past_midnight_is_still_time_away():
+    # The day already knows it can end after midnight, and so can a break in it.
+    # Subtracting a negative span would have handed back four hours of work.
+    day = markers("[T] Work.", "[23:30 -> 0:30]")
+    assert importer.worked_minutes(day, dt.time(9, 30), dt.time(3, 30)) == 17 * 60

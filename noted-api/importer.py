@@ -582,7 +582,10 @@ def worked_minutes(day: ParsedDay, arrival: dt.time, departure: dt.time) -> int:
         if pause.minutes is not None:
             present -= pause.minutes
         elif pause.start and pause.end:
-            present -= minutes_of(pause.end) - minutes_of(pause.start)
+            away = minutes_of(pause.end) - minutes_of(pause.start)
+            if away < 0:
+                away += 24 * 60  # a break running past midnight, like the day itself
+            present -= away
     return present
 
 
