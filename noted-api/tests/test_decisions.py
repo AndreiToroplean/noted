@@ -1,3 +1,5 @@
+import datetime as dt
+
 import importer
 
 
@@ -67,3 +69,73 @@ def test_without_a_person_to_ask_nothing_is_decided(tmp_path):
 
     assert resolver.project("refactr", known=["refactor"], date=None) == "refactr"
     assert resolver.unresolved == 1
+
+
+def test_the_database_is_let_go_of_around_a_question(tmp_path):
+    # A question can sit unanswered for an hour, or outlive the terminal that
+    # asked it. Holding a write transaction across it locks the database for
+    # everyone, so the run lets go before asking and again once answered.
+    decisions = importer.Decisions.load(tmp_path / "d.toml")
+    events = []
+
+    def ask(*args, **kwargs):
+        events.append("asked")
+        return "refactor"
+
+    resolver = importer.Resolver(decisions, ask=ask, release=lambda: events.append("released"))
+    resolver.project("refactr", known=["refactor"], date=None)
+
+    assert events == ["released", "asked", "released"]
+
+
+def test_a_remembered_answer_lets_go_of_nothing(tmp_path):
+    # Nothing waits on a person, so there is no reason to break the transaction.
+    decisions = importer.Decisions.load(tmp_path / "d.toml")
+    decisions.projects["refactr"] = "refactor"
+    released = []
+
+    resolver = importer.Resolver(
+        decisions, ask=None, release=lambda: released.append(True)
+    )
+    resolver.project("refactr", known=["refactor"], date=None)
+
+    assert released == []
+
+
+def test_a_second_process_can_write_while_a_question_waits(tmp_path):
+    # The point of all this, checked against a real file rather than a spy: an
+    # importer sitting at a question must not lock the database for anyone else.
+    import sqlite3
+
+    from sqlmodel import Session, SQLModel, create_engine
+
+    from models import Project
+
+    engine = create_engine(f"sqlite:///{tmp_path / 'noted.db'}")
+    SQLModel.metadata.create_all(engine)
+    decisions = importer.Decisions.load(tmp_path / "d.toml")
+    taken = []
+
+    with Session(engine) as session:
+        # Something written but not committed, which is what holds the lock.
+        session.add(Project(path="webApp", colour="#fff", declared_on=dt.date(2026, 1, 1)))
+        session.flush()
+
+        def ask(*args, **kwargs):
+            other = sqlite3.connect(tmp_path / "noted.db", timeout=0.2)
+            try:
+                other.execute("BEGIN IMMEDIATE")
+                taken.append(True)
+                other.rollback()
+            except sqlite3.OperationalError:
+                taken.append(False)
+            finally:
+                other.close()
+            return "webApp"
+
+        resolver = importer.Resolver(
+            decisions, ask=ask, release=lambda: session.commit()
+        )
+        resolver.project("webapp", known=["webApp"], date=None)
+
+    assert taken == [True]

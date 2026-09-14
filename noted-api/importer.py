@@ -452,11 +452,19 @@ class Resolver:
     `ask` is a callable taking the question, the options and the context to
     show. Passing None makes the run non-interactive: nothing is invented, the
     spreadsheet's own reading stands, and `unresolved` counts what was left.
+
+    `release` is called either side of a question, to put what is settled on
+    disk and let go of the database. A question waits on a person, and a person
+    is slow — one left open overnight, or orphaned when its terminal closed,
+    would otherwise hold a write lock nothing can take back.
     """
 
-    def __init__(self, decisions: Decisions, ask=None, rules: Rules | None = None):
+    def __init__(
+        self, decisions: Decisions, ask=None, rules: Rules | None = None, release=None
+    ):
         self.decisions = decisions
         self.ask = ask
+        self.release = release or (lambda: None)
         self.rules = rules or Rules()
         self.unresolved = 0
         self.asked = 0
@@ -476,6 +484,7 @@ class Resolver:
             if self.ask is None:
                 self.unresolved += 1
                 return path
+            self.release()
             answer = self.ask(
                 question=f"Project {path!r} was used without being declared.",
                 options=[(NEW, f"a new project called {path}")]
@@ -484,6 +493,7 @@ class Resolver:
             )
             self.decisions.projects[path] = answer
             self.asked += 1
+            self.release()
 
         self.settled.add(path)
         return path if answer == NEW else answer
@@ -770,7 +780,6 @@ def main():
     rules = load_rules(args.rules)
     decisions = Decisions.load(args.decisions)
     interactive = not args.batch and sys.stdin.isatty()
-    resolver = Resolver(decisions, ask=ask_on_terminal if interactive else None, rules=rules)
 
     def keep_answers():
         """Save what was decided. Also on a Ctrl-C: a sitting is work."""
@@ -781,20 +790,35 @@ def main():
 
     try:
         with Session(db.engine()) as session:
+
+            def release():
+                """Put everything settled on disk and let go of the database.
+
+                Called either side of every question. What has been read so far
+                is good work and a question is slow, so rather than sit on an
+                open write lock until the person answers, the run commits and
+                takes a fresh transaction afterwards.
+                """
+                session.commit()
+                if resolver.asked:
+                    decisions.save(args.decisions)
+
+            resolver = Resolver(
+                decisions,
+                ask=ask_on_terminal if interactive else None,
+                rules=rules,
+                release=release,
+            )
             counts, undeclared, disagreements, unread = run(
                 args.workbook, session, reset=args.reset, rules=rules, resolver=resolver
             )
     except KeyboardInterrupt:
         # Expected, and often: deciding a long run by hand is done in sittings.
         keep_answers()
-        print("\nStopped before the end, so this import was not written.")
-        if args.reset:
-            # Dropping the tables is DDL, which SQLite commits on the spot: it
-            # is not in the transaction that just rolled back.
-            print("The previous import was cleared first, so there is no journal")
-            print("in the database until a run finishes.")
+        print("\nStopped before the end, so this import is half-written: everything")
+        print("read up to the last question is in the database, and nothing after it.")
         print("The answers above are kept and will not be asked again, so running")
-        print("the same command carries on from where this stopped.")
+        print("the same command with --reset carries on from where this stopped.")
         return 130
 
     keep_answers()
