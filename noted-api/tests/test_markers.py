@@ -214,3 +214,30 @@ def test_the_figures_written_on_the_markers_are_added_up():
     day = markers("[-> 9:45 (-15m)]", "[# 30m (+30m)]", "[-1h]", "[-> 19:00 (+30m => +1h)]")
     assert day.stated == [-15, 30, 30]
     assert day.explicit_overtime == 60
+
+
+def test_arrival_is_still_arrival_after_a_plain_annotation():
+    # A day opening with `[Back from a week away]`
+    # before the clock. What makes a marker the arrival is that no work has been
+    # done yet, not that nothing at all has been written.
+    day = markers(
+        "[Back from a week away]",
+        "[-> 9:45]",
+        "[C] Catch up on email.",
+        "[-> 18:45]",
+    )
+    assert day.arrival == dt.time(9, 45)
+    assert day.departure == dt.time(18, 45)
+
+
+def test_arrival_can_follow_several_annotations():
+    day = markers("[On site]", "[In the other office]", "[-> 10:15]", "[T] Work.")
+    assert day.arrival == dt.time(10, 15)
+
+
+def test_an_arrow_after_the_first_task_is_a_departure():
+    # The rule has to still close: once work has started, a clock is the end of
+    # the day, however many annotations follow it.
+    day = markers("[T] Work.", "[-> 18:45]", "[Back home]")
+    assert day.arrival is None
+    assert day.departure == dt.time(18, 45)

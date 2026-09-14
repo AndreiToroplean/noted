@@ -251,8 +251,8 @@ Marker entries record the shape of the working day. Their position in the column
 
 | Form                        | Position | Meaning                                |
 | --------------------------- | -------- | -------------------------------------- |
-| `[-> 9:45]`                 | first    | arrival                                |
-| `[-> 18:45]`                | last     | departure                              |
+| `[-> 9:45]`                 | opening  | arrival                                |
+| `[-> 18:45]`                | after    | departure                              |
 | `[# 1h30]`                  | middle   | noon break, as a duration              |
 | `[# 12:45 -> 14:00]`        | middle   | noon break, as an explicit range       |
 | `[#]`                       | middle   | noon break, of the default length      |
@@ -262,6 +262,21 @@ Marker entries record the shape of the working day. Their position in the column
 | `[Errand in town (-1h45)]` | middle | time given up, with the reason         |
 | `[(-30m)]`                  | middle   | time given up, no reason recorded      |
 | `[# Lunch w/ a friend]`       | middle   | noon break of the default length, with context |
+
+`[-> 9:45]` and `[-> 18:45]` are the same form, and only position tells them apart. The
+boundary is **the first task**, not the first entry: a day often opens with a plain
+annotation or two before the clock —
+
+```
+[Back from a week away]
+[-> 9:45]
+[C] Catch up on email.
+```
+
+— and that `[-> 9:45]` is still the arrival. Anything in the opening run of annotations
+can be it. Once work has started, an arrow is the departure, however many annotations
+follow it; where several appear, the last one wins, which is how an evening session
+written after a first `[-> 19:30]` extends the day.
 
 ### 5.1 Durations
 

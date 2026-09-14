@@ -209,15 +209,21 @@ def read_markers(entries: list[ParsedEntry]) -> ParsedDay:
     """
     day = ParsedDay()
     kept = []
+    #: Whether any work has been recorded yet. A day often opens with a plain
+    #: annotation or two — `[Back from a week away]`, `[On
+    #: site]` — before the clock, and a marker among those is still the arrival.
+    #: What ends the opening is the first task, not the first thing written.
+    started = False
 
     for entry in entries:
         if entry.kind != "meta":
             kept.append(entry)
+            started = True
             continue
 
         inner = entry.text.strip()[1:-1].strip()
         before = (day.arrival, day.departure, len(day.breaks), day.explicit_overtime)
-        if consume_marker(inner, day, first=not kept and not day.breaks):
+        if consume_marker(inner, day, first=not started and not day.breaks):
             read = effect_of(before, day)
             if stated := STATED.search(inner):
                 minutes = parse_duration(stated.group(2)) or 0
