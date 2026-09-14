@@ -1,3 +1,4 @@
+import sys
 import datetime as dt
 
 import importer
@@ -139,3 +140,21 @@ def test_a_second_process_can_write_while_a_question_waits(tmp_path):
         resolver.project("webapp", known=["webApp"], date=None)
 
     assert taken == [True]
+
+
+def test_a_locked_database_is_reported_rather_than_traced(monkeypatch, capsys, tmp_path):
+    # A lock means another importer is running, which is a thing to go and look
+    # for — not a hundred lines of SQLAlchemy internals.
+    from sqlalchemy.exc import OperationalError
+
+    def locked(*args, **kwargs):
+        raise OperationalError("DROP TABLE break", {}, Exception("database is locked"))
+
+    monkeypatch.setattr(importer, "run", locked)
+    monkeypatch.setattr(sys, "argv", ["importer.py", str(tmp_path / "book.ods")])
+    monkeypatch.chdir(tmp_path)
+
+    assert importer.main() == 1
+    said = capsys.readouterr().out
+    assert "locked" in said
+    assert "Traceback" not in said

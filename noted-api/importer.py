@@ -44,6 +44,7 @@ import xml.etree.ElementTree as ET
 import zipfile
 from dataclasses import dataclass, field
 
+from sqlalchemy.exc import OperationalError
 from sqlmodel import Session, SQLModel, select
 
 import db
@@ -820,6 +821,18 @@ def main():
         print("The answers above are kept and will not be asked again, so running")
         print("the same command with --reset carries on from where this stopped.")
         return 130
+    except OperationalError as error:
+        if "database is locked" not in str(error):
+            raise
+        # Almost always another import still sitting at a question, sometimes
+        # one whose terminal is long gone. Nothing here can free it, so say
+        # where to look rather than printing the whole stack.
+        print(f"\n{db.DATABASE_PATH} is locked by something else.")
+        print("\nUsually another importer waiting at a question. Find it with:")
+        print("  Get-CimInstance Win32_Process -Filter \"Name='python.exe'\" |")
+        print('    Where-Object { $_.CommandLine -match "importer" }')
+        print("\nAnswer it, or stop it with Stop-Process -Id <id>, then run this again.")
+        return 1
 
     keep_answers()
 
