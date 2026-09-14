@@ -571,7 +571,7 @@ def ask_on_terminal(question: str, options, context) -> str:
 
     while True:
         try:
-            reply = input("choose [1]: ").strip()
+            reply = input("choose [1], ctrl-c to stop: ").strip()
         except EOFError:
             return options[0][0]
         if not reply:
@@ -808,16 +808,32 @@ def main():
     interactive = not args.batch and sys.stdin.isatty()
     resolver = Resolver(decisions, ask=ask_on_terminal if interactive else None, rules=rules)
 
+    def keep_answers():
+        """Save what was decided. Also on a Ctrl-C: a sitting is work."""
+        if resolver.asked:
+            decisions.save(args.decisions)
+            answers = "answer" if resolver.asked == 1 else "answers"
+            print(f"\n\nSaved {resolver.asked} {answers} to {args.decisions}.")
+
     try:
         with Session(db.engine()) as session:
             counts, undeclared, disagreements, unread = run(
                 args.workbook, session, reset=args.reset, rules=rules, resolver=resolver
             )
-    finally:
-        # Save even on a Ctrl-C, so a long session of answers is never lost.
-        if resolver.asked:
-            decisions.save(args.decisions)
-            print(f"\nSaved {resolver.asked} answers to {args.decisions}.")
+    except KeyboardInterrupt:
+        # Expected, and often: deciding a long run by hand is done in sittings.
+        keep_answers()
+        print("\nStopped before the end, so this import was not written.")
+        if args.reset:
+            # Dropping the tables is DDL, which SQLite commits on the spot: it
+            # is not in the transaction that just rolled back.
+            print("The previous import was cleared first, so there is no journal")
+            print("in the database until a run finishes.")
+        print("The answers above are kept and will not be asked again, so running")
+        print("the same command carries on from where this stopped.")
+        return 130
+
+    keep_answers()
 
     print(
         f"\n{counts['weeks']} weeks, {counts['days']} days, {counts['entries']} entries, "
@@ -856,4 +872,4 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main() or 0)
