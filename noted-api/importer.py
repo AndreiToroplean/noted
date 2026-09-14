@@ -530,7 +530,7 @@ def minutes_of(clock: dt.time) -> int:
 
 # What the spreadsheet owns. Settings, categories and the overtime baseline are
 # the owner's own and survive a reset.
-IMPORTED = [Entry.__table__, Break.__table__, Day.__table__, Project.__table__]
+IMPORTED = [SQLModel.metadata.tables[model.__name__.lower()] for model in (Entry, Break, Day, Project)]
 
 
 def wipe(session: Session):

@@ -82,7 +82,7 @@ def test_a_reset_rebuilds_the_tables_it_owns(tmp_path):
     import models
 
     engine = create_engine(f"sqlite:///{tmp_path / 'old.db'}")
-    stale = models.Day.__table__.columns.keys()[-1]
+    stale = list(SQLModel.metadata.tables["day"].columns.keys())[-1]
     SQLModel.metadata.create_all(engine)
     with engine.begin() as connection:
         connection.exec_driver_sql(f"ALTER TABLE day DROP COLUMN {stale}")
@@ -104,6 +104,9 @@ def test_a_reset_keeps_what_the_importer_does_not_own(tmp_path):
     SQLModel.metadata.create_all(engine)
     with Session(engine) as session:
         seed.seed(session)
-        kept = session.exec(select(models.Category)).first().name
+        kept = session.exec(select(models.Category)).all()
+        assert kept, "the seed should have put categories there"
         importer.wipe(session)
-        assert session.exec(select(models.Category)).first().name == kept
+        assert [row.name for row in session.exec(select(models.Category))] == [
+            row.name for row in kept
+        ]
