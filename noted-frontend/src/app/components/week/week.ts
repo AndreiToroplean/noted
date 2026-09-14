@@ -21,5 +21,5 @@ export class Week {
 }
 
 function hasContent(day: DayData): boolean {
-  return day.entries.length > 0 || day.breaks.length > 0;
+  return day.items.length > 0;
 }

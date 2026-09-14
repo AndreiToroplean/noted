@@ -14,31 +14,31 @@
   </header>
 
   <ul class="flex-1 list-none p-0">
-    @for (entry of data.entries; track entry.id) {
-      <li class="flex gap-2 px-2 py-1 text-sm" [class.opacity-60]="entry.done">
-        @let colour = colourOf(entry.category);
-        @if (colour) {
-          <span
-            class="mt-1 h-3 w-3 shrink-0 rounded-sm"
-            [attr.data-category]="entry.category"
-            [style.background-color]="colour"
-          ></span>
-        }
-        <div>
-          <div>{{ entry.text }}</div>
-          @if (entry.note) {
-            <div class="text-xs opacity-60">{{ entry.note }}</div>
+    @for (item of data.items; track item.kind + '-' + item.id) {
+      @if (asBreak(item); as pause) {
+        <li class="day-break flex items-center gap-2 px-2 py-1 text-xs" data-break>
+          <span class="day-break-rule flex-1"></span>
+          <span>{{ pause.is_noon ? 'lunch' : 'break' }} {{ describeBreak(pause) }}</span>
+          <span class="day-break-rule flex-1"></span>
+        </li>
+      } @else if (asEntry(item); as entry) {
+        <li class="flex gap-2 px-2 py-1 text-sm" [class.opacity-60]="entry.done">
+          @let colour = colourOf(entry.category);
+          @if (colour) {
+            <span
+              class="mt-1 h-3 w-3 shrink-0 rounded-sm"
+              [attr.data-category]="entry.category"
+              [style.background-color]="colour"
+            ></span>
           }
-        </div>
-      </li>
-    }
-
-    @for (pause of data.breaks; track pause.id) {
-      <li class="day-break flex items-center gap-2 px-2 py-1 text-xs" data-break>
-        <span class="day-break-rule flex-1"></span>
-        <span>{{ pause.is_noon ? 'lunch' : 'break' }} {{ describeBreak(pause) }}</span>
-        <span class="day-break-rule flex-1"></span>
-      </li>
+          <div>
+            <div>{{ entry.text }}</div>
+            @if (entry.note) {
+              <div class="text-xs opacity-60">{{ entry.note }}</div>
+            }
+          </div>
+        </li>
+      }
     }
   </ul>
 

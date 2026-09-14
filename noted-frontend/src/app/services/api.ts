@@ -1,9 +1,9 @@
 /**
  * The shapes the API speaks, and where it lives.
  *
- * These mirror `noted-api/schemas.py`. A week is read and written whole, so
- * entries and breaks carry no id on the way out — their order in the list is
- * their position.
+ * These mirror `noted-api/schemas.py`. A week is read and written whole, so a
+ * day's items carry no id on the way out — their order in the list is their
+ * position.
  */
 
 export const API_BASE = 'http://127.0.0.1:8000';
@@ -34,11 +34,23 @@ export interface Entry {
 export interface Break {
   id: number;
   position: number;
+  /** Not stored. It is what tells a break from an entry in a day's item list. */
+  kind: 'break';
   is_noon: boolean;
   description: string | null;
   start: Time | null;
   end: Time | null;
   minutes: number | null;
+}
+
+/**
+ * One thing in a day, in the order it happened. Lunch sits between the
+ * morning's work and the afternoon's, so entries and breaks share one list.
+ */
+export type DayItem = Entry | Break;
+
+export function isBreak(item: DayItem): item is Break {
+  return item.kind === 'break';
 }
 
 export interface Day {
@@ -47,8 +59,7 @@ export interface Day {
   arrival: Time | null;
   departure: Time | null;
   expected_minutes: number;
-  entries: Entry[];
-  breaks: Break[];
+  items: DayItem[];
 }
 
 export interface Week {
@@ -72,9 +83,8 @@ export interface Project {
 
 /** What the API accepts back: everything except the ids it assigns. */
 export interface WeekWrite {
-  days: (Omit<Day, 'entries' | 'breaks'> & {
-    entries: Omit<Entry, 'id' | 'position'>[];
-    breaks: Omit<Break, 'id' | 'position'>[];
+  days: (Omit<Day, 'items'> & {
+    items: (Omit<Entry, 'id' | 'position'> | Omit<Break, 'id' | 'position'>)[];
   })[];
 }
 
@@ -82,8 +92,7 @@ export function toWrite(week: Week): WeekWrite {
   return {
     days: week.days.map(day => ({
       ...day,
-      entries: day.entries.map(({ id: _id, position: _position, ...entry }) => entry),
-      breaks: day.breaks.map(({ id: _id, position: _position, ...pause }) => pause),
+      items: day.items.map(({ id: _id, position: _position, ...item }) => item),
     })),
   };
 }

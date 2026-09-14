@@ -5,9 +5,9 @@ import { TestBed } from '@angular/core/testing';
 import { settle } from 'testing/settle';
 
 import { Day } from 'app/components/day/day';
-import { API_BASE, Day as DayData, Entry } from 'app/services/api';
+import { API_BASE, Break, Day as DayData, DayItem, Entry } from 'app/services/api';
 
-function entry(category: string | null): Entry {
+function entry(category: string | null, over: Partial<Entry> = {}): Entry {
   return {
     id: 1,
     position: 0,
@@ -21,18 +21,32 @@ function entry(category: string | null): Entry {
     explicit_start: null,
     explicit_end: null,
     approx_weight: null,
+    ...over,
   };
 }
 
-function day(entries: Entry[]): DayData {
+function pause(over: Partial<Break> = {}): Break {
+  return {
+    id: 1,
+    position: 0,
+    kind: 'break',
+    is_noon: true,
+    description: null,
+    start: null,
+    end: null,
+    minutes: 60,
+    ...over,
+  };
+}
+
+function day(items: DayItem[]): DayData {
   return {
     date: '2026-02-09',
     status: 'working',
     arrival: null,
     departure: null,
     expected_minutes: 480,
-    entries,
-    breaks: [],
+    items,
   };
 }
 
@@ -102,40 +116,32 @@ describe('Day hours', () => {
 
   it('shows a break given as a range', async () => {
     const dom = await render(
-      withHours({
-        breaks: [
-          {
-            id: 1,
-            position: 0,
-            is_noon: true,
-            description: null,
-            start: '13:00:00',
-            end: '14:00:00',
-            minutes: null,
-          },
-        ],
-      }),
+      withHours({ items: [pause({ start: '13:00:00', end: '14:00:00', minutes: null })] }),
     );
     expect(dom.querySelector('[data-break]')?.textContent).toContain('13:00–14:00');
   });
 
   it('shows a break given as a duration', async () => {
+    const dom = await render(withHours({ items: [pause({ is_noon: false, minutes: 90 })] }));
+    expect(dom.querySelector('[data-break]')?.textContent).toContain('1h30');
+  });
+
+  it('keeps a break where it sat among the entries', async () => {
+    // Lunch is a divider in the day's flow, so it renders between the morning's
+    // work and the afternoon's rather than under both.
     const dom = await render(
       withHours({
-        breaks: [
-          {
-            id: 1,
-            position: 0,
-            is_noon: false,
-            description: null,
-            start: null,
-            end: null,
-            minutes: 90,
-          },
+        items: [
+          entry(null, { id: 1, position: 0, text: 'Morning' }),
+          pause({ id: 2, position: 1 }),
+          entry(null, { id: 3, position: 2, text: 'Afternoon' }),
         ],
       }),
     );
-    expect(dom.querySelector('[data-break]')?.textContent).toContain('1h30');
+    const rows = [...dom.querySelectorAll('li')].map(row =>
+      row.hasAttribute('data-break') ? 'break' : row.textContent?.trim(),
+    );
+    expect(rows).toEqual(['Morning', 'break', 'Afternoon']);
   });
 
   it('shows a non-working day by its status instead of its hours', async () => {

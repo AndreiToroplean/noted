@@ -10,7 +10,7 @@ function day(date: string, entries = 0): Day {
     arrival: null,
     departure: null,
     expected_minutes: 480,
-    entries: Array.from({ length: entries }, (_, position) => ({
+    items: Array.from({ length: entries }, (_, position) => ({
       id: position,
       position,
       kind: 'task' as const,
@@ -24,7 +24,6 @@ function day(date: string, entries = 0): Day {
       explicit_end: null,
       approx_weight: null,
     })),
-    breaks: [],
   };
 }
 

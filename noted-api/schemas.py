@@ -1,19 +1,23 @@
 """What crosses the wire.
 
-Deliberately not the table classes: a week is written back whole, so entries and
-breaks arrive without ids — their order in the list *is* their position — and
-come back with ids on read.
+Deliberately not the table classes: a week is written back whole, so a day's
+items arrive without ids — their order in the list *is* their position — and
+come back with ids on read. Entries and breaks share that one list, because a
+break happened somewhere in the day and not underneath it.
 """
 
 import datetime as dt
+from typing import Annotated, Literal
 
-from pydantic import BaseModel, model_validator
+from pydantic import BaseModel, Field, model_validator
 
 from models import DayStatus, EntryKind
 
 
 class EntryIn(BaseModel):
-    kind: EntryKind = EntryKind.TASK
+    #: Spelt out rather than left as the enum so that it can tell an entry
+    #: from a break in a day's one list of items.
+    kind: Literal[EntryKind.TASK, EntryKind.META] = EntryKind.TASK
     done: bool = False
     category: str | None = None
     project_id: int | None = None
@@ -31,6 +35,9 @@ class EntryOut(EntryIn):
 
 
 class BreakIn(BaseModel):
+    #: Not stored — a break is its own table. It is here so that a day's items
+    #: can arrive as one list and still be told apart.
+    kind: Literal["break"] = "break"
     is_noon: bool = False
     description: str | None = None
     start: dt.time | None = None
@@ -61,17 +68,22 @@ class DayBase(BaseModel):
     departure: dt.time | None = None
 
 
+#: A day is one ordered list, not a list of entries and a list of breaks: lunch
+#: happened between the morning's work and the afternoon's, and the list is where
+#: that is recorded. `kind` tells the two apart.
+DayItemIn = Annotated[EntryIn | BreakIn, Field(discriminator="kind")]
+DayItemOut = Annotated[EntryOut | BreakOut, Field(discriminator="kind")]
+
+
 class DayIn(DayBase):
     #: Left unset, the weekday's default is snapshot onto the day as it is stored.
     expected_minutes: int | None = None
-    entries: list[EntryIn] = []
-    breaks: list[BreakIn] = []
+    items: list[DayItemIn] = []
 
 
 class DayOut(DayBase):
     expected_minutes: int
-    entries: list[EntryOut] = []
-    breaks: list[BreakOut] = []
+    items: list[DayItemOut] = []
 
 
 class WeekIn(BaseModel):

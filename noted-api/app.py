@@ -14,9 +14,11 @@ from sqlmodel import Session, col, delete, select
 import db
 from models import Break, Category, Day, DayStatus, Entry, OvertimeBaseline, Project, Settings
 from schemas import (
+    BreakIn,
     BreakOut,
     CategoryIn,
     DayOut,
+    EntryIn,
     EntryOut,
     OvertimeIn,
     OvertimeOut,
@@ -103,16 +105,19 @@ def read_week(week: str, session: Session = Depends(db.session)):
                 expected_minutes=(
                     day.expected_minutes if day else (default.expected_minutes if default else 0)
                 ),
-                entries=[
-                    EntryOut.model_validate(entry, from_attributes=True)
-                    for entry in entries
-                    if entry.date == day_date
-                ],
-                breaks=[
-                    BreakOut.model_validate(pause, from_attributes=True)
-                    for pause in breaks
-                    if pause.date == day_date
-                ],
+                items=sorted(
+                    [
+                        EntryOut.model_validate(entry, from_attributes=True)
+                        for entry in entries
+                        if entry.date == day_date
+                    ]
+                    + [
+                        BreakOut.model_validate(pause, from_attributes=True)
+                        for pause in breaks
+                        if pause.date == day_date
+                    ],
+                    key=lambda item: item.position,
+                ),
             )
         )
     return WeekOut(week=start, days=days)
@@ -131,7 +136,9 @@ def replace_week(week: str, payload: WeekIn, session: Session = Depends(db.sessi
     for day in payload.days:
         if day.date not in dates:
             raise HTTPException(status_code=400, detail=f"{day.date} is not in the week of {start}.")
-        for entry in day.entries:
+        for entry in day.items:
+            if not isinstance(entry, EntryIn):
+                continue
             # Stricter than the spreadsheet, which merely coloured the row red.
             # Two projects diverging on a typo is the failure being prevented.
             if entry.project_id is not None and entry.project_id not in known_projects:
@@ -159,10 +166,15 @@ def replace_week(week: str, payload: WeekIn, session: Session = Depends(db.sessi
                 ),
             )
         )
-        for position, entry in enumerate(day.entries):
-            session.add(Entry(date=day.date, position=position, **entry.model_dump()))
-        for position, pause in enumerate(day.breaks):
-            session.add(Break(date=day.date, position=position, **pause.model_dump()))
+        # One sequence for both: an item's index is its place in the day, and a
+        # break's place among the entries is as much a fact as its length.
+        for position, item in enumerate(day.items):
+            if isinstance(item, BreakIn):
+                session.add(
+                    Break(date=day.date, position=position, **item.model_dump(exclude={"kind"}))
+                )
+            else:
+                session.add(Entry(date=day.date, position=position, **item.model_dump()))
 
     session.commit()
     return read_week(week, session)

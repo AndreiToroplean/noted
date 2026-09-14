@@ -16,8 +16,7 @@ function day(date: string): Day {
     arrival: null,
     departure: null,
     expected_minutes: 480,
-    entries: [],
-    breaks: [],
+    items: [],
   };
 }
 
@@ -67,7 +66,7 @@ describe('AppData', () => {
 
   it('writes the whole week back once the edits settle', () => {
     const edited = week();
-    edited.days[0].entries = [
+    edited.days[0].items = [
       {
         id: -1,
         position: 0,
@@ -93,8 +92,8 @@ describe('AppData', () => {
     const request = http.expectOne(`${API_BASE}/journal/${MONDAY}`);
     expect(request.request.method).toBe('PUT');
     // Ids and positions are the server's to assign, so they are not sent.
-    expect(request.request.body.days[0].entries[0]).not.toHaveProperty('id');
-    expect(request.request.body.days[0].entries[0].text).toBe('Wrote the importer');
+    expect(request.request.body.days[0].items[0]).not.toHaveProperty('id');
+    expect(request.request.body.days[0].items[0].text).toBe('Wrote the importer');
   });
 
   it('collapses a burst of edits into one write', () => {

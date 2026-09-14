@@ -138,6 +138,11 @@ Breaks are created either by typing the bracket syntax inline, like an entry, or
 *add break* button and its keyboard shortcut. However they're created, they render as
 breaks — a divider in the day's flow — not as tasks.
 
+A break **keeps its place among the entries**, because that is a fact about the day: lunch
+came after the morning's work and before the afternoon's. So a day is one ordered list of
+items, each either an entry or a break, and a position identifies a place in the day
+rather than a place among things of one kind. See `DayIn` / `DayOut` in `schemas.py`.
+
 ### 6.2 Defaults
 
 Default hours are **per weekday**, because Friday is short:
