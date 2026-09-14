@@ -19,11 +19,12 @@ It is optional, and looks like this:
     # Paths that were genuinely new even though they were written without a `+`.
     declare = ["atlas.2"]
 
-Run in a terminal, it **asks** rather than guesses. Two things it cannot decide
+Run in a terminal, it **asks** rather than guesses the one thing it cannot decide
 alone: whether a project used without a `+` is new or a second spelling of one
-that exists, and which figure to keep where a day's hand-written `=> +1h`
-disagrees with the recomputation. For the second it prints the day — hours,
-breaks, entries — so the choice can be made by looking at it.
+that exists. A day's overtime is never asked about, because it is always what the
+day's hours add up to; where a hand-written `=> +1h` disagrees, the day is written
+to the report as it stands — hours, breaks, entries — for the hours to be
+corrected by hand.
 
 Answers go to `importer-decisions.toml` and are not asked again, so a re-run
 after fixing the parsing only stops at what is genuinely new. Delete that file
@@ -126,7 +127,8 @@ class ParsedDay:
     arrival: dt.time | None = None
     departure: dt.time | None = None
     status: str = "working"
-    #: Where the day was filed with an explicit `=> ±duration` override.
+    #: Where the day was filed with an explicit `=> ±duration`. Read to check the
+    #: recomputation against, never stored: the day's overtime is its hours.
     explicit_overtime: int | None = None
     #: Annotations that look like clock markers but matched no rule. Never drop
     #: these quietly: breaks went missing that way once.
@@ -136,7 +138,7 @@ class ParsedDay:
     #: looking at by hand.
     stated: list[int] = field(default_factory=list)
     #: Every annotation, paired with what it was taken to mean, in the order it
-    #: was written. Shown when a day's overtime has to be decided by hand.
+    #: was written. Shown where a day's hours and its filed figure disagree.
     reading: list[tuple[str, str]] = field(default_factory=list)
 
 
@@ -256,9 +258,9 @@ def describe_break(pause: ParsedBreak) -> str:
 
 def effect_of(before, day: ParsedDay) -> str:
     """What one marker did to the day, for showing beside the marker itself."""
-    arrival, departure, breaks, override = before
+    arrival, departure, breaks, filed = before
     said = []
-    if day.explicit_overtime != override:
+    if day.explicit_overtime != filed:
         said.append(f"day filed as {day.explicit_overtime:+d}m")
     if day.arrival != arrival:
         said.append(f"arrived {day.arrival:%H:%M}")
@@ -403,8 +405,6 @@ def load_rules(path: str = RULES_PATH) -> Rules:
 
 
 NEW = "*new*"
-WRITTEN = "written"
-RECOMPUTED = "recomputed"
 
 DECISIONS_PATH = "importer-decisions.toml"
 
@@ -424,7 +424,6 @@ class Decisions:
     """
 
     projects: dict[str, str] = field(default_factory=dict)
-    overtime: dict[str, str] = field(default_factory=dict)
 
     @classmethod
     def load(cls, path=DECISIONS_PATH) -> "Decisions":
@@ -433,7 +432,7 @@ class Decisions:
                 raw = tomllib.load(handle)
         except FileNotFoundError:
             return cls()
-        return cls(projects=raw.get("projects", {}), overtime=raw.get("overtime", {}))
+        return cls(projects=raw.get("projects", {}))
 
     def save(self, path=DECISIONS_PATH):
         lines = [
@@ -444,9 +443,6 @@ class Decisions:
         ]
         for name, answer in sorted(self.projects.items()):
             lines.append(f"{quote_key(name)} = {quote_key(answer)}")
-        lines += ["", "[overtime]"]
-        for date, answer in sorted(self.overtime.items()):
-            lines.append(f"{quote_key(date)} = {quote_key(answer)}")
         Path(path).write_text("\n".join(lines) + "\n", encoding="utf-8")
 
 
@@ -491,27 +487,6 @@ class Resolver:
 
         self.settled.add(path)
         return path if answer == NEW else answer
-
-    def overtime(self, date: str, written: int, recomputed: int, lines: list[str]) -> int | None:
-        """The figure to record as an override, or None to let the day compute."""
-        answer = self.decisions.overtime.get(date)
-        if answer is None:
-            if self.ask is None:
-                self.unresolved += 1
-                return None
-            answer = self.ask(
-                question=f"{date}: written {written:+d}m, recomputed {recomputed:+d}m.",
-                options=[
-                    (WRITTEN, f"keep what was written, {written:+d}m"),
-                    (RECOMPUTED, f"keep the recomputation, {recomputed:+d}m"),
-                ],
-                context=lines,
-            )
-            self.decisions.overtime[date] = answer
-            self.asked += 1
-
-        return written if answer == WRITTEN else None
-
 
 def hours(minutes: int) -> str:
     sign = "-" if minutes < 0 else ""
@@ -634,7 +609,7 @@ def run(
     defaults = {row.weekday: row for row in session.exec(select(Settings))}
     counts = {"weeks": 0, "days": 0, "entries": 0, "meta": 0, "breaks": 0}
     undeclared: set[str] = set()
-    disagreements: list[str] = []
+    disagreements: list[list[str]] = []
     unread: list[str] = []
 
     for monday, rows in read_sheets(path):
@@ -686,24 +661,14 @@ def run(
             ):
                 breaks.append(ParsedBreak(True, minutes=DEFAULT_LUNCH))
 
-            # Where the day was filed by hand, check the recomputation agrees,
-            # and where it does not, let the person looking at it decide.
-            override = None
+            # A day's overtime is always what its hours add up to, so the figure
+            # filed by hand is not kept. Where the two differ the day is written
+            # out as it stands, for the owner to correct the hours themselves.
             if day.explicit_overtime is not None and arrival and departure:
                 computed = worked_minutes(ParsedDay(breaks=breaks), arrival, departure) - expected
                 if computed != day.explicit_overtime:
                     disagreements.append(
-                        f"{date}  written {day.explicit_overtime:+d}m, "
-                        f"recomputed {computed:+d}m  "
-                        f"({arrival:%H:%M}-{departure:%H:%M}, expected {expected}m)"
-                    )
-                    override = resolver.overtime(
-                        date.isoformat(),
-                        written=day.explicit_overtime,
-                        recomputed=computed,
-                        lines=describe_day(
-                            date, day, raw, arrival, departure, breaks, expected, computed
-                        ),
+                        describe_day(date, day, raw, arrival, departure, breaks, expected, computed)
                     )
 
             session.add(
@@ -713,7 +678,6 @@ def run(
                     arrival=arrival,
                     departure=departure,
                     expected_minutes=expected,
-                    overtime_override=override,
                 )
             )
 
@@ -848,8 +812,10 @@ def main():
     if disagreements:
         Path(REPORT_PATH).parent.mkdir(parents=True, exist_ok=True)
         Path(REPORT_PATH).write_text(
-            "Days whose hand-written overtime disagrees with the recomputation.\n\n"
-            + "\n".join(disagreements)
+            "Days whose hand-written overtime disagrees with the recomputation.\n"
+            "The recomputation is what was stored; these are the days whose\n"
+            "arrival, departure or breaks need correcting by hand.\n\n"
+            + "\n\n".join("\n".join(day) for day in disagreements)
             + "\n",
             encoding="utf-8",
         )

@@ -59,7 +59,6 @@ class DayBase(BaseModel):
     status: DayStatus = DayStatus.WORKING
     arrival: dt.time | None = None
     departure: dt.time | None = None
-    overtime_override: int | None = None
 
 
 class DayIn(DayBase):

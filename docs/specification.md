@@ -162,6 +162,9 @@ worked = (departure − arrival) − Σ breaks
 delta  = worked − expected
 ```
 
+A day's delta is always this computation — there is no way to file one by hand. To
+correct a day, correct its arrival, departure or breaks.
+
 Deltas are shown per day, per week, and as a running total. The running total counts from
 a resettable baseline — a figure accumulated over years is only useful if one bad day
 can be corrected out of it. Stored as `OvertimeBaseline`, behind `GET`/`PUT /overtime`.

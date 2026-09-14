@@ -103,7 +103,6 @@ def read_week(week: str, session: Session = Depends(db.session)):
                 expected_minutes=(
                     day.expected_minutes if day else (default.expected_minutes if default else 0)
                 ),
-                overtime_override=day.overtime_override if day else None,
                 entries=[
                     EntryOut.model_validate(entry, from_attributes=True)
                     for entry in entries
@@ -158,7 +157,6 @@ def replace_week(week: str, payload: WeekIn, session: Session = Depends(db.sessi
                     if day.expected_minutes is not None
                     else defaults.get(day.date.weekday(), 0)
                 ),
-                overtime_override=day.overtime_override,
             )
         )
         for position, entry in enumerate(day.entries):

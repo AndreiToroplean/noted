@@ -73,11 +73,6 @@ class Day(SQLModel, table=True):
     arrival: dt.time | None = None
     departure: dt.time | None = None
     expected_minutes: int = 0
-    #: A delta filed by hand, overriding what the hours add up to. The
-    #: spreadsheet allowed this with `=> +1h`, and where the recomputation
-    #: disagreed the owner chose which to keep. Unset means the day computes
-    #: itself, which is the normal case.
-    overtime_override: int | None = None
 
 
 class Entry(SQLModel, table=True):
