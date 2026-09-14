@@ -87,6 +87,20 @@ body {
   color: var(--checkbox-free-time);
 }
 
+.day-break {
+  color: var(--checkbox-free-time);
+}
+
+.day-break-rule {
+  height: 1px;
+  background-color: color-mix(in srgb, var(--checkbox-free-time) 45%, transparent);
+}
+
+.day-status {
+  color: var(--checkbox-free-time);
+  text-transform: uppercase;
+}
+
 .day-header {
   background-color: var(--app-surface-raised);
   border-bottom: 1px solid var(--app-outline);

@@ -6,8 +6,10 @@
       {{ data.date | date: 'EEEE' | uppercase }}
     </div>
     <div class="text-xs opacity-70">{{ data.date | date: 'dd/MM/yyyy' }}</div>
-    @if (data.arrival) {
-      <div class="day-time text-xs">{{ data.arrival | slice: 0 : 5 }}</div>
+    @if (data.status !== 'working') {
+      <div class="day-status text-xs tracking-wide">{{ data.status.replace('_', ' ') }}</div>
+    } @else if (data.arrival) {
+      <div class="day-time text-xs" data-arrival>{{ data.arrival | slice: 0 : 5 }}</div>
     }
   </header>
 
@@ -30,10 +32,18 @@
         </div>
       </li>
     }
+
+    @for (pause of data.breaks; track pause.id) {
+      <li class="day-break flex items-center gap-2 px-2 py-1 text-xs" data-break>
+        <span class="day-break-rule flex-1"></span>
+        <span>{{ pause.is_noon ? 'lunch' : 'break' }} {{ describeBreak(pause) }}</span>
+        <span class="day-break-rule flex-1"></span>
+      </li>
+    }
   </ul>
 
-  @if (data.departure) {
-    <footer class="day-time px-2 py-1 text-center text-xs">
+  @if (data.status === 'working' && data.departure) {
+    <footer class="day-time px-2 py-1 text-center text-xs" data-departure>
       {{ data.departure | slice: 0 : 5 }}
     </footer>
   }

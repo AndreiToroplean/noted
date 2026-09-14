@@ -4,3 +4,9 @@ __pycache__/
 .pytest_cache/
 *.py[cod]
 .env
+
+# One person's reading of their own history, not part of the app.
+importer-rules.toml
+
+# A working note, absorbed into seed.py. Never part of the app.
+categories.toml

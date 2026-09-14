@@ -33,22 +33,33 @@ SETTINGS = [
     for weekday in range(5)
 ] + [Settings(weekday=weekday) for weekday in (5, 6)]
 
-#: The vocabulary the spreadsheet used, with the colours its conditional
-#: formatting gave each tag. The meanings lived in the owner's head, so they
-#: start empty and are his to fill in. `Tr` was used but never coloured, so it
-#: takes the plain checkbox surface.
+#: The category vocabulary.
+#:
+#: Colours are the ones the spreadsheet's conditional formatting used. The
+#: meanings it never recorded — these are the owner's, reconstructed from the
+#: entries actually filed under each tag, and they are what the letters are for.
 CATEGORIES = [
-    Category(name="T", colour="#7f6000"),
-    Category(name="M", colour="#351c75"),
-    Category(name="C", colour="#104769"),
-    Category(name="L", colour="#2e3f49"),
-    Category(name="K", colour="#002f35"),
-    Category(name="R", colour="#40701c"),
-    Category(name="CR", colour="#974845"),
-    Category(name="Co", colour="#9c894d"),
-    Category(name="S", colour="#6fb373"),
-    Category(name="D", colour="#000000"),
-    Category(name="Tr", colour="#2c2115"),
+    # The feature work itself, but only in response to a tracked issue.
+    Category(name="T", colour="#7f6000", meaning="Ticket"),
+    Category(name="M", colour="#351c75", meaning="Meeting"),
+    # Written communication, as against the spoken kind that is a meeting:
+    # emails, telling the team something, sending a release out.
+    Category(name="C", colour="#104769", meaning="Communication"),
+    # Writing things down — logging issues, organising TODOs, admin.
+    Category(name="L", colour="#2e3f49", meaning="Logging"),
+    # Learning and looking into things.
+    Category(name="K", colour="#002f35", meaning="Knowledge"),
+    # Writing and preparing one's own pull requests.
+    Category(name="R", colour="#40701c", meaning="Resolved"),
+    Category(name="CR", colour="#974845", meaning="Code review"),
+    # Coding outside a tracked issue: tooling and setup, the work that makes
+    # the rest of the work easier.
+    Category(name="Co", colour="#9c894d", meaning="Code"),
+    # Used, but never given a colour of its own, so it takes the plain surface.
+    Category(name="Tr", colour="#2c2115", meaning="Travel"),
+    # Blocked by a machine that would not cooperate. What the letter originally
+    # stood for is lost; what it marked is not.
+    Category(name="D", colour="#000000", meaning="Blocked"),
 ]
 
 

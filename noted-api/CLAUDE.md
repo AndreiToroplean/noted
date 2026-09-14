@@ -27,7 +27,7 @@ it enters.
 
 **Layout.** `models.py` is the stored schema (SQLModel tables), `schemas.py` is what
 crosses the wire, `db.py` owns the engine, `seed.py` the content a new database starts
-with, `app.py` the routes. The two model layers are
+with, `importer.py` reads the old spreadsheet, `app.py` the routes. The two model layers are
 deliberately separate: a week is written back whole, so entries arrive without ids — their
 order in the list *is* their position — and come back with ids on read.
 
@@ -36,6 +36,13 @@ What *is* committed is `seed.py`: the default hours, the category vocabulary and
 overtime baseline a new user starts from. It runs on first open and by hand via
 `python seed.py`, and only ever fills in what is missing, so it never overwrites an edit.
 Anything a user is expected to change belongs there rather than in the code that reads it.
+
+**The importer** is re-runnable: `--reset` wipes what it wrote and starts again, because
+getting the legacy parsing right takes several passes. Judgement calls about the owner's
+own history — two spellings of one project, a path that was new without saying so — go in
+`importer-rules.toml`, which is gitignored on purpose: it is a reading of one person's
+history, not part of the app. Days whose hand-written overtime disagrees with the
+recomputation are written to `data/import-report.txt` rather than stopping the run.
 
 There are no migrations yet; while the schema is still moving, delete the database file
 and let it rebuild.

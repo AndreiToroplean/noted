@@ -69,3 +69,78 @@ describe('Day', () => {
     expect(await swatchFor(null)).toBeNull();
   });
 });
+
+describe('Day hours', () => {
+  let http: HttpTestingController;
+
+  beforeEach(() => {
+    TestBed.configureTestingModule({
+      providers: [provideHttpClient(), provideHttpClientTesting()],
+    });
+    http = TestBed.inject(HttpTestingController);
+  });
+
+  async function render(data: DayData) {
+    const fixture = TestBed.createComponent(Day);
+    fixture.componentRef.setInput('day', data);
+    fixture.detectChanges();
+    http.match(`${API_BASE}/categories`).forEach(request => request.flush([]));
+    await settle();
+    fixture.detectChanges();
+    return fixture.nativeElement as HTMLElement;
+  }
+
+  function withHours(over: Partial<DayData>): DayData {
+    return { ...day([]), ...over };
+  }
+
+  it('shows arrival and departure', async () => {
+    const dom = await render(withHours({ arrival: '09:30:00', departure: '18:45:00' }));
+    expect(dom.querySelector('[data-arrival]')?.textContent?.trim()).toBe('09:30');
+    expect(dom.querySelector('[data-departure]')?.textContent?.trim()).toBe('18:45');
+  });
+
+  it('shows a break given as a range', async () => {
+    const dom = await render(
+      withHours({
+        breaks: [
+          {
+            id: 1,
+            position: 0,
+            is_noon: true,
+            description: null,
+            start: '13:00:00',
+            end: '14:00:00',
+            minutes: null,
+          },
+        ],
+      }),
+    );
+    expect(dom.querySelector('[data-break]')?.textContent).toContain('13:00–14:00');
+  });
+
+  it('shows a break given as a duration', async () => {
+    const dom = await render(
+      withHours({
+        breaks: [
+          {
+            id: 1,
+            position: 0,
+            is_noon: false,
+            description: null,
+            start: null,
+            end: null,
+            minutes: 90,
+          },
+        ],
+      }),
+    );
+    expect(dom.querySelector('[data-break]')?.textContent).toContain('1h30');
+  });
+
+  it('shows a non-working day by its status instead of its hours', async () => {
+    const dom = await render(withHours({ status: 'paid_holiday', arrival: '09:30:00' }));
+    expect(dom.textContent).toContain('paid holiday');
+    expect(dom.querySelector('[data-arrival]')).toBeNull();
+  });
+});

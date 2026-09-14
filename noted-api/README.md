@@ -42,6 +42,16 @@ tops up that database without touching anything already in it.
 A week is addressed by the date of its Monday; any other date is a 400. There are no
 per-entry endpoints on purpose — the client sends the week back whole.
 
+## Importing the old spreadsheet
+
+```powershell
+python importer.py "C:\path\to\Journal.ods" --reset
+```
+
+`--reset` wipes what a previous import wrote, so it is safe to run again after correcting
+the parsing. Judgement calls go in `importer-rules.toml` (gitignored); disagreements
+between a written overtime total and the recomputed one land in `data/import-report.txt`.
+
 ## Tests
 
 ```powershell
