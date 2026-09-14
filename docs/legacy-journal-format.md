@@ -259,6 +259,7 @@ Marker entries record the shape of the working day. Their position in the column
 | `[# 0m]`                    | middle   | noon break **skipped**                 |
 | `[-15m]`, `[-1h]`, `[20m]`  | middle   | another break, as a duration           |
 | `[15:00 -> 15:20]`          | middle   | another break, as a range              |
+| `[# Lunch w/ a friend]`       | middle   | noon break of the default length, with context |
 
 ### 5.1 Durations
 
@@ -271,7 +272,9 @@ break, not a negative one.
 
 ### 5.2 Deltas and the `=>` override
 
-Markers often carry parenthesised arithmetic the owner did by hand:
+Markers often carry parenthesised arithmetic the owner did by hand. **The value in
+parentheses is that marker's own contribution** to the day, measured against the normal
+schedule — not a correction and not a running total:
 
 ```
 [-> 9:45 (-15m)]                arrival, 15 minutes of deficit
@@ -279,8 +282,13 @@ Markers often carry parenthesised arithmetic the owner did by hand:
 [-> 18:45 (+15m => -30m)]       left 15 minutes late; the day came to -30m overall
 ```
 
-The value after `=>` is **the whole day's overtime**, and the reference parser treats it as
-authoritative, short-circuiting the calculation entirely.
+The value after `=>` is **the whole day's overtime**, every factor combined: arrival,
+breaks and departure. So in the third line, leaving at 18:45 is worth +15m on its own,
+while the day as a whole came to -30m once a long lunch and a 15-minute break are counted.
+The reference parser treats the `=>` figure as authoritative and short-circuits the rest.
+
+A marker's own contribution is a useful check but not the answer: a day adds up only when
+every marker is read.
 
 These numbers are derived, not data. Recompute them on import — but compare, and report any
 day where the recomputed figure disagrees with the recorded one, because that is either a
