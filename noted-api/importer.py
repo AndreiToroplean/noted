@@ -512,26 +512,48 @@ class Resolver:
         return written if answer == WRITTEN else None
 
 
-def describe_day(date, day: ParsedDay, arrival, departure, breaks, expected) -> list[str]:
-    """The day, readably, so a choice can be made by looking at it."""
-    lines = [f"{date:%A %d %B %Y}", ""]
-    lines.append(f"  arrived {arrival:%H:%M}" if arrival else "  arrival not recorded")
+def hours(minutes: int) -> str:
+    sign = "-" if minutes < 0 else ""
+    minutes = abs(minutes)
+    return f"{sign}{minutes // 60}h{minutes % 60:02d}" if minutes >= 60 else f"{sign}{minutes}m"
+
+
+def describe_day(date, day: ParsedDay, raw, arrival, departure, breaks, expected, computed):
+    """The day as it was written, then as it was read, so a choice can be made.
+
+    The column comes first and verbatim. Nothing here is reconstructed from the
+    parse: deciding between the written figure and the recomputation means
+    looking at what is actually in the spreadsheet.
+    """
+    lines = [f"{date:%A %d %B %Y}", "", "  the column, as written"]
+    for content, done in raw:
+        mark = "x" if done else " "
+        for index, piece in enumerate(content.splitlines()):
+            lines.append(f"    [{mark}] {piece}" if index == 0 else f"        {piece}")
+
+    if day.reading:
+        lines += ["", "  each time marker, and what it was read as"]
+        width = max(len(text) for text, _ in day.reading)
+        for text, meaning in day.reading:
+            lines.append(f"    {text:<{width}}   {meaning}")
+
+    lines += ["", "  the day that makes"]
+    assumed = " (assumed, none written)"
+    lines.append(f"    arrived {arrival:%H:%M}" + ("" if day.arrival else assumed))
+    lines.append(f"    left    {departure:%H:%M}" + ("" if day.departure else assumed))
     for pause in breaks:
-        if pause.start and pause.end:
-            span = f"{pause.start:%H:%M}-{pause.end:%H:%M}"
-        elif pause.minutes is not None:
-            span = f"{pause.minutes}m"
-        else:
-            span = "open"
-        lines.append(f"  {'lunch' if pause.is_noon else 'break'} {span}")
-    lines.append(f"  left {departure:%H:%M}" if departure else "  departure not recorded")
-    lines.append("")
-    for entry in day.entries:
-        mark = "x" if getattr(entry, "done", False) else " "
-        label = f"[{entry.category}] " if entry.category else ""
-        lines.append(f"  [{mark}] {label}{entry.text}"[:100])
-    lines.append("")
-    lines.append(f"  expected {expected}m")
+        extra = "" if pause in day.breaks else assumed
+        lines.append(f"    {describe_break(pause)}{extra}")
+    worked = computed + expected
+    lines.append(f"    worked {hours(worked)} against {hours(expected)} expected")
+    if day.stated:
+        parts = " ".join(f"{figure:+d}" for figure in day.stated)
+        lines.append(f"    the figures written by hand add up to {sum(day.stated):+d}m  ({parts})")
+        # Say what is missing from that sum rather than guessing at it: a marker
+        # with no figure of its own still moved the day.
+        silent = [text for text, read in day.reading if "written as" not in read]
+        if silent:
+            lines.append(f"    and no figure was written on {', '.join(silent)}")
     return lines
 
 
@@ -621,6 +643,7 @@ def run(
             date = monday + dt.timedelta(days=offset)
             parsed_entries = []
             done_flags = []
+            raw = []
 
             for row in rows[FIRST_ENTRY_ROW:]:
                 if column >= len(row):
@@ -630,6 +653,7 @@ def run(
                     continue
                 parsed_entries.append(parse_entry(content))
                 done_flags.append(column - 1 < len(row) and row[column - 1] in ("1", "true"))
+                raw.append((content, done_flags[-1]))
 
             if not parsed_entries:
                 continue
@@ -676,7 +700,9 @@ def run(
                         date.isoformat(),
                         written=day.explicit_overtime,
                         recomputed=computed,
-                        lines=describe_day(date, day, arrival, departure, breaks, expected),
+                        lines=describe_day(
+                            date, day, raw, arrival, departure, breaks, expected, computed
+                        ),
                     )
 
             session.add(
