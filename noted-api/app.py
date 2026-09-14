@@ -64,7 +64,7 @@ def list_weeks(session: Session = Depends(db.session)):
     start on a fresh database.
     """
     mondays = {
-        day - timedelta(days=day.weekday()) for day in session.exec(select(Day.date)).all()
+        day - timedelta(days=day.weekday()) for day in session.exec(select(col(Day.date))).all()
     }
     today = date.today()
     mondays.add(today - timedelta(days=today.weekday()))
@@ -125,8 +125,8 @@ def replace_week(week: str, payload: WeekIn, session: Session = Depends(db.sessi
     start = monday(week)
     dates = set(week_dates(start))
 
-    known_projects = set(session.exec(select(Project.id)).all())
-    known_categories = set(session.exec(select(Category.name)).all())
+    known_projects = set(session.exec(select(col(Project.id))).all())
+    known_categories = set(session.exec(select(col(Category.name))).all())
     defaults = {row.weekday: row.expected_minutes for row in session.exec(select(Settings))}
 
     for day in payload.days:
