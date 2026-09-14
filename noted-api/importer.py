@@ -33,6 +33,7 @@ the spreadsheet had it.
 
 import argparse
 import datetime as dt
+import io
 import tomllib
 from pathlib import Path
 import random
@@ -794,6 +795,13 @@ def main():
         help="never ask; leave every conflict as the spreadsheet had it",
     )
     args = parser.parse_args()
+
+    # The journal has accented names in it, and a Windows console is not UTF-8
+    # by default: without this the first `é` ends the run. Only a real stream
+    # can be reconfigured; piped into something else it is already someone's
+    # problem to have chosen the encoding.
+    if isinstance(sys.stdout, io.TextIOWrapper):
+        sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 
     rules = load_rules(args.rules)
     decisions = Decisions.load(args.decisions)
