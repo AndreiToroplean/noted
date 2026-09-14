@@ -280,14 +280,18 @@ def effect_of(before, day: ParsedDay) -> str:
 
 def consume_marker(inner: str, day: ParsedDay, first: bool) -> bool:
     """Read one bracketed annotation as a clock marker. False if it is not one."""
-    # An explicit `=> ±duration` files the whole day's overtime by hand. The
-    # departure time in the same marker is still real, so unlike the legacy
-    # parser we read both rather than stopping at the arrow.
+    # An explicit `=> ±duration` files the whole day's overtime by hand. It is
+    # written on the day's last time marker, which is usually the departure but
+    # in the early weeks was whatever came last — `[-15m => +30m]` is a fifteen
+    # minute break that also files the day at +30m. So take the arrow off and
+    # read what is left as a marker in its own right, rather than stopping here
+    # and losing it.
     if match := OVERRIDE.search(inner):
         minutes = parse_duration(match.group(2)) or 0
         day.explicit_overtime = -minutes if match.group(1) == "-" else minutes
-        if arrow := ARROW.match(inner):
-            day.departure = parse_clock(arrow.group(1))
+        rest = (inner[: match.start()] + inner[match.end() :]).strip()
+        if rest:
+            consume_marker(rest, day, first)
         return True
 
     if match := NOON_RANGE.match(inner):

@@ -267,3 +267,30 @@ def test_a_break_running_past_midnight_is_still_time_away():
     # Subtracting a negative span would have handed back four hours of work.
     day = markers("[T] Work.", "[23:30 -> 0:30]")
     assert importer.worked_minutes(day, dt.time(9, 30), dt.time(3, 30)) == 17 * 60
+
+
+def test_a_break_can_carry_the_days_filed_overtime():
+    # An older convention: the `=>` total was written on whatever the last time
+    # marker of the day happened to be, not necessarily the departure. Reading
+    # the arrow must not swallow the marker it was written on — `[-15m => +30m]`
+    # is a fifteen-minute break *and* a day filed at +30m.
+    day = markers("[T] Work.", "[-15m => +30m]")
+    assert day.explicit_overtime == 30
+    assert len(day.breaks) == 1
+    assert day.breaks[0].minutes == 15
+    assert day.breaks[0].is_noon is False
+
+
+def test_a_skipped_noon_break_can_carry_the_filed_overtime():
+    day = markers("[T] Work.", "[# 0m (+1h => +1h)]")
+    assert day.explicit_overtime == 60
+    assert len(day.breaks) == 1
+    assert day.breaks[0].is_noon is True
+    assert day.breaks[0].minutes == 0
+
+
+def test_a_departure_still_carries_its_own_filed_overtime():
+    day = markers("[T] Work.", "[-> 19:00 (+30m => +1h)]")
+    assert day.explicit_overtime == 60
+    assert day.departure == dt.time(19, 0)
+    assert day.breaks == []

@@ -324,6 +324,18 @@ The reference parser treats the `=>` figure as authoritative and short-circuits 
 A marker's own contribution is a useful check but not the answer: a day adds up only when
 every marker is read.
 
+**The `=>` goes on the day's last time marker**, which is usually the departure but in the
+early weeks was simply whatever came last:
+
+```
+[-15m => +30m]        a 15-minute break, and the day came to +30m
+[# 0m (+1h => +1h)]   the noon break skipped, and the day came to +1h
+```
+
+So the arrow is a suffix on a marker rather than a marker of its own. Read it, take it
+off, and read what is left by the ordinary rules — a `[-15m => +30m]` that files the day
+but records no break loses a quarter of an hour.
+
 These numbers are derived, not data. Recompute them on import — but compare, and report any
 day where the recomputed figure disagrees with the recorded one, because that is either a
 typo in the original or a gap in the parsing.
