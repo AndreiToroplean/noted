@@ -259,6 +259,8 @@ Marker entries record the shape of the working day. Their position in the column
 | `[# 0m]`                    | middle   | noon break **skipped**                 |
 | `[-15m]`, `[-1h]`, `[20m]`  | middle   | another break, as a duration           |
 | `[15:00 -> 15:20]`          | middle   | another break, as a range              |
+| `[Errand in town (-1h45)]` | middle | time given up, with the reason         |
+| `[(-30m)]`                  | middle   | time given up, no reason recorded      |
 | `[# Lunch w/ a friend]`       | middle   | noon break of the default length, with context |
 
 ### 5.1 Durations
@@ -267,8 +269,12 @@ Marker entries record the shape of the working day. Their position in the column
 duration = <n>"h"<n>["m"]   |   <n>"h"   |   <n>"m"
 ```
 
-So `1h30`, `1h30m`, `2h`, `45m`. A leading `-` is decorative — `[-15m]` is a fifteen-minute
-break, not a negative one.
+So `1h30`, `1h30m`, `2h`, `45m`.
+
+**The sign is meaningful.** `-30m` is half an hour of overtime given up; `+30m` would be
+half an hour gained, by starting early, skipping the noon break or finishing late. The one
+place it is omitted is small daytime breaks, written `[30m]` as often as `[-30m]` — an
+inconsistency in the original. A break is never additive, so both spellings mean `-30m`.
 
 ### 5.2 Deltas and the `=>` override
 

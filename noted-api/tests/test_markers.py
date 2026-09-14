@@ -142,3 +142,37 @@ def test_a_break_with_both_a_length_and_a_note_keeps_both():
 
 def test_an_override_survives_a_space_after_its_sign():
     assert markers("[T] Work.", "[-> 22:45 (+ 2h15 => + 2h)]").explicit_overtime == 120
+
+
+def test_an_unsigned_daytime_break_still_subtracts():
+    # The sign is meaningful — `-30m` removes overtime. Small daytime breaks
+    # were sometimes written without it, and they are never additive, so both
+    # spellings mean the same thing.
+    assert markers("[30m]").breaks[0].minutes == markers("[-30m]").breaks[0].minutes
+
+
+def test_a_time_marker_that_cannot_be_read_is_reported_not_dropped():
+    # A silently ignored marker is how breaks went missing once already.
+    day = markers("[T] Work.", "[+45m]")
+    assert day.unread == ["[+45m]"]
+
+
+def test_an_annotation_with_no_time_in_it_is_not_reported_as_unread():
+    assert markers("[On site]").unread == []
+
+
+def test_a_described_deduction_is_a_break_that_says_why():
+    day = markers("[Errand in town (-1h45)]")
+    assert day.breaks[0].minutes == 105
+    assert day.breaks[0].is_noon is False
+    assert day.breaks[0].description == "Errand in town"
+
+
+def test_a_deduction_with_no_description_is_still_a_break():
+    day = markers("[(-30m)]")
+    assert day.breaks[0].minutes == 30
+    assert day.breaks[0].description is None
+
+
+def test_a_described_deduction_leaves_nothing_unread():
+    assert markers("[Tidy the desk (-30m)]").unread == []

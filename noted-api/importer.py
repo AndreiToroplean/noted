@@ -81,9 +81,16 @@ RANGE = re.compile(rf"^({CLOCK})\s*->\s*({CLOCK})")
 NOON_RANGE = re.compile(rf"^#\s*({CLOCK})\s*->\s*({CLOCK})")
 NOON = re.compile(r"^#\s*(.*)$")
 ARROW = re.compile(rf"^->\s*({CLOCK})")
-#: Most breaks are written with a leading `-`: the sign says which way the
-#: marker moves the day's overtime, and is not part of the length.
+#: A break, written `[-15m]`. The sign is real — it is overtime being given up —
+#: but it is not part of the length. Small daytime breaks were sometimes written
+#: without it; they are never additive, so `[15m]` means the same as `[-15m]`.
+#: A `+` form would be the opposite, added time rather than a break, and there
+#: is no such marker in the history — so it stays unread rather than guessed at.
 BARE_DURATION = re.compile(rf"^-?({DURATION})$")
+#: `[Errand in town (-1h45)]` — time given up, with the reason kept.
+DEDUCTION = re.compile(rf"^(.*?)\(\s*-\s*({DURATION})\s*\)$")
+#: Anything holding a duration or a clock is making a claim about time.
+TIME_ISH = re.compile(rf"{DURATION}|{CLOCK}|=>")
 OVERRIDE = re.compile(rf"=>\s*([+-]?)\s*({DURATION})")
 FIRST_DURATION = re.compile(rf"({DURATION})")
 
@@ -117,6 +124,9 @@ class ParsedDay:
     status: str = "working"
     #: Where the day was filed with an explicit `=> ±duration` override.
     explicit_overtime: int | None = None
+    #: Annotations that look like clock markers but matched no rule. Never drop
+    #: these quietly: breaks went missing that way once.
+    unread: list[str] = field(default_factory=list)
 
 
 @dataclass
@@ -193,6 +203,8 @@ def read_markers(entries: list[ParsedEntry]) -> ParsedDay:
 
         inner = entry.text.strip()[1:-1].strip()
         if not consume_marker(inner, day, first=not kept and not day.breaks):
+            if TIME_ISH.search(inner):
+                day.unread.append(entry.text.strip())
             kept.append(entry)
 
     day.entries = kept
@@ -255,6 +267,15 @@ def consume_marker(inner: str, day: ParsedDay, first: bool) -> bool:
 
     if match := BARE_DURATION.match(inner):
         day.breaks.append(ParsedBreak(False, minutes=parse_duration(match.group(1))))
+        return True
+
+    # Last, because the others are more specific: an annotation that ends in a
+    # parenthesised deduction is a break, and whatever precedes it says why.
+    if match := DEDUCTION.match(inner):
+        said = match.group(1).strip()
+        day.breaks.append(
+            ParsedBreak(False, minutes=parse_duration(match.group(2)), description=said or None)
+        )
         return True
 
     return False
@@ -535,6 +556,7 @@ def run(
     counts = {"weeks": 0, "days": 0, "entries": 0, "meta": 0, "breaks": 0}
     undeclared: set[str] = set()
     disagreements: list[str] = []
+    unread: list[str] = []
 
     for monday, rows in read_sheets(path):
         counts["weeks"] += 1
@@ -562,6 +584,7 @@ def run(
                 parsed.done = done
 
             day = read_markers(parsed_entries)
+            unread += [f"{date}  {text}" for text in day.unread]
             if not day.entries and not day.breaks and day.status == "working":
                 continue
 
@@ -670,7 +693,7 @@ def run(
 
         session.commit()
 
-    return counts, undeclared, disagreements
+    return counts, undeclared, disagreements, unread
 
 
 def main():
@@ -697,7 +720,7 @@ def main():
 
     try:
         with Session(db.engine()) as session:
-            counts, undeclared, disagreements = run(
+            counts, undeclared, disagreements, unread = run(
                 args.workbook, session, reset=args.reset, rules=rules, resolver=resolver
             )
     finally:
@@ -726,6 +749,14 @@ def main():
         )
         print(f"\n{len(disagreements)} days disagreed with their written total.")
         print(f"All of them are listed in {REPORT_PATH}.")
+
+    if unread:
+        print(f"\n{len(unread)} annotations look like clock markers but were not read:")
+        for line in unread[:10]:
+            print(f"  {line}")
+        if len(unread) > 10:
+            print(f"  ... and {len(unread) - 10} more")
+        print("Each one is time the day does not know about. Worth a rule.")
 
     if resolver.unresolved:
         print(
