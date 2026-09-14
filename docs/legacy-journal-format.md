@@ -256,6 +256,7 @@ Marker entries record the shape of the working day. Their position in the column
 | `[# 1h30]`                  | middle   | noon break, as a duration              |
 | `[# 12:45 -> 14:00]`        | middle   | noon break, as an explicit range       |
 | `[#]`                       | middle   | noon break, of the default length      |
+| a blank row                 | middle   | noon break, of the default length      |
 | `[# 0m]`                    | middle   | noon break **skipped**                 |
 | `[-15m]`, `[-1h]`, `[20m]`  | middle   | another break, as a duration           |
 | `[15:00 -> 15:20]`          | middle   | another break, as a range              |
@@ -290,6 +291,27 @@ deltas.
 
 Both ends of a range are clock times with no date, so a break may run past midnight just
 as the day may: `[23:30 -> 0:30]` is an hour away, not a negative one.
+
+### 5.0 The blank row
+
+Lunch is not always written. Where it is not, the column has **a blank row in it** at the
+point the owner stepped away:
+
+```
+[T] Carry on with the new feature.
+
+[T] Write the migration script.
+```
+
+That gap is a marker, and means a noon break of the default hour — the same as `[#]`. Only
+a gap *between* entries counts; a column is far taller than the day written in it, and the
+empty rows above the first entry and below the last are just spreadsheet.
+
+A working day therefore says where lunch was exactly once, in one of the two ways. A day
+that says it twice — a `[# 1h]` and a stray gap above a note left under the finished day —
+or not at all is a mistake in the column, and the importer reports it rather than guessing.
+A day of nothing but annotations is not a working day and is exempt: no work was done, so
+there was no lunch to record.
 
 ### 5.1 Durations
 

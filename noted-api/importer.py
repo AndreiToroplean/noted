@@ -63,8 +63,13 @@ NS = {
 DAY_COLUMNS = [2, 5, 8, 11, 14, 17, 20]
 #: Row 0 is the day name, row 1 the date; entries start below.
 FIRST_ENTRY_ROW = 2
-#: A weekday the owner did not annotate still had lunch.
+#: How long lunch was when it was not written down.
 DEFAULT_LUNCH = 60
+#: A blank cell between two entries. The owner wrote most lunches as `[# 1h]`
+#: but sometimes just left a gap in the column where he stepped away, and the
+#: gap says the same thing. It is a marker, not an empty row, so it survives
+#: the walk down the column instead of being skipped with the rest.
+GAP = "gap"
 
 #: A leading `[Tag]`, then an optional `project:` prefix, then the text.
 CATEGORY = re.compile(r"^\[([A-Za-z]{1,3})\]\s*")
@@ -181,6 +186,11 @@ def parse_entry(content: str) -> ParsedEntry:
     return ParsedEntry("task", category, project, declares, text.strip(), note)
 
 
+def gap_entry() -> ParsedEntry:
+    """The blank cell between two entries, as something the day can read."""
+    return ParsedEntry(GAP, None, None, False, "", None)
+
+
 def parse_duration(text: str) -> int | None:
     """`1h30`, `1h`, `45m` in minutes."""
     if match := re.fullmatch(r"(\d+)h(\d+)m?", text):
@@ -216,6 +226,11 @@ def read_markers(entries: list[ParsedEntry]) -> ParsedDay:
     started = False
 
     for entry in entries:
+        if entry.kind == GAP:
+            day.breaks.append(ParsedBreak(True, minutes=DEFAULT_LUNCH))
+            day.reading.append(("(a blank row)", describe_break(day.breaks[-1])))
+            continue
+
         if entry.kind != "meta":
             kept.append(entry)
             started = True
@@ -340,6 +355,35 @@ def consume_marker(inner: str, day: ParsedDay, first: bool) -> bool:
         return True
 
     return False
+
+
+def read_column(rows, column: int):
+    """One day's column, as parsed entries, their checkboxes, and the raw text.
+
+    Blank cells are mostly just spreadsheet — a column is far taller than the
+    day written in it. A blank *between* two entries is not: that is the gap
+    the owner left where he went to lunch, and it is kept as a marker.
+    """
+    entries, done_flags, raw = [], [], []
+    gap = False
+
+    for row in rows[FIRST_ENTRY_ROW:]:
+        content = row[column].strip() if column < len(row) else ""
+        if not content:
+            gap = gap or bool(entries)
+            continue
+
+        if gap:
+            entries.append(gap_entry())
+            done_flags.append(False)
+            raw.append(("", False))
+            gap = False
+
+        entries.append(parse_entry(content))
+        done_flags.append(column - 1 < len(row) and row[column - 1] in ("1", "true"))
+        raw.append((content, done_flags[-1]))
+
+    return entries, done_flags, raw
 
 
 def sheet_date(name: str) -> dt.date | None:
@@ -524,6 +568,9 @@ def describe_day(date, day: ParsedDay, raw, arrival, departure, breaks, expected
     """
     lines = [f"{date:%A %d %B %Y}", "", "  the column, as written"]
     for content, done in raw:
+        if not content:
+            lines.append("    [ ]   (a blank row)")
+            continue
         mark = "x" if done else " "
         for index, piece in enumerate(content.splitlines()):
             lines.append(f"    [{mark}] {piece}" if index == 0 else f"        {piece}")
@@ -552,6 +599,15 @@ def describe_day(date, day: ParsedDay, raw, arrival, departure, breaks, expected
         if silent:
             lines.append(f"    and no figure was written on {', '.join(silent)}")
     return lines
+
+
+def list_days(days) -> str:
+    """Dates with the column under each, for a report section to name days by."""
+    lines = []
+    for date, written in days:
+        lines.append(f"  {date:%A %d %B %Y}")
+        lines += [f"      {text}" for text in written]
+    return "\n".join(lines)
 
 
 def ask_on_terminal(question: str, options, context) -> str:
@@ -635,25 +691,15 @@ def run(
     undeclared: set[str] = set()
     disagreements: list[list[str]] = []
     unread: list[str] = []
+    lunchless: list[tuple[dt.date, list[str]]] = []
+    many_lunches: list[tuple[dt.date, list[str]]] = []
 
     for monday, rows in read_sheets(path):
         counts["weeks"] += 1
 
         for offset, column in enumerate(DAY_COLUMNS):
             date = monday + dt.timedelta(days=offset)
-            parsed_entries = []
-            done_flags = []
-            raw = []
-
-            for row in rows[FIRST_ENTRY_ROW:]:
-                if column >= len(row):
-                    continue
-                content = row[column].strip()
-                if not content:
-                    continue
-                parsed_entries.append(parse_entry(content))
-                done_flags.append(column - 1 < len(row) and row[column - 1] in ("1", "true"))
-                raw.append((content, done_flags[-1]))
+            parsed_entries, done_flags, raw = read_column(rows, column)
 
             if not parsed_entries:
                 continue
@@ -675,15 +721,25 @@ def run(
             if day.status != "working":
                 expected = 0
 
-            # A weekday with no `#` marker still had lunch — that is what made
-            # the owner's own totals come out right.
+            # Every working weekday says where lunch was, either with a `#`
+            # marker or with a blank row. One that says neither is a gap in the
+            # spreadsheet rather than a day without lunch, so it is reported
+            # and left alone: inventing the hour here would hide it.
             breaks = list(day.breaks)
-            if (
-                day.status == "working"
-                and date.weekday() < 5
-                and not any(pause.is_noon for pause in breaks)
-            ):
-                breaks.append(ParsedBreak(True, minutes=DEFAULT_LUNCH))
+            written = [content.splitlines()[0] if content else "(a blank row)" for content, _ in raw]
+            noons = [pause for pause in breaks if pause.is_noon]
+            # A day of nothing but annotations is a day no work was done on, so
+            # there is no lunch to have written down either way.
+            worked = day.status == "working" and any(
+                entry.kind == "task" for entry in day.entries
+            )
+            if worked and date.weekday() < 5 and not noons:
+                lunchless.append((date, written))
+            elif worked and len(noons) > 1:
+                # Two lunches is always a mistake in the column — usually a
+                # written `[# 1h]` and then a stray gap above a note left under
+                # the finished day. Which one is meant is not ours to decide.
+                many_lunches.append((date, written))
 
             # A day's overtime is always what its hours add up to, so the figure
             # filed by hand is not kept. Where the two differ the day is written
@@ -764,7 +820,7 @@ def run(
 
         session.commit()
 
-    return counts, undeclared, disagreements, unread
+    return counts, undeclared, disagreements, unread, lunchless, many_lunches
 
 
 def main():
@@ -823,7 +879,7 @@ def main():
                 rules=rules,
                 release=release,
             )
-            counts, undeclared, disagreements, unread = run(
+            counts, undeclared, disagreements, unread, lunchless, many_lunches = run(
                 args.workbook, session, reset=args.reset, rules=rules, resolver=resolver
             )
     except KeyboardInterrupt:
@@ -859,17 +915,39 @@ def main():
         for path in sorted(undeclared):
             print(f"  {path}")
 
+    sections = []
+
+    if lunchless:
+        sections.append(
+            "Working weekdays that say nothing about lunch: no `#` marker, and no\n"
+            "blank row between entries either. Nothing was deducted for these, so\n"
+            "each is an hour too long until the spreadsheet says where lunch was.\n\n"
+            + list_days(lunchless)
+        )
+        print(f"\n{len(lunchless)} working weekdays say nothing about lunch.")
+
+    if many_lunches:
+        sections.append(
+            "Days that say where lunch was more than once: a `#` marker and a blank\n"
+            "row, or two blank rows. Every one of them was deducted, so each is an\n"
+            "hour too short until the column says lunch once.\n\n"
+            + list_days(many_lunches)
+        )
+        print(f"\n{len(many_lunches)} days say where lunch was more than once.")
+
     if disagreements:
-        Path(REPORT_PATH).parent.mkdir(parents=True, exist_ok=True)
-        Path(REPORT_PATH).write_text(
+        sections.append(
             "Days whose hand-written overtime disagrees with the recomputation.\n"
             "The recomputation is what was stored; these are the days whose\n"
             "arrival, departure or breaks need correcting by hand.\n\n"
             + "\n\n".join("\n".join(day) for day in disagreements)
-            + "\n",
-            encoding="utf-8",
         )
-        print(f"\n{len(disagreements)} days disagreed with their written total.")
+        said = "day disagreed with its" if len(disagreements) == 1 else "days disagreed with their"
+        print(f"\n{len(disagreements)} {said} written total.")
+
+    if sections:
+        Path(REPORT_PATH).parent.mkdir(parents=True, exist_ok=True)
+        Path(REPORT_PATH).write_text("\n\n\n".join(sections) + "\n", encoding="utf-8")
         print(f"All of them are listed in {REPORT_PATH}.")
 
     if unread:

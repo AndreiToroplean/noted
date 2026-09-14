@@ -294,3 +294,20 @@ def test_a_departure_still_carries_its_own_filed_overtime():
     assert day.explicit_overtime == 60
     assert day.departure == dt.time(19, 0)
     assert day.breaks == []
+
+
+def test_a_blank_row_between_entries_is_the_lunch_break():
+    # Most days say `[# 1h]`; the rest just leave a gap in the column where the
+    # owner stepped away. The gap means the same thing and is read the same way.
+    day = importer.read_markers(
+        [importer.parse_entry("[T] Morning."), importer.gap_entry(), importer.parse_entry("[T] Afternoon.")]
+    )
+    assert len(day.breaks) == 1
+    assert day.breaks[0].is_noon is True
+    assert day.breaks[0].minutes == 60
+    assert [e.text for e in day.entries] == ["Morning.", "Afternoon."]
+
+
+def test_a_blank_row_lunch_says_what_it_was_read_as():
+    day = importer.read_markers([importer.parse_entry("[T] Work."), importer.gap_entry()])
+    assert day.reading == [("(a blank row)", "lunch, 1h00")]

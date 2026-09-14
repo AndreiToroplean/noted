@@ -110,3 +110,31 @@ def test_a_reset_keeps_what_the_importer_does_not_own(tmp_path):
         assert [row.name for row in session.exec(select(models.Category))] == [
             row.name for row in kept
         ]
+
+
+def rows_of(*cells):
+    """A sheet's rows, with the given cells down one day's column."""
+    width = importer.DAY_COLUMNS[0] + 1
+    header = [[""] * width for _ in range(importer.FIRST_ENTRY_ROW)]
+    return header + [[""] * (width - 1) + [cell] for cell in cells]
+
+
+def column_of(*cells):
+    return importer.read_column(rows_of(*cells), importer.DAY_COLUMNS[0])
+
+
+def test_a_gap_between_entries_is_read_as_a_marker():
+    entries, _, _ = column_of("[T] Morning.", "", "[T] Afternoon.")
+    assert [entry.kind for entry in entries] == ["task", importer.GAP, "task"]
+
+
+def test_the_empty_rows_around_a_day_are_not_gaps():
+    # A column is mostly empty: the rows below the last entry, and above the
+    # first on a day that starts late, are spreadsheet rather than lunch.
+    entries, _, _ = column_of("", "[T] Work.", "", "")
+    assert [entry.kind for entry in entries] == ["task"]
+
+
+def test_several_blank_rows_in_a_row_are_one_gap():
+    entries, _, _ = column_of("[T] Morning.", "", "", "[T] Afternoon.")
+    assert [entry.kind for entry in entries] == ["task", importer.GAP, "task"]
