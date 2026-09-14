@@ -51,19 +51,25 @@ class BreakOut(BreakIn):
     position: int
 
 
-class DayIn(BaseModel):
+class DayBase(BaseModel):
+    """What a day is either way. The two directions differ in three fields, and
+    narrowing them by inheriting would be an override rather than a schema."""
+
     date: dt.date
     status: DayStatus = DayStatus.WORKING
     arrival: dt.time | None = None
     departure: dt.time | None = None
+    overtime_override: int | None = None
+
+
+class DayIn(DayBase):
     #: Left unset, the weekday's default is snapshot onto the day as it is stored.
     expected_minutes: int | None = None
-    overtime_override: int | None = None
     entries: list[EntryIn] = []
     breaks: list[BreakIn] = []
 
 
-class DayOut(DayIn):
+class DayOut(DayBase):
     expected_minutes: int
     entries: list[EntryOut] = []
     breaks: list[BreakOut] = []
