@@ -99,3 +99,46 @@ def test_an_ordinary_day_is_working():
 def test_a_status_word_inside_a_working_day_does_not_change_it():
     # The marker only declares the day when it is the whole day.
     assert markers("[T] Work.", "[Off to the dentist]").status == "working"
+
+
+def test_a_signed_duration_is_a_break():
+    # `[-15m]` is how most breaks are written: the sign is the direction of its
+    # effect on the day's overtime, not part of the length.
+    day = markers("[-15m]")
+    assert day.breaks[0].is_noon is False
+    assert day.breaks[0].minutes == 15
+
+
+def test_a_signed_hour_break_is_read_whole():
+    assert markers("[-1h15]").breaks[0].minutes == 75
+    assert markers("[-1h]").breaks[0].minutes == 60
+    assert markers("[-2h30]").breaks[0].minutes == 150
+
+
+def test_a_day_adds_up_the_way_it_was_written():
+    # A day filed as -30m:
+    #   lunch 1h30 is 30m more than the standard hour   -30
+    #   a 15m break                                     -15
+    #   leaving 15m later than the usual time            +15
+    day = markers("[T] Work.", "[# 1h30 (-30m)]", "[-15m]", "[-> 18:45 (+15m => -30m)]")
+    assert day.departure == dt.time(18, 45)
+    assert day.explicit_overtime == -30
+    assert [(p.is_noon, p.minutes) for p in day.breaks] == [(True, 90), (False, 15)]
+
+
+def test_a_break_keeps_what_was_written_about_it():
+    day = markers("[# Lunch w/ the team]")
+    assert day.breaks[0].is_noon is True
+    assert day.breaks[0].description == "Lunch w/ the team"
+    # No length was given, so it was the usual hour.
+    assert day.breaks[0].minutes == 60
+
+
+def test_a_break_with_both_a_length_and_a_note_keeps_both():
+    day = markers("[# 45m out for a coffee]")
+    assert day.breaks[0].minutes == 45
+    assert day.breaks[0].description == "out for a coffee"
+
+
+def test_an_override_survives_a_space_after_its_sign():
+    assert markers("[T] Work.", "[-> 22:45 (+ 2h15 => + 2h)]").explicit_overtime == 120

@@ -81,8 +81,10 @@ RANGE = re.compile(rf"^({CLOCK})\s*->\s*({CLOCK})")
 NOON_RANGE = re.compile(rf"^#\s*({CLOCK})\s*->\s*({CLOCK})")
 NOON = re.compile(r"^#\s*(.*)$")
 ARROW = re.compile(rf"^->\s*({CLOCK})")
-BARE_DURATION = re.compile(rf"^({DURATION})$")
-OVERRIDE = re.compile(rf"=>\s*([+-]?)({DURATION}|0m)")
+#: Most breaks are written with a leading `-`: the sign says which way the
+#: marker moves the day's overtime, and is not part of the length.
+BARE_DURATION = re.compile(rf"^-?({DURATION})$")
+OVERRIDE = re.compile(rf"=>\s*([+-]?)\s*({DURATION})")
 FIRST_DURATION = re.compile(rf"({DURATION})")
 
 #: A day made of nothing but one of these is not a working day.
@@ -101,6 +103,7 @@ class ParsedBreak:
     start: dt.time | None = None
     end: dt.time | None = None
     minutes: int | None = None
+    description: str | None = None
 
 
 @dataclass
@@ -241,11 +244,13 @@ def consume_marker(inner: str, day: ParsedDay, first: bool) -> bool:
         return True
 
     if match := NOON.match(inner):
+        # `[# 45m out for a coffee]` — a length, a note, or both. What is left
+        # after the length is worth keeping: it is often who it was with.
         rest = match.group(1).strip()
         found = FIRST_DURATION.search(rest)
-        day.breaks.append(
-            ParsedBreak(True, minutes=parse_duration(found.group(1)) if found else DEFAULT_LUNCH)
-        )
+        minutes = parse_duration(found.group(1)) if found else DEFAULT_LUNCH
+        said = (rest[: found.start()] + rest[found.end() :] if found else rest).strip()
+        day.breaks.append(ParsedBreak(True, minutes=minutes, description=said or None))
         return True
 
     if match := BARE_DURATION.match(inner):
@@ -612,6 +617,7 @@ def run(
                         date=date,
                         position=position,
                         is_noon=pause.is_noon,
+                        description=pause.description,
                         start=pause.start,
                         end=pause.end,
                         minutes=pause.minutes,
