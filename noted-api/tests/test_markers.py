@@ -311,3 +311,33 @@ def test_a_blank_row_between_entries_is_the_lunch_break():
 def test_a_blank_row_lunch_says_what_it_was_read_as():
     day = importer.read_markers([importer.parse_entry("[T] Work."), importer.gap_entry()])
     assert day.reading == [("(a blank row)", "lunch, 1h00")]
+
+
+def test_a_day_remembers_where_its_breaks_sat_among_its_entries():
+    # Lunch belongs in the middle of the list, not under it. The column knows
+    # where it was, so the day has to keep that rather than sort by kind.
+    day = markers("[-> 9:30]", "[T] Morning.", "[# 1h]", "[T] Afternoon.", "[-> 18:30]")
+    assert [describe(item) for item in day.items] == ["Morning.", "lunch", "Afternoon."]
+
+
+def test_a_blank_row_lunch_sits_where_the_blank_row_was():
+    day = importer.read_markers(
+        [
+            importer.parse_entry("[T] Morning."),
+            importer.gap_entry(),
+            importer.parse_entry("[T] Afternoon."),
+        ]
+    )
+    assert [describe(item) for item in day.items] == ["Morning.", "lunch", "Afternoon."]
+
+
+def describe(item):
+    if isinstance(item, importer.ParsedBreak):
+        return "lunch" if item.is_noon else "break"
+    return item.text
+
+
+def test_a_second_ordinary_break_is_not_a_second_lunch():
+    # `[# 1h30]` and `[-15m]` is one lunch and one coffee, not two lunches.
+    day = markers("[T] Work.", "[# 1h30]", "[-15m]", "[T] More.")
+    assert [pause.is_noon for pause in day.breaks] == [True, False]

@@ -126,10 +126,14 @@ class ParsedBreak:
 
 @dataclass
 class ParsedDay:
-    """A day's entries with its clock markers lifted out of them."""
+    """A day's entries with its clock markers lifted out of them.
 
-    entries: list = field(default_factory=list)
-    breaks: list[ParsedBreak] = field(default_factory=list)
+    One list, in the order the column was written: a break is not a separate
+    kind of day, it is a thing that happened between two entries, and where it
+    happened is as much a fact as how long it was.
+    """
+
+    items: list = field(default_factory=list)
     arrival: dt.time | None = None
     departure: dt.time | None = None
     status: str = "working"
@@ -146,6 +150,14 @@ class ParsedDay:
     #: Every annotation, paired with what it was taken to mean, in the order it
     #: was written. Shown where a day's hours and its filed figure disagree.
     reading: list[tuple[str, str]] = field(default_factory=list)
+
+    @property
+    def entries(self) -> list["ParsedEntry"]:
+        return [item for item in self.items if isinstance(item, ParsedEntry)]
+
+    @property
+    def breaks(self) -> list["ParsedBreak"]:
+        return [item for item in self.items if isinstance(item, ParsedBreak)]
 
 
 @dataclass
@@ -218,7 +230,6 @@ def read_markers(entries: list[ParsedEntry]) -> ParsedDay:
     and becomes the day's hours; the second stays an entry.
     """
     day = ParsedDay()
-    kept = []
     #: Whether any work has been recorded yet. A day often opens with a plain
     #: annotation or two — `[Back from a week away]`, `[On
     #: site]` — before the clock, and a marker among those is still the arrival.
@@ -227,12 +238,12 @@ def read_markers(entries: list[ParsedEntry]) -> ParsedDay:
 
     for entry in entries:
         if entry.kind == GAP:
-            day.breaks.append(ParsedBreak(True, minutes=DEFAULT_LUNCH))
+            day.items.append(ParsedBreak(True, minutes=DEFAULT_LUNCH))
             day.reading.append(("(a blank row)", describe_break(day.breaks[-1])))
             continue
 
         if entry.kind != "meta":
-            kept.append(entry)
+            day.items.append(entry)
             started = True
             continue
 
@@ -249,15 +260,13 @@ def read_markers(entries: list[ParsedEntry]) -> ParsedDay:
             if TIME_ISH.search(inner):
                 day.unread.append(entry.text.strip())
                 day.reading.append((entry.text.strip(), "not read"))
-            kept.append(entry)
-
-    day.entries = kept
+            day.items.append(entry)
 
     # A day made of nothing but a status word is not a working day. The word
     # only counts when it is the whole day: `[Off to the dentist]` in a normal
     # day is an annotation, not a declaration.
-    if len(kept) == 1 and not day.breaks and kept[0].kind == "meta":
-        word = kept[0].text.strip()[1:-1].strip().upper()
+    if len(day.items) == 1 and day.entries and day.entries[0].kind == "meta":
+        word = day.entries[0].text.strip()[1:-1].strip().upper()
         for needle, status in STATUSES:
             if needle in word:
                 day.status = status
@@ -310,13 +319,13 @@ def consume_marker(inner: str, day: ParsedDay, first: bool) -> bool:
         return True
 
     if match := NOON_RANGE.match(inner):
-        day.breaks.append(
+        day.items.append(
             ParsedBreak(True, parse_clock(match.group(1)), parse_clock(match.group(2)))
         )
         return True
 
     if match := RANGE.match(inner):
-        day.breaks.append(
+        day.items.append(
             ParsedBreak(False, parse_clock(match.group(1)), parse_clock(match.group(2)))
         )
         return True
@@ -338,18 +347,18 @@ def consume_marker(inner: str, day: ParsedDay, first: bool) -> bool:
         minutes = parse_duration(found.group(1)) if found else DEFAULT_LUNCH
         said = (rest[: found.start()] + rest[found.end() :] if found else rest).strip()
         said = STATED.sub("", said).strip()
-        day.breaks.append(ParsedBreak(True, minutes=minutes, description=said or None))
+        day.items.append(ParsedBreak(True, minutes=minutes, description=said or None))
         return True
 
     if match := BARE_DURATION.match(inner):
-        day.breaks.append(ParsedBreak(False, minutes=parse_duration(match.group(1))))
+        day.items.append(ParsedBreak(False, minutes=parse_duration(match.group(1))))
         return True
 
     # Last, because the others are more specific: an annotation that ends in a
     # parenthesised deduction is a break, and whatever precedes it says why.
     if match := DEDUCTION.match(inner):
         said = match.group(1).strip()
-        day.breaks.append(
+        day.items.append(
             ParsedBreak(False, minutes=parse_duration(match.group(2)), description=said or None)
         )
         return True
@@ -559,7 +568,7 @@ def hours(minutes: int) -> str:
     return f"{sign}{minutes // 60}h{minutes % 60:02d}" if minutes >= 60 else f"{sign}{minutes}m"
 
 
-def describe_day(date, day: ParsedDay, raw, arrival, departure, breaks, expected, computed):
+def describe_day(date, day: ParsedDay, raw, arrival, departure, expected, computed):
     """The day as it was written, then as it was read, so a choice can be made.
 
     The column comes first and verbatim. Nothing here is reconstructed from the
@@ -585,9 +594,8 @@ def describe_day(date, day: ParsedDay, raw, arrival, departure, breaks, expected
     assumed = " (assumed, none written)"
     lines.append(f"    arrived {arrival:%H:%M}" + ("" if day.arrival else assumed))
     lines.append(f"    left    {departure:%H:%M}" + ("" if day.departure else assumed))
-    for pause in breaks:
-        extra = "" if pause in day.breaks else assumed
-        lines.append(f"    {describe_break(pause)}{extra}")
+    for pause in day.breaks:
+        lines.append(f"    {describe_break(pause)}")
     worked = computed + expected
     lines.append(f"    worked {hours(worked)} against {hours(expected)} expected")
     if day.stated:
@@ -725,9 +733,8 @@ def run(
             # marker or with a blank row. One that says neither is a gap in the
             # spreadsheet rather than a day without lunch, so it is reported
             # and left alone: inventing the hour here would hide it.
-            breaks = list(day.breaks)
             written = [content.splitlines()[0] if content else "(a blank row)" for content, _ in raw]
-            noons = [pause for pause in breaks if pause.is_noon]
+            noons = [pause for pause in day.breaks if pause.is_noon]
             # A day of nothing but annotations is a day no work was done on, so
             # there is no lunch to have written down either way.
             worked = day.status == "working" and any(
@@ -745,10 +752,10 @@ def run(
             # filed by hand is not kept. Where the two differ the day is written
             # out as it stands, for the owner to correct the hours themselves.
             if day.explicit_overtime is not None and arrival and departure:
-                computed = worked_minutes(ParsedDay(breaks=breaks), arrival, departure) - expected
+                computed = worked_minutes(day, arrival, departure) - expected
                 if computed != day.explicit_overtime:
                     disagreements.append(
-                        describe_day(date, day, raw, arrival, departure, breaks, expected, computed)
+                        describe_day(date, day, raw, arrival, departure, expected, computed)
                     )
 
             session.add(
@@ -761,21 +768,26 @@ def run(
                 )
             )
 
-            for position, pause in enumerate(breaks):
-                session.add(
-                    Break(
-                        date=date,
-                        position=position,
-                        is_noon=pause.is_noon,
-                        description=pause.description,
-                        start=pause.start,
-                        end=pause.end,
-                        minutes=pause.minutes,
+            # Entries and breaks share one sequence, because the day is one
+            # list: lunch sits between the morning's work and the afternoon's,
+            # and that is where it has to come back out.
+            for position, item in enumerate(day.items):
+                if isinstance(item, ParsedBreak):
+                    session.add(
+                        Break(
+                            date=date,
+                            position=position,
+                            is_noon=item.is_noon,
+                            description=item.description,
+                            start=item.start,
+                            end=item.end,
+                            minutes=item.minutes,
+                        )
                     )
-                )
-            counts["breaks"] += len(breaks)
+                    counts["breaks"] += 1
+                    continue
 
-            for position, parsed in enumerate(day.entries):
+                parsed = item
                 project_id = None
                 if parsed.project:
                     path_name = rules.canonical(parsed.project)
