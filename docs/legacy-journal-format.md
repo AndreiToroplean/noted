@@ -307,11 +307,15 @@ That gap is a marker, and means a noon break of the default hour — the same as
 a gap *between* entries counts; a column is far taller than the day written in it, and the
 empty rows above the first entry and below the last are just spreadsheet.
 
-A working day therefore says where lunch was exactly once, in one of the two ways. A day
-that says it twice — a `[# 1h]` and a stray gap above a note left under the finished day —
-or not at all is a mistake in the column, and the importer reports it rather than guessing.
-A day of nothing but annotations is not a working day and is exempt: no work was done, so
-there was no lunch to record.
+A working day therefore says where lunch was exactly once, in one of the two ways. Both
+kinds of mistake are reported by the importer. A day that says it **twice** — a `[# 1h]`
+and a stray gap above a note left under the finished day — is left as it stands, deducting
+both, because which of the two was meant is not the importer's to decide. A day that says
+it **not at all** is given the default hour at the end, since its length is known and only
+its place in the day is not.
+
+A day of nothing but annotations is not a working day and is exempt from all of this: no
+work was done, so there was no lunch to record.
 
 ### 5.1 Durations
 

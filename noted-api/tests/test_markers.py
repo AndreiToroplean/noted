@@ -341,3 +341,38 @@ def test_a_second_ordinary_break_is_not_a_second_lunch():
     # `[# 1h30]` and `[-15m]` is one lunch and one coffee, not two lunches.
     day = markers("[T] Work.", "[# 1h30]", "[-15m]", "[T] More.")
     assert [pause.is_noon for pause in day.breaks] == [True, False]
+
+
+def test_a_weekday_with_no_lunch_written_is_given_the_usual_hour():
+    # Where lunch was is not in the column, so it goes at the end rather than
+    # somewhere invented in the middle. The length is what the day turns on.
+    day = markers("[T] Travel back from the client.")
+    assert importer.assume_lunch(day, dt.date(2026, 6, 19)) is True
+    assert [pause.is_noon for pause in day.breaks] == [True]
+    assert day.breaks[0].minutes == 60
+    assert day.items[-1] is day.breaks[0]
+
+
+def test_a_day_that_wrote_its_lunch_is_left_alone():
+    day = markers("[T] Work.", "[# 1h30]", "[T] More.")
+    assert importer.assume_lunch(day, dt.date(2026, 6, 19)) is False
+    assert len(day.breaks) == 1
+
+
+def test_a_weekend_day_is_not_given_a_lunch():
+    day = markers("[T] Work.")
+    assert importer.assume_lunch(day, dt.date(2026, 6, 20)) is False
+    assert day.breaks == []
+
+
+def test_a_day_of_only_annotations_is_not_given_a_lunch():
+    # No work was done, so there was no lunch to have written down.
+    day = markers("[On site]", "[Back home]")
+    assert importer.assume_lunch(day, dt.date(2026, 6, 19)) is False
+    assert day.breaks == []
+
+
+def test_a_day_off_is_not_given_a_lunch():
+    day = markers("[PAID HOLIDAY]")
+    assert importer.assume_lunch(day, dt.date(2026, 6, 19)) is False
+    assert day.breaks == []

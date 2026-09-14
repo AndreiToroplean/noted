@@ -277,6 +277,27 @@ def read_markers(entries: list[ParsedEntry]) -> ParsedDay:
     return day
 
 
+def assume_lunch(day: ParsedDay, date: dt.date) -> bool:
+    """Give a working weekday the hour nobody wrote down. True if it needed it.
+
+    Where lunch was is not recoverable — the column says nothing — so it goes at
+    the end of the day rather than somewhere invented in the middle. The length
+    is what the day's hours turn on and that much is known; the placement is the
+    part that is not, and the end is where it reads as unplaced.
+    """
+    if day.status != "working" or date.weekday() >= 5:
+        return False
+    # A day of nothing but annotations is a day no work was done on, so there
+    # was no lunch to have written down either way.
+    if not any(entry.kind == "task" for entry in day.entries):
+        return False
+    if any(pause.is_noon for pause in day.breaks):
+        return False
+
+    day.items.append(ParsedBreak(True, minutes=DEFAULT_LUNCH))
+    return True
+
+
 def describe_break(pause: ParsedBreak) -> str:
     """One break, the way it reads: a span, a length, or a length and a reason."""
     if pause.start and pause.end:
@@ -744,26 +765,17 @@ def run(
             if day.status != "working":
                 expected = 0
 
-            # Every working weekday says where lunch was, either with a `#`
-            # marker or with a blank row. One that says neither is a gap in the
-            # spreadsheet rather than a day without lunch, so it is reported
-            # and left alone: inventing the hour here would hide it.
-            noons = [pause for pause in day.breaks if pause.is_noon]
-            # A day of nothing but annotations is a day no work was done on, so
-            # there is no lunch to have written down either way.
-            worked = day.status == "working" and any(
-                entry.kind == "task" for entry in day.entries
-            )
-            if worked and date.weekday() < 5 and not noons:
-                lunchless.append([f"{date:%A %d %B %Y}"] + column_of(day, raw))
-            elif worked and len(noons) > 1:
-                # Two lunches is always a mistake in the column — usually a
-                # written `[# 1h]` and then a stray gap above a note left under
-                # the finished day. Which one is meant is not ours to decide.
-                said = " and ".join(describe_break(pause) for pause in noons)
-                many_lunches.append(
-                    [f"{date:%A %d %B %Y}   {said}"] + column_of(day, raw)
+            # Every working weekday says where lunch was, with a `#` marker or
+            # with a blank row. One that says it twice is a mistake in the
+            # column; one that says it not at all gets the usual hour, at the
+            # end of the day, because where it was is not recoverable.
+            if len([pause for pause in day.breaks if pause.is_noon]) > 1:
+                said = " and ".join(
+                    describe_break(pause) for pause in day.breaks if pause.is_noon
                 )
+                many_lunches.append([f"{date:%A %d %B %Y}   {said}"] + column_of(day, raw))
+            elif assume_lunch(day, date):
+                lunchless.append([f"{date:%A %d %B %Y}"] + column_of(day, raw))
 
             # A day's overtime is always what its hours add up to, so the figure
             # filed by hand is not kept. Where the two differ the day is written
@@ -963,7 +975,8 @@ def main():
             section(
                 "LUNCH NOT WRITTEN",
                 "Working weekdays with no `[# ...]` marker and no blank row either.\n"
-                "Nothing was taken off these, so each is an hour too long.",
+                "Each was given the usual hour, at the end of the day, since where it\n"
+                "actually fell is not in the column. Write it in to place it properly.",
                 lunchless,
             )
         )
