@@ -42,7 +42,7 @@ import xml.etree.ElementTree as ET
 import zipfile
 from dataclasses import dataclass, field
 
-from sqlmodel import Session, delete, select
+from sqlmodel import Session, SQLModel, select
 
 import db
 from models import Break, Day, DayStatus, Entry, Project, Settings
@@ -528,13 +528,22 @@ def minutes_of(clock: dt.time) -> int:
     return clock.hour * 60 + clock.minute
 
 
+# What the spreadsheet owns. Settings, categories and the overtime baseline are
+# the owner's own and survive a reset.
+IMPORTED = [Entry.__table__, Break.__table__, Day.__table__, Project.__table__]
+
+
 def wipe(session: Session):
-    """Remove everything a previous import wrote, so it can be run again."""
-    session.exec(delete(Entry))
-    session.exec(delete(Break))
-    session.exec(delete(Day))
-    session.exec(delete(Project))
+    """Drop and rebuild the tables the import writes, so it can be run again.
+
+    Dropping rather than deleting because the models move while the parsing is
+    still being got right: a database written before a column existed would keep
+    its old shape forever, and the next insert would fail on the missing column.
+    """
     session.commit()
+    engine = session.get_bind()
+    SQLModel.metadata.drop_all(engine, tables=IMPORTED)
+    SQLModel.metadata.create_all(engine, tables=IMPORTED)
 
 
 def run(

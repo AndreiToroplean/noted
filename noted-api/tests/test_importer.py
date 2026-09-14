@@ -71,3 +71,39 @@ def test_sheet_names_are_read_as_the_weeks_monday():
 def test_a_template_sheet_is_not_a_week():
     assert importer.sheet_date("TEMPLATE") is None
     assert importer.sheet_date("TEMPLATE_SIMPLE_WE") is None
+
+
+def test_a_reset_rebuilds_the_tables_it_owns(tmp_path):
+    # A database written before a column existed must not survive a `--reset`:
+    # emptying the rows leaves the old shape behind, and the next insert fails.
+    from sqlalchemy import inspect
+    from sqlmodel import Session, SQLModel, create_engine
+
+    import models
+
+    engine = create_engine(f"sqlite:///{tmp_path / 'old.db'}")
+    stale = models.Day.__table__.columns.keys()[-1]
+    SQLModel.metadata.create_all(engine)
+    with engine.begin() as connection:
+        connection.exec_driver_sql(f"ALTER TABLE day DROP COLUMN {stale}")
+
+    with Session(engine) as session:
+        importer.wipe(session)
+
+    assert stale in {column["name"] for column in inspect(engine).get_columns("day")}
+
+
+def test_a_reset_keeps_what_the_importer_does_not_own(tmp_path):
+    # Settings and categories are the owner's, not the spreadsheet's.
+    from sqlmodel import Session, SQLModel, create_engine, select
+
+    import models
+    import seed
+
+    engine = create_engine(f"sqlite:///{tmp_path / 'db.db'}")
+    SQLModel.metadata.create_all(engine)
+    with Session(engine) as session:
+        seed.seed(session)
+        kept = session.exec(select(models.Category)).first().name
+        importer.wipe(session)
+        assert session.exec(select(models.Category)).first().name == kept
