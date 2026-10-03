@@ -531,3 +531,68 @@ describe('Day selecting items', () => {
     expect(selected(fixture)).toEqual([0, 2]);
   });
 });
+
+describe('Day deleting items', () => {
+  let http: HttpTestingController;
+  let appData: AppData;
+
+  beforeEach(() => {
+    TestBed.configureTestingModule({
+      providers: [provideHttpClient(), provideHttpClientTesting()],
+    });
+    http = TestBed.inject(HttpTestingController);
+    appData = TestBed.inject(AppData);
+  });
+
+  async function render() {
+    appData.week.set({
+      week: '2026-02-09',
+      days: [
+        day([
+          entry(null, { id: 1, text: 'One' }),
+          pause({ id: 1 }),
+          entry(null, { id: 2, text: 'Two' }),
+        ]),
+      ],
+    });
+    const fixture = TestBed.createComponent(Day);
+    fixture.componentRef.setInput('day', appData.week()!.days[0]);
+    fixture.detectChanges();
+    http.match(() => true).forEach(request => request.flush([]));
+    await settle();
+    fixture.detectChanges();
+    return fixture;
+  }
+
+  function option(fixture: Awaited<ReturnType<typeof render>>, index: number): HTMLElement {
+    return fixture.nativeElement.querySelectorAll('[role="option"]')[index];
+  }
+
+  async function rightClick(fixture: Awaited<ReturnType<typeof render>>, index: number) {
+    option(fixture, index).dispatchEvent(
+      new MouseEvent('contextmenu', { bubbles: true, cancelable: true, clientX: 50, clientY: 60 }),
+    );
+    fixture.detectChanges();
+    await settle();
+    return document.querySelector('[data-delete-selected]') as HTMLElement;
+  }
+
+  it('offers to delete what was right-clicked, selecting it first', async () => {
+    const fixture = await render();
+    const remove = await rightClick(fixture, 2);
+    expect(remove.textContent?.trim()).toMatch(/Delete$/);
+    remove.click();
+    expect(appData.week()!.days[0].items.map(item => item.id)).toEqual([1, 1]);
+  });
+
+  it('deletes the whole selection when the right-click is on part of it', async () => {
+    const fixture = await render();
+    option(fixture, 0).click();
+    option(fixture, 1).dispatchEvent(new MouseEvent('click', { bubbles: true, shiftKey: true }));
+    fixture.detectChanges();
+    const remove = await rightClick(fixture, 1);
+    expect(remove.textContent).toContain('Delete 2 items');
+    remove.click();
+    expect(appData.week()!.days[0].items).toMatchObject([{ text: 'Two' }]);
+  });
+});

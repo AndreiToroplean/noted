@@ -68,6 +68,14 @@ export interface Clock {
 /** What `POST /parse` makes of a typed line. */
 export type ParsedItem = Omit<Entry, 'id' | 'position'> | Omit<Break, 'id' | 'position'> | Clock;
 
+/**
+ * Names an item within its day. Entries and breaks are separate tables, so an
+ * id alone can belong to one of each.
+ */
+export function itemKey(item: DayItem): string {
+  return `${item.kind === 'break' ? 'break' : 'entry'}-${item.id}`;
+}
+
 export interface Day {
   date: IsoDate;
   status: DayStatus;

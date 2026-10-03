@@ -1,15 +1,7 @@
 import { Injectable, computed, inject, linkedSignal } from '@angular/core';
 
-import { DayItem, IsoDate } from 'app/services/api';
+import { IsoDate } from 'app/services/api';
 import { AppData } from 'app/services/app-data';
-
-/**
- * Names an item within its day. Entries and breaks are separate tables, so an
- * id alone can belong to one of each.
- */
-export function itemKey(item: DayItem): string {
-  return `${item.kind === 'break' ? 'break' : 'entry'}-${item.id}`;
-}
 
 interface Selected {
   date: IsoDate | null;
@@ -74,6 +66,14 @@ export class Selection {
   /** Select exactly these, as a right-click on an unselected item does. */
   only(date: IsoDate, key: string) {
     this.state.set({ date, keys: new Set([key]), anchor: key });
+  }
+
+  /** Delete what is selected. No confirmation: Ctrl+Z brings it back. */
+  deleteSelected() {
+    const { date, keys } = this.state();
+    if (date === null || keys.size === 0) return;
+    this.appData.removeItems(date, keys);
+    this.clear();
   }
 
   clear() {

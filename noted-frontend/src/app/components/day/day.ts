@@ -1,14 +1,23 @@
 import { DatePipe, NgTemplateOutlet, UpperCasePipe } from '@angular/common';
 import { Component, ElementRef, computed, inject, input, signal, viewChild } from '@angular/core';
 
-import { MatMenuModule } from '@angular/material/menu';
+import { MatIconModule } from '@angular/material/icon';
+import { MatMenuModule, MatMenuTrigger } from '@angular/material/menu';
 
 import { BreakEditor } from 'app/components/break-editor/break-editor';
 import { EntryEditor } from 'app/components/entry-editor/entry-editor';
 import { Autofocus } from 'app/directives/autofocus';
-import { Break, BreakDraft, Day as DayData, DayItem, Entry, isBreak } from 'app/services/api';
+import {
+  Break,
+  BreakDraft,
+  Day as DayData,
+  DayItem,
+  Entry,
+  isBreak,
+  itemKey,
+} from 'app/services/api';
 import { AppData } from 'app/services/app-data';
-import { Selection, itemKey } from 'app/services/selection';
+import { Selection } from 'app/services/selection';
 import { clock, formatMinutes } from 'app/services/time';
 
 /** A day's two frame times. */
@@ -24,6 +33,7 @@ type Clock = 'arrival' | 'departure';
     EntryEditor,
     BreakEditor,
     MatMenuModule,
+    MatIconModule,
   ],
   templateUrl: './day.html',
 })
@@ -91,6 +101,30 @@ export class Day {
   protected onItemKeyup(key: string, event: KeyboardEvent) {
     if (event.target !== event.currentTarget || event.key !== ' ') return;
     this.selection.click(this.day().date, key, this.order(), { ctrl: true, shift: false });
+  }
+
+  /** How many items the context menu's Delete acts on. */
+  protected readonly selectedCount = this.selection.size;
+
+  /** Where the right-click was, so the menu opens under the pointer. */
+  protected readonly menuAt = signal({ x: 0, y: 0 });
+  private readonly itemMenu = viewChild.required<MatMenuTrigger>('itemMenuTrigger');
+
+  /**
+   * Right-click acts on the selection when it lands inside it, and otherwise on
+   * the item clicked — what a file manager does. An editor keeps the browser's
+   * own menu, which has copy and paste on it.
+   */
+  protected onItemContextMenu(key: string, event: MouseEvent) {
+    if (insideEditor(event.target)) return;
+    event.preventDefault();
+    if (!this.isSelected(key)) this.selection.only(this.day().date, key);
+    this.menuAt.set({ x: event.clientX, y: event.clientY });
+    this.itemMenu().openMenu();
+  }
+
+  protected deleteSelected() {
+    this.selection.deleteSelected();
   }
 
   private focusOption(key: string) {

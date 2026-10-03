@@ -12,6 +12,7 @@ import {
   IsoDate,
   ParsedItem,
   Week,
+  itemKey,
   toWrite,
 } from 'app/services/api';
 
@@ -155,6 +156,14 @@ export class AppData {
       items: day.items.map(item =>
         item.kind === 'break' && item.id === id ? { ...draft, id, position: item.position } : item,
       ),
+    }));
+  }
+
+  /** Remove items from a day, named by `itemKey`. Undoable like any other edit. */
+  removeItems(date: IsoDate, keys: ReadonlySet<string>) {
+    this.updateDay(date, day => ({
+      ...day,
+      items: day.items.filter(item => !keys.has(itemKey(item))),
     }));
   }
 

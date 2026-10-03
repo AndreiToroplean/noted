@@ -46,6 +46,7 @@
           (keydown)="onItemKeydown(key, $event)"
           (keyup)="onItemKeyup(key, $event)"
           (focus)="focused.set(key)"
+          (contextmenu)="onItemContextMenu(key, $event)"
         >
           @if (asBreak(item); as pause) {
             @if (editingBreakId() === pause.id) {
@@ -133,6 +134,22 @@
       }
     </div>
   </div>
+
+  <!-- An invisible anchor at the pointer, which is where the item menu opens. -->
+  <div
+    class="pointer-events-none fixed h-0 w-0"
+    aria-hidden="true"
+    [style.left.px]="menuAt().x"
+    [style.top.px]="menuAt().y"
+    [matMenuTriggerFor]="itemMenu"
+    #itemMenuTrigger="matMenuTrigger"
+  ></div>
+  <mat-menu #itemMenu="matMenu">
+    <button mat-menu-item data-delete-selected (click)="deleteSelected()">
+      <mat-icon>delete</mat-icon>
+      {{ selectedCount() === 1 ? 'Delete' : 'Delete ' + selectedCount() + ' items' }}
+    </button>
+  </mat-menu>
 
   <mat-menu #categoryMenu="matMenu">
     <ng-template matMenuContent let-entry="entry">

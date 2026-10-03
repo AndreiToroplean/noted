@@ -5,7 +5,7 @@ import { Title } from '@angular/platform-browser';
 
 import { settle } from 'testing/settle';
 
-import { API_BASE } from 'app/services/api';
+import { API_BASE, Day, Entry } from 'app/services/api';
 import { AppData } from 'app/services/app-data';
 import { provideDateFormat } from 'app/services/dates';
 import { Selection } from 'app/services/selection';
@@ -37,6 +37,29 @@ describe('App', () => {
   });
 
   describe('shortcuts', () => {
+    const task: Entry = {
+      id: 0,
+      position: 0,
+      kind: 'task',
+      done: false,
+      category: null,
+      project_id: null,
+      text: '',
+      note: null,
+      explicit_minutes: null,
+      explicit_start: null,
+      explicit_end: null,
+      approx_weight: null,
+    };
+    const monday: Day = {
+      date: '2026-02-09',
+      status: 'working',
+      arrival: null,
+      departure: null,
+      expected_minutes: 480,
+      items: [],
+    };
+
     function press(target: EventTarget, key: string, over: KeyboardEventInit = {}) {
       target.dispatchEvent(
         new KeyboardEvent('keydown', { key, ctrlKey: true, bubbles: true, ...over }),
@@ -87,6 +110,25 @@ describe('App', () => {
       item.dispatchEvent(new MouseEvent('click', { bubbles: true }));
       expect(selection.size()).toBe(1);
       overlay.remove();
+    });
+
+    it('deletes the selection on Delete, and Ctrl+Z brings it back', () => {
+      const fixture = TestBed.createComponent(App);
+      fixture.detectChanges();
+      const appData = TestBed.inject(AppData);
+      const items = [
+        { ...task, id: 1, text: 'One' },
+        { ...task, id: 2, text: 'Two' },
+      ];
+      appData.week.set({ week: '2026-02-09', days: [{ ...monday, items }] });
+      TestBed.inject(Selection).only('2026-02-09', 'entry-1');
+
+      press(document.body, 'Delete', { ctrlKey: false });
+      expect(appData.week()!.days[0].items).toMatchObject([{ text: 'Two' }]);
+      expect(TestBed.inject(Selection).size()).toBe(0);
+
+      press(document.body, 'z');
+      expect(appData.week()!.days[0].items).toHaveLength(2);
     });
 
     it('leaves Ctrl+Z to a field being typed in', () => {

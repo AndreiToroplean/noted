@@ -47,6 +47,9 @@ export class App {
     } else if (ctrl && (key === 'y' || (key === 'z' && event.shiftKey))) {
       event.preventDefault();
       this.appData.redo();
+    } else if (event.key === 'Delete' && this.selection.size() > 0) {
+      event.preventDefault();
+      this.selection.deleteSelected();
     } else if (event.key === 'Escape') {
       this.selection.clear();
     }

@@ -4,7 +4,7 @@ import { TestBed } from '@angular/core/testing';
 
 import { settle } from 'testing/settle';
 
-import { API_BASE, Day, Entry, Week } from 'app/services/api';
+import { API_BASE, Day, Entry, Week, itemKey } from 'app/services/api';
 import { AppData } from 'app/services/app-data';
 
 const MONDAY = '2026-02-09';
@@ -247,6 +247,20 @@ describe('AppData editing an item', () => {
       approx_weight: null,
     };
   }
+
+  it('removes the items it names, and only those', () => {
+    data.addBreak(MONDAY, {
+      kind: 'break',
+      is_noon: false,
+      description: null,
+      start: null,
+      end: null,
+      minutes: 15,
+    });
+    const pause = data.week()!.days[0].items[2];
+    data.removeItems(MONDAY, new Set(['entry-2', itemKey(pause)]));
+    expect(data.week()!.days[0].items).toMatchObject([{ kind: 'task', text: 'First' }]);
+  });
 
   it('changes only the item it names', () => {
     data.updateEntry(MONDAY, 2, { category: 'M', note: 'and a note' });
