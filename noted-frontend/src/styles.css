@@ -1,5 +1,7 @@
 @import 'tailwindcss';
 @import '@angular/material/prebuilt-themes/azure-blue.css';
+/* The app's one icon set, served from node_modules so it works offline. */
+@import 'material-symbols/rounded.css';
 
 html,
 body {

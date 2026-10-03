@@ -57,6 +57,9 @@ they describe. Vitest with `TestBed`; components get their inputs through
 rather than a live server. A flushed response needs a turn of the event loop before it
 reaches the resource that asked for it; `await settle()` from `testing/settle` covers that.
 
+**Icons** are Material Symbols (rounded), and nothing else: `<mat-icon>add</mat-icon>`.
+The font is served from `node_modules`, not a CDN.
+
 **Dates** are shown with `| date` and no format argument (or an injected `DatePipe`); the
 format is set once in `services/dates.ts`.
 
