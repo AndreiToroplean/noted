@@ -234,6 +234,14 @@ body {
   cursor: pointer;
 }
 
+/*
+ * Menus at desktop density. Material sizes a menu item for a finger, 48px, and
+ * has no density or token for menus to change it, so this is the one override.
+ */
+.mat-mdc-menu-item {
+  min-height: --spacing(9);
+}
+
 /* A leading icon drawn solid, as the colour samples in the category menu are. */
 .mat-icon.filled {
   font-variation-settings: 'FILL' 1;
