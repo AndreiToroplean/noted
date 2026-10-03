@@ -90,6 +90,10 @@ def test_a_day_of_only_a_status_marker_takes_that_status():
     assert markers("[OFF]").status == "off"
 
 
+def test_a_status_marker_is_consumed_rather_than_kept_as_an_entry():
+    assert markers("[PAID HOLIDAY]").entries == []
+
+
 def test_whether_a_day_was_paid_is_not_its_status():
     assert markers("[PAID HOLIDAY]").status == "holiday"
     assert markers("[UNPAID OFF]").status == "off"

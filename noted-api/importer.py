@@ -269,12 +269,14 @@ def read_markers(entries: list[ParsedEntry]) -> ParsedDay:
 
     # A day made of nothing but a status word is not a working day. The word
     # only counts when it is the whole day: `[Off to the dentist]` in a normal
-    # day is an annotation, not a declaration.
+    # day is an annotation, not a declaration. Read, it is consumed like any
+    # clock marker: the status says it, and the day has nothing else in it.
     if len(day.items) == 1 and day.entries and day.entries[0].kind == "meta":
         word = day.entries[0].text.strip()[1:-1].strip().upper()
         for needle, status in STATUSES:
             if needle in word:
                 day.status = status
+                day.items = []
                 break
 
     return day
