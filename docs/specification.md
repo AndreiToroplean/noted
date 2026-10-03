@@ -138,8 +138,11 @@ column rather than as entries.
 duration, may carry a description, and one of them is flagged as the **noon break** —
 that flag is what distinguishes lunch from an ad-hoc pause.
 
-A break may have a start and no end yet. An open break is a normal state, not an error:
-the user marks leaving and completes it on return.
+Arrival and departure can be marked as they happen, with buttons in the day column: see
+`offersArrival` / `offersLeaving` in `components/day/day.ts`. Leaving sets the departure,
+so a day that ends there needs nothing more; coming back turns the time away into a break
+and puts the departure back to the default. A departure earlier than its arrival is the
+next morning's.
 
 Breaks are created either by typing the bracket syntax inline, like an entry, or with an
 *add break* button and its keyboard shortcut. However they're created, they render as

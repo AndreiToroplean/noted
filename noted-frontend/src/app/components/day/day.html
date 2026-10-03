@@ -13,7 +13,7 @@
 
   @if (data.status === 'working') {
     <div
-      class="day-time day-frame px-2 py-1 text-center text-xs"
+      class="day-time day-frame flex items-center justify-center gap-2 px-2 py-1 text-xs"
       data-arrival
       (dblclick)="editingClock.set('arrival')"
     >
@@ -21,6 +21,17 @@
         [ngTemplateOutlet]="hours"
         [ngTemplateOutletContext]="{ $implicit: 'arrival', time: data.arrival }"
       />
+      @if (offersArrival() && editingClock() !== 'arrival') {
+        <button
+          mat-button
+          class="day-time-action"
+          data-arrived
+          (click)="arrivedNow()"
+          (dblclick)="$event.stopPropagation()"
+        >
+          Arrived now
+        </button>
+      }
     </div>
   }
 
@@ -211,7 +222,7 @@
 
   @if (data.status === 'working') {
     <footer
-      class="day-time day-frame px-2 py-1 text-center text-xs"
+      class="day-time day-frame flex items-center justify-center gap-2 px-2 py-1 text-xs"
       data-departure
       (dblclick)="editingClock.set('departure')"
     >
@@ -219,6 +230,29 @@
         [ngTemplateOutlet]="hours"
         [ngTemplateOutletContext]="{ $implicit: 'departure', time: data.departure }"
       />
+      @if (offersLeaving() && editingClock() !== 'departure') {
+        @if (away()) {
+          <button
+            mat-button
+            class="day-time-action"
+            data-came-back
+            (click)="cameBackNow()"
+            (dblclick)="$event.stopPropagation()"
+          >
+            Came back now
+          </button>
+        } @else {
+          <button
+            mat-button
+            class="day-time-action"
+            data-leaving
+            (click)="leavingNow()"
+            (dblclick)="$event.stopPropagation()"
+          >
+            Leaving now
+          </button>
+        }
+      }
     </footer>
   }
 

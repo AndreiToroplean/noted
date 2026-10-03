@@ -21,6 +21,7 @@ import {
   CdkDragPreview,
   CdkDropList,
 } from '@angular/cdk/drag-drop';
+import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatMenuModule, MatMenuTrigger } from '@angular/material/menu';
 import { MatTooltipModule } from '@angular/material/tooltip';
@@ -48,6 +49,7 @@ import {
 import { AppData } from 'app/services/app-data';
 import { DayHandoff, HandoffAt } from 'app/services/day-handoff';
 import { Drafts } from 'app/services/drafts';
+import { Now } from 'app/services/now';
 import { Selection } from 'app/services/selection';
 import { clock, formatMinutes, now, shiftClock } from 'app/services/time';
 
@@ -83,6 +85,7 @@ const BLANK: EntryText = { text: '', note: null };
     BreakEditor,
     Stepper,
     MatMenuModule,
+    MatButtonModule,
     MatIconModule,
     MatTooltipModule,
     CdkDropList,
@@ -519,6 +522,69 @@ export class Day {
     this.appData.setHours(this.day().date, { [which]: value ? `${value}:00` : null });
   }
 
+  private readonly moment = inject(Now).at;
+
+  /** Whether a time is the weekday's default still, or has been marked since. */
+  private marked(day: DayData, which: Clock): boolean {
+    return day[which] !== (this.appData.defaultsFor(day.date)?.[which] ?? null);
+  }
+
+  /** Without the defaults, nothing tells a marked time from one not marked yet. */
+  private readonly knowsDefaults = computed(() => this.appData.settings.value().length > 0);
+
+  /** Another day of the open week, if it is in it. */
+  private dayOn(date: IsoDate): DayData | undefined {
+    return this.appData.week()?.days.find(other => other.date === date);
+  }
+
+  /**
+   * "Arrived now", on today's date while its arrival is still the default, and
+   * once the day before has been left: a departure earlier than its arrival is
+   * the next morning's.
+   */
+  protected readonly offersArrival = computed(() => {
+    const day = this.day();
+    const now = this.moment();
+    if (!this.knowsDefaults() || day.date !== isoDate(now) || this.marked(day, 'arrival')) {
+      return false;
+    }
+    const before = this.dayOn(dayFrom(day.date, -1));
+    const left = before ? departedAt(before) : null;
+    return !left || now >= left;
+  });
+
+  /**
+   * "Leaving now", or "Came back now" once left: from the day's arrival until
+   * the next day's, so past midnight is still the day it started. A day with no
+   * arrival, a weekend's, was never arrived at to leave.
+   */
+  protected readonly offersLeaving = computed(() => {
+    const day = this.day();
+    const now = this.moment();
+    if (!this.knowsDefaults() || !day.arrival) return false;
+    const next = dayFrom(day.date, 1);
+    const nextArrival =
+      this.dayOn(next)?.arrival ?? this.appData.defaultsFor(next)?.arrival ?? null;
+    const from = moment(day.date, day.arrival);
+    const until = nextArrival ? moment(next, nextArrival) : moment(dayFrom(next, 1), '00:00');
+    return now >= from && now < until;
+  });
+
+  /** Left already: the departure is no longer the default. */
+  protected readonly away = computed(() => this.marked(this.day(), 'departure'));
+
+  protected arrivedNow() {
+    this.appData.setHours(this.day().date, { arrival: `${now()}:00` });
+  }
+
+  protected leavingNow() {
+    this.appData.setHours(this.day().date, { departure: `${now()}:00` });
+  }
+
+  protected cameBackNow() {
+    this.appData.cameBack(this.day().date, `${now()}:00`);
+  }
+
   /** The break open for editing, if any. */
   protected readonly editingBreakId = signal<number | null>(null);
 
@@ -697,4 +763,22 @@ function insideEditor(target: EventTarget | null): boolean {
     target instanceof Element &&
     target.closest('app-entry-editor, app-inline-entry-editor, app-break-editor') !== null
   );
+}
+
+/** A date and a wire time, as a moment in local time. */
+function moment(date: IsoDate, time: string): Date {
+  return new Date(`${date}T${time}`);
+}
+
+/** The date some days from another. */
+function dayFrom(date: IsoDate, days: number): IsoDate {
+  const at = moment(date, '00:00');
+  return isoDate(new Date(at.getFullYear(), at.getMonth(), at.getDate() + days));
+}
+
+/** When a day was left. A departure earlier than its arrival is the next morning's. */
+function departedAt(day: DayData): Date | null {
+  if (!day.departure) return null;
+  const overnight = day.arrival !== null && day.departure < day.arrival;
+  return moment(overnight ? dayFrom(day.date, 1) : day.date, day.departure);
 }

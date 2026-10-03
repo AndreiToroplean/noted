@@ -10,6 +10,7 @@ import { settle } from 'testing/settle';
 import { Day } from 'app/components/day/day';
 import { API_BASE, Break, Day as DayData, DayItem, Entry } from 'app/services/api';
 import { AppData } from 'app/services/app-data';
+import { Now } from 'app/services/now';
 
 function entry(category: string | null, over: Partial<Entry> = {}): Entry {
   return {
@@ -592,6 +593,114 @@ describe('Day editing its hours', () => {
     const fixture = await render({ arrival: null, departure: null });
     edit(fixture, 'departure', '18:00', 'Enter');
     expect(appData.week()!.days[0].departure).toBe('18:00:00');
+  });
+});
+
+describe('Day marking its hours as they happen', () => {
+  let http: HttpTestingController;
+  let appData: AppData;
+
+  const monday = '2026-02-09';
+  const tuesday = '2026-02-10';
+
+  beforeEach(() => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    TestBed.configureTestingModule({
+      providers: [provideHttpClient(), provideHttpClientTesting()],
+    });
+    http = TestBed.inject(HttpTestingController);
+    appData = TestBed.inject(AppData);
+  });
+
+  afterEach(() => vi.useRealTimers());
+
+  /** The clock moved on, as the page's own minute tick would notice. */
+  function at(time: Date) {
+    vi.setSystemTime(time);
+    TestBed.inject(Now).at.set(time);
+  }
+
+  async function render(time: Date, mon: Partial<DayData> = {}, tue: Partial<DayData> = {}) {
+    at(time);
+    const hours = { arrival: '09:30:00', departure: '18:30:00' };
+    appData.week.set({
+      week: monday,
+      days: [
+        { ...day([]), ...hours, ...mon },
+        { ...day([]), ...hours, date: tuesday, ...tue },
+      ],
+    });
+    const fixtures = appData.week()!.days.map(data => {
+      const fixture = TestBed.createComponent(Day);
+      fixture.componentRef.setInput('day', data);
+      return fixture;
+    });
+    fixtures.forEach(fixture => fixture.detectChanges());
+    http
+      .match(`${API_BASE}/settings`)
+      .forEach(request => request.flush([0, 1].map(weekday => ({ weekday, ...hours }))));
+    http.match(() => true).forEach(request => request.flush([]));
+    await settle();
+    return fixtures.map(fixture => {
+      const index = fixtures.indexOf(fixture);
+      return () => {
+        fixture.componentRef.setInput('day', appData.week()!.days[index]);
+        fixture.detectChanges();
+        return fixture.nativeElement as HTMLElement;
+      };
+    });
+  }
+
+  it('offers to mark the arrival on the day going on, and only there', async () => {
+    const [mon, tue] = await render(new Date(2026, 1, 9, 8, 50));
+    expect(tue().querySelector('[data-arrived]')).toBeNull();
+    (mon().querySelector('[data-arrived]') as HTMLElement).click();
+    expect(appData.week()!.days[0].arrival).toBe('08:50:00');
+    expect(mon().querySelector('[data-arrived]')).toBeNull();
+  });
+
+  it('marks leaving, then coming back as a break', async () => {
+    const [mon] = await render(new Date(2026, 1, 9, 12, 30), { arrival: '09:05:00' });
+    expect(mon().querySelector('[data-came-back]')).toBeNull();
+    (mon().querySelector('[data-leaving]') as HTMLElement).click();
+    expect(appData.week()!.days[0].departure).toBe('12:30:00');
+    expect(mon().querySelector('[data-leaving]')).toBeNull();
+
+    at(new Date(2026, 1, 9, 13, 45));
+    (mon().querySelector('[data-came-back]') as HTMLElement).click();
+    const day = appData.week()!.days[0];
+    expect(day.departure).toBe('18:30:00');
+    expect(day.items).toEqual([
+      expect.objectContaining({ kind: 'break', start: '12:30:00', end: '13:45:00' }),
+    ]);
+    expect(mon().querySelector('[data-leaving]')).not.toBeNull();
+  });
+
+  it('keeps offering to leave past midnight, until the next day is arrived at', async () => {
+    const [mon, tue] = await render(new Date(2026, 1, 10, 1, 0), { arrival: '09:05:00' });
+    expect(mon().querySelector('[data-leaving]')).not.toBeNull();
+    expect(tue().querySelector('[data-leaving]')).toBeNull();
+    expect(tue().querySelector('[data-arrived]')).not.toBeNull();
+
+    at(new Date(2026, 1, 10, 9, 10));
+    (tue().querySelector('[data-arrived]') as HTMLElement).click();
+    expect(mon().querySelector('[data-leaving]')).toBeNull();
+  });
+
+  it('offers no leaving from a day without an arrival', async () => {
+    const [mon] = await render(new Date(2026, 1, 9, 12, 30), { arrival: null });
+    expect(mon().querySelector('[data-leaving]')).toBeNull();
+  });
+
+  it('offers no arrival before the day before has been left, past midnight included', async () => {
+    // A departure before the arrival is the next morning's.
+    const [, tue] = await render(new Date(2026, 1, 10, 1, 0), {
+      arrival: '09:05:00',
+      departure: '02:00:00',
+    });
+    expect(tue().querySelector('[data-arrived]')).toBeNull();
+    at(new Date(2026, 1, 10, 2, 30));
+    expect(tue().querySelector('[data-arrived]')).not.toBeNull();
   });
 });
 

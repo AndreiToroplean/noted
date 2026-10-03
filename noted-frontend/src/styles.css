@@ -283,6 +283,18 @@ body {
   outline: none;
 }
 
+/*
+ * The hours' buttons sit in a row of small text, so Material's button is sized
+ * to it, and reaches into the row's padding rather than making it taller than
+ * the rows of the days beside it.
+ */
+.day-time-action {
+  margin-block: calc(--spacing(1) * -1);
+  --mat-button-text-container-height: --spacing(6);
+  --mat-button-text-horizontal-padding: --spacing(2);
+  --mat-button-text-label-text-size: var(--mat-sys-label-small-size);
+}
+
 .app-footer {
   border-top: 1px solid var(--app-outline);
   /* The tabs' own divider stopped short of the scroll arrows; the footer draws it instead. */
