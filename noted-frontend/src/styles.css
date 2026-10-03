@@ -242,6 +242,14 @@ body {
   cursor: pointer;
 }
 
+/* What an entry says of its own timing, in time's colour, as the hours are. */
+.entry-timing {
+  color: var(--checkbox-free-time);
+  font: var(--mat-sys-label-small);
+  line-height: inherit;
+  white-space: nowrap;
+}
+
 /*
  * Menus at desktop density. Material sizes a menu item for a finger, 48px, and
  * has no density or token for menus to change it, so this is the one override.

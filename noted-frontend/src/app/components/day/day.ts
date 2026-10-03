@@ -792,6 +792,16 @@ export class Day {
   }
 
   /** A break says either when it ran or how long it was, never both. */
+  /** What an entry says of its own timing, if anything — see specification §6.4. */
+  protected describeTiming(entry: Entry): string {
+    const { explicit_minutes: minutes, explicit_start: start, explicit_end: end } = entry;
+    if (start && end) return `${clock(start)}–${clock(end)}`;
+    if (end) return `→ ${clock(end)}`;
+    if (minutes !== null) return formatMinutes(minutes);
+    if (entry.approx_weight === null) return '';
+    return entry.approx_weight > 3 ? 'several hours' : 'hours';
+  }
+
   protected describeBreak(pause: Break): string {
     if (pause.start && pause.end) return `${clock(pause.start)}–${clock(pause.end)}`;
     if (pause.start) return `from ${clock(pause.start)}`;

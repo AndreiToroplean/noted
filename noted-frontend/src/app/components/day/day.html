@@ -439,6 +439,9 @@
             <div class="whitespace-pre-line opacity-60">{{ entry.note }}</div>
           }
         </div>
+        @if (describeTiming(entry); as timing) {
+          <span class="entry-timing shrink-0 self-start py-1" data-timing>{{ timing }}</span>
+        }
       }
     </div>
   }

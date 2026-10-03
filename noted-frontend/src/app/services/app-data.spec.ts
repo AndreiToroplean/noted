@@ -431,6 +431,17 @@ describe('AppData retyping an entry', () => {
     expect(monday.items[0]).toMatchObject({ id: 1, category: 'M', project_id: 9, done: true });
   });
 
+  it('keeps its timing when the line names none, and takes the new one whole when it does', async () => {
+    let monday = await retype('Fixed it', '[1h]', { ...parsed, explicit_minutes: 60 });
+    expect(monday.items[0]).toMatchObject({ explicit_minutes: 60 });
+
+    monday = await retype('Fixed it again', null, { ...parsed, text: 'Fixed it again' });
+    expect(monday.items[0]).toMatchObject({ explicit_minutes: 60 });
+
+    monday = await retype('Fixed it', '[-> 17:30]', { ...parsed, explicit_end: '17:30:00' });
+    expect(monday.items[0]).toMatchObject({ explicit_minutes: null, explicit_end: '17:30:00' });
+  });
+
   it('turns into an annotation, with no category, when written as one', async () => {
     const monday = await retype('[On site]', null, {
       ...parsed,

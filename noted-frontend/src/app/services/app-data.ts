@@ -407,9 +407,26 @@ function overlay(day: Day, id: number, parsed: ParsedItem): Day {
       note: parsed.note,
       category: parsed.category ?? (entry.kind === 'meta' ? null : entry.category),
       project_id: parsed.project_id ?? entry.project_id,
+      // Timing is one statement, not four fields: a new one replaces the old whole.
+      ...(statesTiming(parsed) ? timingOf(parsed) : timingOf(entry)),
     };
   }
   return { ...day, items: day.items.map((other, at) => (at === index ? item : other)) };
+}
+
+type Timing = Pick<Entry, 'explicit_minutes' | 'explicit_start' | 'explicit_end' | 'approx_weight'>;
+
+function timingOf({
+  explicit_minutes,
+  explicit_start,
+  explicit_end,
+  approx_weight,
+}: Timing): Timing {
+  return { explicit_minutes, explicit_start, explicit_end, approx_weight };
+}
+
+function statesTiming(timing: Timing): boolean {
+  return Object.values(timingOf(timing)).some(value => value !== null);
 }
 
 function explain(error: unknown): string {

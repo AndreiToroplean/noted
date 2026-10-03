@@ -99,6 +99,19 @@ describe('Day entry cell', () => {
     return fixture.nativeElement.querySelector('[data-category-cell]');
   }
 
+  it('shows the timing the entry states, beside its text', async () => {
+    const timing = async (over: Partial<Entry>) =>
+      (await render(over)).nativeElement.querySelector('[data-timing]')?.textContent?.trim();
+    expect(await timing({ explicit_minutes: 90 })).toBe('1h30');
+    expect(await timing({ explicit_end: '17:30:00' })).toBe('→ 17:30');
+    expect(await timing({ explicit_start: '09:00:00', explicit_end: '11:00:00' })).toBe(
+      '09:00–11:00',
+    );
+    expect(await timing({ approx_weight: 3 })).toBe('hours');
+    expect(await timing({ approx_weight: 5 })).toBe('several hours');
+    expect(await timing({})).toBeUndefined();
+  });
+
   it('fills the cell with the colour the API gives the category', async () => {
     const fixture = await render();
     expect(cell(fixture).style.getPropertyValue('--category')).toBe('#351c75');
