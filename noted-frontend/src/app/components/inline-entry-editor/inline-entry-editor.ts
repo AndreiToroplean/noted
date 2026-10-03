@@ -3,10 +3,12 @@ import {
   ElementRef,
   Injector,
   afterNextRender,
+  effect,
   inject,
   input,
   linkedSignal,
   output,
+  untracked,
   viewChild,
 } from '@angular/core';
 
@@ -23,8 +25,13 @@ export interface EntryText {
  *
  * Enter goes from the text down to the note, which is the entry's second line;
  * Ctrl+Enter saves. What is saved is read as a new line would be, so syntax
- * typed here — a category, a project, a break — applies to the entry. Esc, or focus going anywhere else, closes without asking
- * and hands back what was typed, for the day to keep as a draft.
+ * typed here — a category, a project, a break — applies to the entry. Esc, or
+ * focus going anywhere else, closes without asking and hands back what was
+ * typed, for the day to keep as a draft.
+ *
+ * The row at the foot of a day writes new entries with it too: there Ctrl+B
+ * turns to making a break instead, and a new `value` after each line is added
+ * starts the next one.
  *
  * Opened on such a draft, it knows the entry as saved too: Ctrl+Z, once the
  * fields are back to the draft, goes back to the saved entry, and Ctrl+Y brings
@@ -43,9 +50,13 @@ export class InlineEntryEditor {
   readonly error = input<string | null>(null);
   /** A save on its way: the fields hold still until it lands. */
   readonly busy = input(false);
+  /** Writing a new entry rather than editing one. */
+  readonly adding = input(false);
 
   readonly saved = output<EntryText>();
   readonly closed = output<EntryText>();
+  /** Ctrl+B, while adding: make a break instead, with what was typed kept. */
+  readonly switchToBreak = output<EntryText>();
 
   protected readonly text = linkedSignal(() => this.value().text);
   protected readonly note = linkedSignal(() => this.value().note);
@@ -63,6 +74,24 @@ export class InlineEntryEditor {
       const field = this.textField().nativeElement;
       field.focus();
       field.setSelectionRange(field.value.length, field.value.length);
+    });
+    // A fresh value starts over. Written into the fields straight away, as a
+    // binding may not see a change from a value it never drew; and focus goes
+    // to the text before a note field that is going away takes it along, which
+    // would read as leaving.
+    let opened = false;
+    effect(() => {
+      const value = this.value();
+      if (opened) {
+        untracked(() => {
+          const text = this.textField().nativeElement;
+          text.value = value.text;
+          const note = this.noteField()?.nativeElement;
+          if (note) note.value = value.note ?? '';
+          text.focus();
+        });
+      }
+      opened = true;
     });
   }
 
@@ -91,6 +120,9 @@ export class InlineEntryEditor {
       event.preventDefault();
       this.show(this.value());
       this.reverted = false;
+    } else if (this.adding() && ctrl && key === 'b') {
+      event.preventDefault();
+      this.switchToBreak.emit(this.current());
     } else if (event.key === 'Enter' && ctrl) {
       event.preventDefault();
       this.saved.emit(this.current());

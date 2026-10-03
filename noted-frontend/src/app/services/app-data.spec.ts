@@ -148,7 +148,7 @@ describe('AppData typing into a day', () => {
   });
 
   async function type(text: string, reply: object) {
-    const done = data.addTyped(MONDAY, text);
+    const done = data.addTyped(MONDAY, { text, note: null });
     const request = http.expectOne(`${API_BASE}/parse`);
     expect(request.request.body).toEqual({ text });
     request.flush(reply);
@@ -195,7 +195,7 @@ describe('AppData typing into a day', () => {
   });
 
   it('says why a line was refused', async () => {
-    const done = data.addTyped(MONDAY, '[Zz] Something');
+    const done = data.addTyped(MONDAY, { text: '[Zz] Something', note: null });
     http
       .expectOne(`${API_BASE}/parse`)
       .flush(

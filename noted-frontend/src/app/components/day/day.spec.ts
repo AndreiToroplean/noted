@@ -256,6 +256,32 @@ describe('Day adding an entry', () => {
     expect(open(fixture)).not.toBeNull();
   });
 
+  it('writes the new line in an entry like any other, cell and all', async () => {
+    const fixture = await render();
+    open(fixture);
+    const row = fixture.nativeElement.querySelector('[data-adding]') as HTMLElement;
+    expect(row.classList).toContain('day-item');
+    expect(row.querySelector('.entry-cell')).not.toBeNull();
+    expect(row.querySelector('app-inline-entry-editor [data-edit-text]')).not.toBeNull();
+  });
+
+  it('takes a note on the line below, as an entry being edited does', async () => {
+    const fixture = await render();
+    const field = open(fixture);
+    field.value = '[T] Fixed it';
+    field.dispatchEvent(new Event('input'));
+    field.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', cancelable: true }));
+    fixture.detectChanges();
+    const note = fixture.nativeElement.querySelector('[data-edit-note]') as HTMLTextAreaElement;
+    note.value = 'the header';
+    note.dispatchEvent(new Event('input'));
+    note.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', ctrlKey: true }));
+    const request = http.expectOne(`${API_BASE}/parse`);
+    expect(request.request.body).toEqual({ text: '[T] Fixed it\nthe header' });
+    request.flush(entry('T', { text: 'Fixed it', note: 'the header' }));
+    await settle();
+  });
+
   it('adds the line to the day and stays open for the next one', async () => {
     const fixture = await render();
     const field = open(fixture);
@@ -1040,7 +1066,7 @@ describe('Day drafts', () => {
     const fixture = await render();
     (fixture.nativeElement.querySelector('[data-add]') as HTMLElement).click();
     fixture.detectChanges();
-    const line = field(fixture, 'app-entry-editor textarea');
+    const line = field(fixture, '[data-edit-text]');
     type(line, '[T] Half a thought');
     line.dispatchEvent(new FocusEvent('focusout', { bubbles: true, relatedTarget: null }));
     fixture.detectChanges();
@@ -1049,7 +1075,7 @@ describe('Day drafts', () => {
     expect(add.textContent).toContain('[T] Half a thought');
     add.click();
     fixture.detectChanges();
-    expect(field(fixture, 'app-entry-editor textarea').value).toBe('[T] Half a thought');
+    expect(field(fixture, '[data-edit-text]').value).toBe('[T] Half a thought');
   });
 });
 

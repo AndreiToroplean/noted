@@ -97,14 +97,22 @@
     <!-- Positioned, so an editor's hint can sit just under it. -->
     <div class="relative">
       @if (adding() === 'entry') {
-        <app-entry-editor
-          [initial]="newDraft() ?? ''"
-          [error]="addError()"
-          [busy]="addBusy()"
-          (submitted)="add($event)"
-          (closed)="closeEditor($event)"
-          (switchToBreak)="switchToBreak($event)"
-        />
+        <!-- The row for adding, now being written in: an entry like the others. -->
+        <div class="day-item day-item-editing" data-adding>
+          <div class="flex items-stretch gap-2 pr-2 text-sm">
+            <ng-container [ngTemplateOutlet]="emptyCell" />
+            <app-inline-entry-editor
+              class="min-w-0 flex-1 py-1"
+              [value]="newFrom()"
+              [adding]="true"
+              [error]="addError()"
+              [busy]="addBusy()"
+              (saved)="add($event)"
+              (closed)="closeEditor($event)"
+              (switchToBreak)="switchToBreak($event)"
+            />
+          </div>
+        </div>
       } @else if (adding() === 'break') {
         <app-break-editor
           [initial]="newBreakDraft() ?? null"
@@ -124,22 +132,16 @@
           tabindex="0"
           aria-label="Add an entry"
           data-add
-          (click)="adding.set('entry')"
-          (keydown.enter)="adding.set('entry')"
+          (click)="writeEntry()"
+          (keydown.enter)="writeEntry()"
           (keydown.space)="$event.preventDefault()"
-          (keyup.space)="adding.set('entry')"
+          (keyup.space)="writeEntry()"
         >
           <div class="flex items-stretch gap-2 pr-2 text-sm">
-            <span
-              aria-hidden="true"
-              class="entry-cell flex shrink-0 flex-col items-center justify-between gap-0.5 px-1 py-1"
-            >
-              <input type="checkbox" class="entry-done" disabled tabindex="-1" />
-              <span class="entry-tag"></span>
-            </span>
+            <ng-container [ngTemplateOutlet]="emptyCell" />
             @if (newDraft(); as draft) {
               <!-- A line left half-typed, shown where it will go until it is finished. -->
-              <span class="day-add-draft min-w-0 flex-1 py-1">{{ firstLine(draft) }}</span>
+              <span class="day-add-draft min-w-0 flex-1 py-1">{{ draft.text }}</span>
             }
           </div>
           @if (!newDraft()) {
@@ -237,6 +239,17 @@
 </section>
 
 <!-- One item's content: used in the day, and again in the hand while dragging. -->
+<!-- The cell of an entry not yet written: unticked, and no category. -->
+<ng-template #emptyCell>
+  <span
+    aria-hidden="true"
+    class="entry-cell flex shrink-0 flex-col items-center justify-between gap-0.5 px-1 py-1"
+  >
+    <input type="checkbox" class="entry-done" disabled tabindex="-1" />
+    <span class="entry-tag"></span>
+  </span>
+</ng-template>
+
 <ng-template #itemBody let-item>
   @if (asBreak(item); as pause) {
     @if (editingBreakId() === pause.id) {

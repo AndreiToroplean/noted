@@ -22,7 +22,6 @@ import { MatMenuModule, MatMenuTrigger } from '@angular/material/menu';
 import { MatTooltipModule } from '@angular/material/tooltip';
 
 import { BreakEditor } from 'app/components/break-editor/break-editor';
-import { EntryEditor } from 'app/components/entry-editor/entry-editor';
 import {
   EntryText,
   InlineEntryEditor,
@@ -48,6 +47,9 @@ import { clock, formatMinutes } from 'app/services/time';
 /** A day's two frame times. */
 type Clock = 'arrival' | 'departure';
 
+/** An entry with nothing written in it yet. */
+const BLANK: EntryText = { text: '', note: null };
+
 @Component({
   selector: 'app-day',
   imports: [
@@ -55,7 +57,6 @@ type Clock = 'arrival' | 'departure';
     DatePipe,
     NgTemplateOutlet,
     Autofocus,
-    EntryEditor,
     InlineEntryEditor,
     BreakEditor,
     MatMenuModule,
@@ -420,39 +421,42 @@ export class Day {
   protected readonly adding = signal<'entry' | 'break' | null>(null);
   protected readonly addError = signal<string | null>(null);
   protected readonly addBusy = signal(false);
-  private readonly editor = viewChild(EntryEditor);
+  /** What the new line's editor starts from: a draft, or nothing yet. */
+  protected readonly newFrom = signal<EntryText>(BLANK);
 
-  protected async add(text: string) {
+  /** Open the row for writing an entry, where the last one was left. */
+  protected writeEntry() {
+    this.newFrom.set(this.newDraft() ?? BLANK);
+    this.adding.set('entry');
+  }
+
+  protected async add(typed: EntryText) {
     this.addBusy.set(true);
     try {
-      await this.appData.addTyped(this.day().date, text);
+      await this.appData.addTyped(this.day().date, typed);
       this.drafts.drop(this.newDraftKey());
       this.addError.set(null);
-      this.addBusy.set(false);
       // Straight on to the next line: a day is usually typed in one go.
-      this.editor()?.reset();
+      this.newFrom.set({ ...BLANK });
     } catch (error) {
       this.addError.set(error instanceof Error ? error.message : String(error));
+    } finally {
       this.addBusy.set(false);
     }
   }
 
   /** A new line left half-typed in this day, if any. */
   private readonly newDraftKey = computed(() => `new-${this.day().date}`);
-  protected readonly newDraft = computed(() => this.drafts.get<string>(this.newDraftKey()));
+  protected readonly newDraft = computed(() => this.drafts.get<EntryText>(this.newDraftKey()));
 
-  protected firstLine(text: string): string {
-    return text.split('\n')[0];
-  }
-
-  private keepNewDraft(text: string) {
-    if (text.trim()) this.drafts.keep(this.newDraftKey(), text);
+  private keepNewDraft(typed: EntryText) {
+    if (typed.text || typed.note) this.drafts.keep(this.newDraftKey(), typed);
     else this.drafts.drop(this.newDraftKey());
   }
 
   /** Ctrl+B: the line typed so far waits as a draft while the break is made. */
-  protected switchToBreak(text: string) {
-    this.keepNewDraft(text);
+  protected switchToBreak(typed: EntryText) {
+    this.keepNewDraft(typed);
     this.adding.set('break');
   }
 
@@ -470,18 +474,20 @@ export class Day {
   /** Ctrl+B back to typing: the break made so far waits as a draft. */
   protected switchToEntry(changed: BreakDraft | null) {
     if (changed) this.drafts.keep(this.newBreakKey(), changed);
-    this.adding.set('entry');
+    this.writeEntry();
   }
 
   protected addBreak(draft: BreakDraft) {
     this.drafts.drop(this.newBreakKey());
     this.appData.addBreak(this.day().date, draft);
     // Back to entries, which is what follows a break far more often than another.
-    this.adding.set('entry');
+    this.writeEntry();
   }
 
-  protected closeEditor(text = '') {
-    this.keepNewDraft(text);
+  protected closeEditor(typed: EntryText) {
+    // Already closed: a blur from the field going away, not from leaving it.
+    if (this.adding() !== 'entry') return;
+    this.keepNewDraft(typed);
     this.adding.set(null);
     this.addError.set(null);
   }

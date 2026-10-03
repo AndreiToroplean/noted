@@ -3,6 +3,7 @@
   class="inline-field"
   rows="1"
   aria-label="Entry"
+  [placeholder]="adding() ? '[T] project: what was done' : ''"
   data-edit-text
   [readOnly]="busy()"
   [value]="text()"
@@ -26,5 +27,11 @@
 @if (error(); as message) {
   <div class="editor-hint editor-hint-error" role="alert">{{ message }}</div>
 } @else {
-  <div class="editor-hint" role="note">Enter for a note · Ctrl+Enter to save · Esc to close</div>
+  <div class="editor-hint" role="note">
+    @if (adding()) {
+      Enter for a note · Ctrl+Enter to add · Ctrl+B for a break · Esc to close
+    } @else {
+      Enter for a note · Ctrl+Enter to save · Esc to close
+    }
+  </div>
 }

@@ -17,6 +17,14 @@ import {
   toWrite,
 } from 'app/services/api';
 
+/** A line as typed into a day, and the note typed under it. */
+export interface Typed {
+  text: string;
+  note: string | null;
+}
+
+const LINE_BREAK = '\n';
+
 /**
  * How long the week sits still before it is written back. Long enough that
  * typing a line doesn't produce a request per keystroke, short enough that
@@ -151,13 +159,8 @@ export class AppData {
    * Rejects with the API's own explanation when the line cannot be read, so
    * the editor can show it where it was typed.
    */
-  async addTyped(date: IsoDate, text: string): Promise<void> {
-    let parsed: ParsedItem;
-    try {
-      parsed = await firstValueFrom(this.http.post<ParsedItem>(`${API_BASE}/parse`, { text }));
-    } catch (error) {
-      throw new Error(explain(error));
-    }
+  async addTyped(date: IsoDate, typed: Typed): Promise<void> {
+    const parsed = await this.read(typed);
     this.updateDay(date, day => place(day, parsed));
   }
 
@@ -167,15 +170,19 @@ export class AppData {
    * out — a category, a project — the entry keeps. A line that reads as a break
    * or a time turns the entry into that.
    */
-  async retype(date: IsoDate, id: number, typed: { text: string; note: string | null }) {
-    const text = typed.note === null ? typed.text : `${typed.text}\n${typed.note}`;
-    let parsed: ParsedItem;
+  async retype(date: IsoDate, id: number, typed: Typed) {
+    const parsed = await this.read(typed);
+    this.updateDay(date, day => overlay(day, id, parsed));
+  }
+
+  /** A line as typed, with its note as the line under it, read by the API's grammar. */
+  private async read(typed: Typed): Promise<ParsedItem> {
+    const text = typed.note === null ? typed.text : [typed.text, typed.note].join(LINE_BREAK);
     try {
-      parsed = await firstValueFrom(this.http.post<ParsedItem>(`${API_BASE}/parse`, { text }));
+      return await firstValueFrom(this.http.post<ParsedItem>(`${API_BASE}/parse`, { text }));
     } catch (error) {
       throw new Error(explain(error));
     }
-    this.updateDay(date, day => overlay(day, id, parsed));
   }
 
   /** Add a break made in the editor, already in fields, to the end of a day. */

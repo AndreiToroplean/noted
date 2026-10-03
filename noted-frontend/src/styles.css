@@ -131,17 +131,6 @@ body {
   pointer-events: none;
 }
 
-.entry-editor-field {
-  /* Grows with what is typed, so a note never hides behind a scrollbar. */
-  field-sizing: content;
-  min-height: --spacing(6);
-  color: var(--app-on-surface);
-  background-color: var(--app-field);
-  border: 1px solid var(--app-accent);
-  border-radius: var(--mat-sys-corner-extra-small);
-  outline: none;
-}
-
 /*
  * A field that looks exactly like the text it edits: same type, no box, no
  * padding of its own, and as tall as what is in it. Editing in place moves

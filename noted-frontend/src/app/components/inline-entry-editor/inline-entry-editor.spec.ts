@@ -133,4 +133,22 @@ describe('InlineEntryEditor', () => {
       expect(press(text(), 'z', true).defaultPrevented).toBe(false);
     });
   });
+
+  it('turns to a break on Ctrl+B while adding, keeping what was typed', () => {
+    const fixture = TestBed.createComponent(InlineEntryEditor);
+    fixture.componentRef.setInput('value', { text: '', note: null });
+    fixture.componentRef.setInput('adding', true);
+    const switched: EntryText[] = [];
+    fixture.componentInstance.switchToBreak.subscribe(text => switched.push(text));
+    fixture.detectChanges();
+    const text = fixture.nativeElement.querySelector('[data-edit-text]') as HTMLTextAreaElement;
+    type(text, '[T] Half');
+    expect(press(text, 'b', true).defaultPrevented).toBe(true);
+    expect(switched).toEqual([{ text: '[T] Half', note: null }]);
+  });
+
+  it('leaves Ctrl+B alone while editing an entry', () => {
+    const { text } = render({ text: 'Fixed it', note: null });
+    expect(press(text(), 'b', true).defaultPrevented).toBe(false);
+  });
 });
