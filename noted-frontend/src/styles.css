@@ -96,9 +96,16 @@ body {
   background-color: color-mix(in srgb, var(--checkbox-free-time) 45%, transparent);
 }
 
-.day-status {
+/* What kind of day it was: quiet for a working day, in time's colour for one not worked. */
+.day-status-icon {
+  opacity: 0.4;
+  cursor: pointer;
+  user-select: none;
+}
+
+.day-status-icon.day-not-working {
+  opacity: 1;
   color: var(--checkbox-free-time);
-  text-transform: uppercase;
 }
 
 .day-header {

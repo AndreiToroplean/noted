@@ -220,7 +220,8 @@ data and should be surfaced rather than silently absorbed.
 
 A day has a **status** — working, or one of the non-working kinds the spreadsheet recorded
 as a first entry: holiday, off, or sick (`DayStatus` in `noted-api/models.py`). Whether the
-day was paid is not part of it. Non-working days expect zero.
+day was paid is not part of it. Non-working days expect zero. The status is an icon in the
+day's header, changed from a menu on a double-click (`STATUSES` in the day component).
 
 **A past day with no entries is an error and is flagged.** It should not be possible to
 have simply forgotten: at minimum a day carries a meta entry saying what happened. Empty

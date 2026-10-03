@@ -9,6 +9,7 @@ import {
   Category,
   Day,
   DayItem,
+  DayStatus,
   Entry,
   IsoDate,
   ParsedItem,
@@ -206,6 +207,12 @@ export class AppData {
   /** Add a break made in the editor, already in fields, to the end of a day. */
   addBreak(date: IsoDate, draft: BreakDraft) {
     this.updateDay(date, day => place(day, draft));
+  }
+
+  /** Set what kind of day it was. A day not worked expects no hours. */
+  setStatus(date: IsoDate, status: DayStatus) {
+    const expected = status === 'working' ? (this.defaultsFor(date)?.expected_minutes ?? 0) : 0;
+    this.updateDay(date, day => ({ ...day, status, expected_minutes: expected }));
   }
 
   /** Set a day's arrival or departure. */

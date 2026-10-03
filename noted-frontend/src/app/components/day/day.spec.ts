@@ -209,10 +209,97 @@ describe('Day hours', () => {
     expect(rows).toEqual(['Morning', 'break', 'Afternoon']);
   });
 
-  it('shows a non-working day by its status instead of its hours', async () => {
-    const dom = await render(withHours({ status: 'holiday', arrival: '09:30:00' }));
-    expect(dom.textContent).toContain('holiday');
-    expect(dom.querySelector('[data-arrival]')).toBeNull();
+  it('keeps the hours rows of a non-working day, empty, to line up with working days', async () => {
+    const dom = await render(withHours({ status: 'holiday', departure: '18:30:00' }));
+    expect(dom.querySelector('[data-arrival]')?.textContent).not.toContain('--:--');
+    expect(dom.querySelector('[data-departure]')?.textContent).not.toContain('18:30');
+    // A day not worked is missing no hours.
+    expect(dom.querySelector('.day-time-missing')).toBeNull();
+  });
+});
+
+describe('Day status', () => {
+  let http: HttpTestingController;
+  let appData: AppData;
+
+  beforeEach(() => {
+    TestBed.configureTestingModule({
+      providers: [provideHttpClient(), provideHttpClientTesting()],
+    });
+    http = TestBed.inject(HttpTestingController);
+    appData = TestBed.inject(AppData);
+  });
+
+  async function render(over: Partial<DayData> = {}) {
+    appData.week.set({ week: '2026-02-09', days: [{ ...day([]), ...over }] });
+    const fixture = TestBed.createComponent(Day);
+    fixture.componentRef.setInput('day', appData.week()!.days[0]);
+    fixture.detectChanges();
+    http.match(`${API_BASE}/settings`).forEach(request =>
+      request.flush([
+        {
+          weekday: 0,
+          arrival: '09:30:00',
+          break_start: '13:00:00',
+          break_end: '14:00:00',
+          departure: '18:30:00',
+          expected_minutes: 480,
+        },
+      ]),
+    );
+    http.match(() => true).forEach(request => request.flush([]));
+    await settle();
+    fixture.detectChanges();
+    return fixture;
+  }
+
+  async function openMenu(fixture: Awaited<ReturnType<typeof render>>) {
+    fixture.nativeElement
+      .querySelector('[data-status]')
+      .dispatchEvent(new MouseEvent('dblclick', { bubbles: true }));
+    fixture.detectChanges();
+    await settle();
+  }
+
+  const stored = () => appData.week()!.days[0];
+
+  it('shows the status as an icon in the header, a working day too', async () => {
+    const working = await render();
+    expect(working.nativeElement.querySelector('[data-status]').textContent.trim()).toBe('work');
+    const sick = await render({ status: 'sick' });
+    expect(sick.nativeElement.querySelector('[data-status]').textContent.trim()).toBe('sick');
+  });
+
+  it('offers every status by its icon and name on a double-click, the current checked', async () => {
+    const fixture = await render({ status: 'holiday' });
+    await openMenu(fixture);
+    const rows = [...document.querySelectorAll('[data-choice]')].map(row => [
+      row.getAttribute('data-choice'),
+      row.querySelector('.choice-name')?.textContent?.trim(),
+    ]);
+    expect(rows).toEqual([
+      ['working', 'Working'],
+      ['holiday', 'Holiday'],
+      ['off', 'Day off'],
+      ['sick', 'Sick day'],
+    ]);
+    expect(document.querySelector('[data-choice="holiday"] [data-current]')).not.toBeNull();
+  });
+
+  it('expects nothing of a day set to non-working', async () => {
+    const fixture = await render();
+    await openMenu(fixture);
+    (document.querySelector('[data-choice="off"]') as HTMLElement).click();
+    expect(stored().status).toBe('off');
+    expect(stored().expected_minutes).toBe(0);
+  });
+
+  it('expects the hours of its weekday of a day set back to working', async () => {
+    const fixture = await render({ status: 'off', expected_minutes: 0 });
+    await openMenu(fixture);
+    (document.querySelector('[data-choice="working"]') as HTMLElement).click();
+    expect(stored().status).toBe('working');
+    expect(stored().expected_minutes).toBe(480);
   });
 });
 

@@ -40,6 +40,7 @@ import {
   Category,
   Day as DayData,
   DayItem,
+  DayStatus,
   Entry,
   IsoDate,
   isBreak,
@@ -73,6 +74,14 @@ function startedAs(typed: string): EntryText {
 
 /** An entry with nothing written in it yet. */
 const BLANK: EntryText = { text: '', note: null };
+
+/** What each status is called, and drawn as, in the header and its menu. */
+const STATUSES: { value: DayStatus; label: string; icon: string }[] = [
+  { value: 'working', label: 'Working', icon: 'work' },
+  { value: 'holiday', label: 'Holiday', icon: 'beach_access' },
+  { value: 'off', label: 'Day off', icon: 'weekend' },
+  { value: 'sick', label: 'Sick day', icon: 'sick' },
+];
 
 @Component({
   selector: 'app-day',
@@ -644,6 +653,24 @@ export class Day {
         item.kind === 'task' && this.selection.has(this.day().date, itemKey(item)),
     ),
   );
+
+  protected readonly statuses = STATUSES;
+  protected readonly status = computed(
+    () => STATUSES.find(choice => choice.value === this.day().status) ?? STATUSES[0],
+  );
+  protected readonly working = computed(() => this.day().status === 'working');
+  private readonly statusMenu = viewChild.required<MatMenuTrigger>('statusMenuTrigger');
+
+  /** A double-click on the status icon opens the menu of statuses under it. */
+  protected openStatusMenu(event: MouseEvent) {
+    const icon = (event.currentTarget as HTMLElement).getBoundingClientRect();
+    this.menuAt.set({ x: icon.left, y: icon.bottom });
+    this.statusMenu().openMenu();
+  }
+
+  protected setStatus(status: DayStatus) {
+    this.appData.setStatus(this.day().date, status);
+  }
 
   /** The entry whose category menu is open. */
   protected readonly categoryFor = signal<Entry | null>(null);
