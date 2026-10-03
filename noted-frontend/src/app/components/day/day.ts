@@ -75,10 +75,11 @@ const BLANK: EntryText = { text: '', note: null };
     CdkDragPreview,
   ],
   templateUrl: './day.html',
+  host: { '[attr.data-date]': 'day().date' },
 })
 export class Day {
   readonly day = input.required<DayData>();
-  /** The days shown either side, where Shift+Tab and Tab take the editing. */
+  /** The days shown either side, coming round at the ends: where Shift+Tab and Tab go. */
   readonly previousDate = input<IsoDate | null>(null);
   readonly nextDate = input<IsoDate | null>(null);
 
@@ -288,8 +289,8 @@ export class Day {
    * tab stop), or reach its row for adding when it has none.
    */
   private selectInDayBeside(forward: boolean) {
-    const host = this.host.nativeElement;
-    const day = forward ? host.nextElementSibling : host.previousElementSibling;
+    const date = forward ? this.nextDate() : this.previousDate();
+    const day = date ? document.querySelector(`[data-date="${date}"]`) : null;
     const option = day?.querySelector<HTMLElement>('[role="option"][tabindex="0"]');
     if (option) option.click();
     (option ?? day?.querySelector<HTMLElement>('[data-add]'))?.focus();

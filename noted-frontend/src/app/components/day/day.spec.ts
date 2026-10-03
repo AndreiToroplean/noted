@@ -1123,8 +1123,10 @@ describe('Day moving between entries from the keyboard', () => {
     const fixtures = appData.week()!.days.map((data, index, days) => {
       const fixture = TestBed.createComponent(Day);
       fixture.componentRef.setInput('day', data);
-      fixture.componentRef.setInput('previousDate', days[index - 1]?.date ?? null);
-      fixture.componentRef.setInput('nextDate', days[index + 1]?.date ?? null);
+      // Coming round at either end, as the week hands them out.
+      const at = (offset: number) => days[(index + offset + days.length) % days.length].date;
+      fixture.componentRef.setInput('previousDate', at(-1));
+      fixture.componentRef.setInput('nextDate', at(1));
       return fixture;
     });
     // Side by side, as in a week; TestBed takes each root out as it makes the next.
@@ -1190,6 +1192,23 @@ describe('Day moving between entries from the keyboard', () => {
     );
     mon.detectChanges();
     expect(document.activeElement).toBe(option(mon, 0));
+  });
+
+  it('comes round from the last day to the first on Tab, and back on Shift+Tab', async () => {
+    const [mon, tue] = await render();
+    option(tue, 0).click();
+    tue.detectChanges();
+    option(tue, 0).dispatchEvent(
+      new KeyboardEvent('keydown', { key: 'Tab', bubbles: true, cancelable: true }),
+    );
+    mon.detectChanges();
+    expect(document.activeElement).toBe(option(mon, 0));
+
+    option(mon, 0).dispatchEvent(
+      new KeyboardEvent('keydown', { key: 'Tab', shiftKey: true, bubbles: true, cancelable: true }),
+    );
+    tue.detectChanges();
+    expect(document.activeElement).toBe(option(tue, 0));
   });
 
   it('keeps the checkboxes out of the way of Tab', async () => {

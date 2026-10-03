@@ -21,9 +21,10 @@ export class Week {
     this.week().days.filter((day, index) => index < 5 || hasContent(day)),
   );
 
-  /** The date of the shown day at an index, or null past either end. */
-  protected dateAt(index: number): IsoDate | null {
-    return index >= 0 ? (this.visibleDays()[index]?.date ?? null) : null;
+  /** The date of the shown day at an index, coming round past either end. */
+  protected dateAt(index: number): IsoDate {
+    const days = this.visibleDays();
+    return days[(index + days.length) % days.length].date;
   }
 }
 

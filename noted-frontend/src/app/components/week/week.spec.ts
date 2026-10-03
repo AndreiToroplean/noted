@@ -1,5 +1,7 @@
 import { TestBed } from '@angular/core/testing';
+import { By } from '@angular/platform-browser';
 
+import { Day as DayColumn } from 'app/components/day/day';
 import { Week } from 'app/components/week/week';
 import { Day, Week as WeekData } from 'app/services/api';
 
@@ -60,5 +62,17 @@ describe('Week', () => {
 
   it('shows the whole weekend when both days have content', () => {
     expect(columnsFor(week(1, 2))).toBe(7);
+  });
+
+  it('hands each day its neighbours for Tab, coming round at either end', () => {
+    const fixture = TestBed.createComponent(Week);
+    fixture.componentRef.setInput('week', week(0, 1));
+    fixture.detectChanges();
+    const days = fixture.debugElement
+      .queryAll(By.directive(DayColumn))
+      .map(column => column.componentInstance as DayColumn);
+    expect(days[0].previousDate()).toBe('2026-02-15');
+    expect(days[0].nextDate()).toBe('2026-02-10');
+    expect(days.at(-1)!.nextDate()).toBe('2026-02-09');
   });
 });
