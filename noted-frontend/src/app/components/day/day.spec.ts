@@ -1,6 +1,9 @@
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
+import { By } from '@angular/platform-browser';
+
+import { CdkDrag, CdkDropList } from '@angular/cdk/drag-drop';
 
 import { settle } from 'testing/settle';
 
@@ -594,5 +597,36 @@ describe('Day deleting items', () => {
     expect(remove.textContent).toContain('Delete 2 items');
     remove.click();
     expect(appData.week()!.days[0].items).toMatchObject([{ text: 'Two' }]);
+  });
+});
+
+describe('Day dragging items', () => {
+  it('makes each item draggable, and moves it where it is dropped', async () => {
+    TestBed.configureTestingModule({
+      providers: [provideHttpClient(), provideHttpClientTesting()],
+    });
+    const http = TestBed.inject(HttpTestingController);
+    const appData = TestBed.inject(AppData);
+    appData.week.set({
+      week: '2026-02-09',
+      days: [day([entry(null, { id: 1, text: 'One' }), entry(null, { id: 2, text: 'Two' })])],
+    });
+    const fixture = TestBed.createComponent(Day);
+    fixture.componentRef.setInput('day', appData.week()!.days[0]);
+    fixture.detectChanges();
+    http.match(() => true).forEach(request => request.flush([]));
+    await settle();
+    fixture.detectChanges();
+
+    expect(fixture.debugElement.queryAll(By.directive(CdkDrag))).toHaveLength(2);
+    const list = fixture.debugElement.query(By.directive(CdkDropList));
+    const here = list.injector.get(CdkDropList);
+    list.triggerEventHandler('cdkDropListDropped', {
+      previousContainer: here,
+      container: here,
+      previousIndex: 0,
+      currentIndex: 1,
+    });
+    expect(appData.week()!.days[0].items.map(item => item.id)).toEqual([2, 1]);
   });
 });

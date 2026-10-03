@@ -262,6 +262,26 @@ describe('AppData editing an item', () => {
     expect(data.week()!.days[0].items).toMatchObject([{ kind: 'task', text: 'First' }]);
   });
 
+  it('moves an item to another place in its day', () => {
+    data.moveItem(MONDAY, 0, MONDAY, 1);
+    expect(data.week()!.days[0].items.map(item => item.id)).toEqual([2, 1]);
+  });
+
+  it('moves an item into another day, where it is put', () => {
+    data.moveItem(MONDAY, 1, '2026-02-10', 0);
+    const [monday, tuesday] = data.week()!.days;
+    expect(monday.items.map(item => item.id)).toEqual([1]);
+    expect(tuesday.items).toMatchObject([{ id: 2, text: 'Second' }]);
+  });
+
+  it('takes a move back in one undo, across days too', () => {
+    data.moveItem(MONDAY, 1, '2026-02-10', 0);
+    data.undo();
+    const [monday, tuesday] = data.week()!.days;
+    expect(monday.items.map(item => item.id)).toEqual([1, 2]);
+    expect(tuesday.items).toEqual([]);
+  });
+
   it('changes only the item it names', () => {
     data.updateEntry(MONDAY, 2, { category: 'M', note: 'and a note' });
     const [first, second] = data.week()!.days[0].items;

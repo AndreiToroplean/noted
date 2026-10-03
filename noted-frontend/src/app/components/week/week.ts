@@ -1,11 +1,13 @@
 import { Component, computed, input } from '@angular/core';
 
+import { CdkDropListGroup } from '@angular/cdk/drag-drop';
+
 import { Day } from 'app/components/day/day';
 import { Day as DayData, Week as WeekData } from 'app/services/api';
 
 @Component({
   selector: 'app-week',
-  imports: [Day],
+  imports: [Day, CdkDropListGroup],
   templateUrl: './week.html',
 })
 export class Week {

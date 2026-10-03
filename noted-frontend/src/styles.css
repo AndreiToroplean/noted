@@ -232,3 +232,28 @@ body {
   background-color: var(--mat-sys-secondary-container);
   color: var(--mat-sys-on-secondary-container);
 }
+
+/*
+ * Dragging. The other items slide aside as one passes over them, so the day
+ * shows the shape it will have before the drop. Timings are the CDK's own.
+ */
+.day-items.cdk-drop-list-dragging .day-item:not(.cdk-drag-placeholder) {
+  transition: transform 250ms cubic-bezier(0, 0, 0.2, 1);
+}
+
+.day-item.cdk-drag-animating {
+  transition: transform 250ms cubic-bezier(0, 0, 0.2, 1);
+}
+
+.day-item.cdk-drag-preview {
+  background-color: var(--app-surface-raised);
+  color: var(--app-on-surface);
+  box-shadow: 0 4px 12px rgb(0 0 0 / 50%);
+}
+
+.day-item-drop-gap {
+  min-height: 1.75rem;
+  margin: 1px 4px;
+  border: 1px dashed var(--app-outline);
+  border-radius: var(--mat-sys-corner-extra-small);
+}

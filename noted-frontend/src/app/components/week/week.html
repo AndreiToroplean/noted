@@ -1,4 +1,5 @@
-<div class="flex h-full w-full gap-2">
+<!-- One drop group, so an item can be dragged from one day into another. -->
+<div class="flex h-full w-full gap-2" cdkDropListGroup>
   @for (day of visibleDays(); track day.date) {
     <app-day [day]="day" class="min-w-0 flex-1" />
   }

@@ -1,6 +1,7 @@
 import { DatePipe, NgTemplateOutlet, UpperCasePipe } from '@angular/common';
 import { Component, ElementRef, computed, inject, input, signal, viewChild } from '@angular/core';
 
+import { CdkDrag, CdkDragDrop, CdkDragPlaceholder, CdkDropList } from '@angular/cdk/drag-drop';
 import { MatIconModule } from '@angular/material/icon';
 import { MatMenuModule, MatMenuTrigger } from '@angular/material/menu';
 
@@ -13,6 +14,7 @@ import {
   Day as DayData,
   DayItem,
   Entry,
+  IsoDate,
   isBreak,
   itemKey,
 } from 'app/services/api';
@@ -34,6 +36,9 @@ type Clock = 'arrival' | 'departure';
     BreakEditor,
     MatMenuModule,
     MatIconModule,
+    CdkDropList,
+    CdkDrag,
+    CdkDragPlaceholder,
   ],
   templateUrl: './day.html',
 })
@@ -101,6 +106,21 @@ export class Day {
   protected onItemKeyup(key: string, event: KeyboardEvent) {
     if (event.target !== event.currentTarget || event.key !== ' ') return;
     this.selection.click(this.day().date, key, this.order(), { ctrl: true, shift: false });
+  }
+
+  /** An item open in an editor stays put: dragging would take the text field with it. */
+  protected isEditing(item: DayItem): boolean {
+    return isBreak(item) ? this.editingBreakId() === item.id : this.editingId() === item.id;
+  }
+
+  /** A drop from this day or from another; every day's list is in one group. */
+  protected onDrop(event: CdkDragDrop<IsoDate>) {
+    this.appData.moveItem(
+      event.previousContainer.data,
+      event.previousIndex,
+      event.container.data,
+      event.currentIndex,
+    );
   }
 
   /** How many items the context menu's Delete acts on. */

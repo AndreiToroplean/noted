@@ -27,7 +27,10 @@
   <!-- Only the entries scroll: the hours frame the day and stay where they are. -->
   <div class="min-h-0 flex-1 overflow-y-auto" data-items>
     <ul
-      class="list-none p-0"
+      class="day-items min-h-8 list-none p-0"
+      cdkDropList
+      [cdkDropListData]="data.date"
+      (cdkDropListDropped)="onDrop($event)"
       role="listbox"
       aria-multiselectable="true"
       [attr.aria-label]="(data.date | date: 'EEEE') + ', what was done'"
@@ -36,6 +39,8 @@
         @let key = keyOf(item);
         <li
           class="day-item"
+          cdkDrag
+          [cdkDragDisabled]="isEditing(item)"
           role="option"
           [attr.aria-selected]="isSelected(key)"
           [class.day-item-selected]="isSelected(key)"
@@ -103,6 +108,8 @@
               }
             </div>
           }
+          <!-- The gap the item will drop into, so the day shows its new shape while dragging. -->
+          <ng-template cdkDragPlaceholder><div class="day-item-drop-gap"></div></ng-template>
         </li>
       }
     </ul>

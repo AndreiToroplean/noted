@@ -196,14 +196,41 @@ export class AppData {
     this.week.set(next);
   }
 
-  /** Every edit comes through here, which is what makes every edit undoable. */
+  /**
+   * Move an item, within its day or into another, to where it was dropped. One
+   * edit, so one undo puts it back even across days.
+   */
+  moveItem(fromDate: IsoDate, fromIndex: number, toDate: IsoDate, toIndex: number) {
+    this.change(week => {
+      const item = week.days.find(day => day.date === fromDate)?.items[fromIndex];
+      if (!item) return week;
+      return {
+        ...week,
+        days: week.days.map(day => {
+          let items = day.items;
+          if (day.date === fromDate) items = items.filter((_, index) => index !== fromIndex);
+          if (day.date === toDate)
+            items = [...items.slice(0, toIndex), item, ...items.slice(toIndex)];
+          return items === day.items ? day : { ...day, items };
+        }),
+      };
+    });
+  }
+
   private updateDay(date: IsoDate, change: (day: Day) => Day) {
+    this.change(week => ({
+      ...week,
+      days: week.days.map(day => (day.date === date ? change(day) : day)),
+    }));
+  }
+
+  /** Every edit comes through here, which is what makes every edit undoable. */
+  private change(edit: (week: Week) => Week) {
     const before = this.week();
     if (!before) return;
-    this.week.set({
-      ...before,
-      days: before.days.map(day => (day.date === date ? change(day) : day)),
-    });
+    const after = edit(before);
+    if (after === before) return;
+    this.week.set(after);
     this.past.update(past => [...past.slice(1 - UNDO_DEPTH), before]);
     this.future.set([]);
   }
