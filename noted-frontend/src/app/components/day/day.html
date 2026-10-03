@@ -93,7 +93,8 @@
         </li>
       }
     </ul>
-    <div>
+    <!-- Positioned, so an editor's hint can sit just under it. -->
+    <div class="relative">
       @if (adding() === 'entry') {
         <app-entry-editor
           [initial]="newDraft() ?? ''"

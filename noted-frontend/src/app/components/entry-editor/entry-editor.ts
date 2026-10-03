@@ -45,7 +45,7 @@ export class EntryEditor {
       field.focus();
       field.setSelectionRange(field.value.length, field.value.length);
       // Focus only brings the field into view; the hint under it should come too.
-      this.host.scrollIntoView?.({ block: 'nearest' });
+      this.host.querySelector('.editor-hint')?.scrollIntoView?.({ block: 'nearest' });
     });
   }
 

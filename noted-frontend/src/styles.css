@@ -168,6 +168,26 @@ body {
   outline-offset: -2px;
 }
 
+/*
+ * Which keys do what, while an editor is open. Laid over whatever is below the
+ * item being edited, pinned to its foot, so it takes no room and moves nothing.
+ */
+.editor-hint {
+  position: absolute;
+  z-index: 2;
+  inset-block-start: 100%;
+  inset-inline-end: 0;
+  margin-block-start: --spacing(0.5);
+  padding: --spacing(0.5) --spacing(2);
+  border-radius: var(--mat-sys-corner-small);
+  background-color: var(--mat-sys-inverse-surface);
+  color: var(--mat-sys-inverse-on-surface);
+  box-shadow: var(--mat-sys-level2);
+  font: var(--mat-sys-label-small);
+  white-space: nowrap;
+  pointer-events: none;
+}
+
 .entry-editor-error {
   color: var(--mat-sys-error);
 }

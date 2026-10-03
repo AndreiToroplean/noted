@@ -78,4 +78,11 @@ describe('InlineEntryEditor', () => {
     text().dispatchEvent(new FocusEvent('focusout', { bubbles: true, relatedTarget: null }));
     expect(closed).toEqual([{ text: 'Fixed it', note: 'the header' }]);
   });
+
+  it('says which keys do what, in a hint laid over what is below', () => {
+    const { dom } = render({ text: 'Fixed it', note: null });
+    const hint = dom.querySelector('.editor-hint');
+    expect(hint?.textContent).toContain('Ctrl+Enter');
+    expect(hint?.getAttribute('aria-hidden')).toBeNull();
+  });
 });
