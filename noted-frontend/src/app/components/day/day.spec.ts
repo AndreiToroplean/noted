@@ -924,6 +924,21 @@ describe('Day drafts', () => {
     expect(field(fixture, '[data-edit-note]').value).toBe('Needs a test');
   });
 
+  it('goes back from a resumed draft to the entry as saved on Ctrl+Z', async () => {
+    const fixture = await render();
+    const text = openEntry(fixture);
+    type(text, 'Fixed it, nearly');
+    press(text, 'Escape');
+    fixture.detectChanges();
+
+    const reopened = openEntry(fixture);
+    reopened.dispatchEvent(
+      new KeyboardEvent('keydown', { key: 'z', ctrlKey: true, bubbles: true, cancelable: true }),
+    );
+    fixture.detectChanges();
+    expect(reopened.value).toBe('Fixed it');
+  });
+
   it('forgets the draft once the entry is saved', async () => {
     const fixture = await render();
     let text = openEntry(fixture);

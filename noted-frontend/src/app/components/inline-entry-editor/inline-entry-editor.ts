@@ -24,6 +24,10 @@ export interface EntryText {
  * Enter goes from the text down to the note, which is the entry's second line;
  * Ctrl+Enter saves. Esc, or focus going anywhere else, closes without asking
  * and hands back what was typed, for the day to keep as a draft.
+ *
+ * Opened on such a draft, it knows the entry as saved too: Ctrl+Z, once the
+ * fields are back to the draft, goes back to the saved entry, and Ctrl+Y brings
+ * the draft back. Before and after that, undo is the fields' own.
  */
 @Component({
   selector: 'app-inline-entry-editor',
@@ -32,12 +36,17 @@ export interface EntryText {
 })
 export class InlineEntryEditor {
   readonly value = input.required<EntryText>();
+  /** The entry as saved, when `value` is a draft of it. */
+  readonly original = input<EntryText | null>(null);
 
   readonly saved = output<EntryText>();
   readonly closed = output<EntryText>();
 
   protected readonly text = linkedSignal(() => this.value().text);
   protected readonly note = linkedSignal(() => this.value().note);
+
+  /** Whether Ctrl+Z has just gone from the draft back to the entry as saved. */
+  private reverted = false;
 
   private readonly host = inject<ElementRef<HTMLElement>>(ElementRef).nativeElement;
   private readonly injector = inject(Injector);
@@ -64,7 +73,20 @@ export class InlineEntryEditor {
   }
 
   protected onKeydown(event: KeyboardEvent) {
-    if (event.key === 'Enter' && (event.ctrlKey || event.metaKey)) {
+    const ctrl = event.ctrlKey || event.metaKey;
+    const key = event.key.toLowerCase();
+    const undo = ctrl && key === 'z' && !event.shiftKey;
+    const redo = ctrl && (key === 'y' || (key === 'z' && event.shiftKey));
+    const original = this.original();
+    if (undo && original && this.shows(this.value())) {
+      event.preventDefault();
+      this.show(original);
+      this.reverted = true;
+    } else if (redo && this.reverted) {
+      event.preventDefault();
+      this.show(this.value());
+      this.reverted = false;
+    } else if (event.key === 'Enter' && ctrl) {
       event.preventDefault();
       this.saved.emit(this.current());
     } else if (event.key === 'Escape') {
@@ -78,6 +100,26 @@ export class InlineEntryEditor {
     const next = event.relatedTarget;
     if (next instanceof Node && this.host.contains(next)) return;
     this.closed.emit(this.current());
+  }
+
+  /** Typing anything starts the fields' own undo afresh. */
+  protected onInput(field: 'text' | 'note', value: string) {
+    this[field].set(value);
+    this.reverted = false;
+  }
+
+  private shows(value: EntryText): boolean {
+    return this.text() === value.text && this.note() === value.note;
+  }
+
+  private show(value: EntryText) {
+    const inNote = document.activeElement === this.noteField()?.nativeElement;
+    this.text.set(value.text);
+    this.note.set(value.note);
+    // A note that is gone takes the focus with it, so give it back to the text.
+    if (inNote && value.note === null) {
+      afterNextRender(() => this.textField().nativeElement.focus(), { injector: this.injector });
+    }
   }
 
   private current(): EntryText {

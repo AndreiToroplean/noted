@@ -5,7 +5,7 @@
   aria-label="Entry"
   data-edit-text
   [value]="text()"
-  (input)="text.set(textField.value)"
+  (input)="onInput('text', textField.value)"
   (keydown)="onTextKeydown($event)"
 ></textarea>
 @if (note() !== null) {
@@ -17,7 +17,7 @@
     placeholder="Note"
     data-edit-note
     [value]="note()"
-    (input)="note.set(noteField.value)"
+    (input)="onInput('note', noteField.value)"
     (keydown)="onKeydown($event)"
   ></textarea>
 }

@@ -6,9 +6,10 @@ import {
 } from 'app/components/inline-entry-editor/inline-entry-editor';
 
 describe('InlineEntryEditor', () => {
-  function render(value: EntryText) {
+  function render(value: EntryText, original: EntryText | null = null) {
     const fixture = TestBed.createComponent(InlineEntryEditor);
     fixture.componentRef.setInput('value', value);
+    fixture.componentRef.setInput('original', original);
     const saved: EntryText[] = [];
     const closed: EntryText[] = [];
     fixture.componentInstance.saved.subscribe(text => saved.push(text));
@@ -26,8 +27,14 @@ describe('InlineEntryEditor', () => {
     field.dispatchEvent(new Event('input'));
   }
 
-  function press(field: HTMLTextAreaElement, key: string, ctrlKey = false) {
-    const event = new KeyboardEvent('keydown', { key, ctrlKey, cancelable: true, bubbles: true });
+  function press(field: HTMLTextAreaElement, key: string, ctrlKey = false, shiftKey = false) {
+    const event = new KeyboardEvent('keydown', {
+      key,
+      ctrlKey,
+      shiftKey,
+      cancelable: true,
+      bubbles: true,
+    });
     field.dispatchEvent(event);
     return event;
   }
@@ -84,5 +91,46 @@ describe('InlineEntryEditor', () => {
     const hint = dom.querySelector('.editor-hint');
     expect(hint?.textContent).toContain('Ctrl+Enter');
     expect(hint?.getAttribute('aria-hidden')).toBeNull();
+  });
+
+  describe('opened on a draft', () => {
+    const draft = { text: 'Fixed it, nearly', note: 'needs a test' };
+    const original = { text: 'Fixed it', note: null };
+
+    it('goes back to the entry as saved on Ctrl+Z', () => {
+      const { fixture, text, note } = render(draft, original);
+      expect(press(text(), 'z', true).defaultPrevented).toBe(true);
+      fixture.detectChanges();
+      expect(text().value).toBe('Fixed it');
+      expect(note()).toBeNull();
+    });
+
+    it('brings the draft back on Ctrl+Y or Ctrl+Shift+Z', () => {
+      const { fixture, text, note } = render(draft, original);
+      press(text(), 'z', true);
+      fixture.detectChanges();
+      expect(press(text(), 'y', true).defaultPrevented).toBe(true);
+      fixture.detectChanges();
+      expect(text().value).toBe('Fixed it, nearly');
+      expect(note()?.value).toBe('needs a test');
+
+      press(text(), 'z', true);
+      fixture.detectChanges();
+      press(text(), 'Z', true, true);
+      fixture.detectChanges();
+      expect(text().value).toBe('Fixed it, nearly');
+    });
+
+    it('leaves Ctrl+Z to the field once something has been typed', () => {
+      const { fixture, text } = render(draft, original);
+      type(text(), 'Fixed it, nearly there');
+      fixture.detectChanges();
+      expect(press(text(), 'z', true).defaultPrevented).toBe(false);
+    });
+
+    it('leaves Ctrl+Z to the field when there was no draft', () => {
+      const { text } = render(original);
+      expect(press(text(), 'z', true).defaultPrevented).toBe(false);
+    });
   });
 });

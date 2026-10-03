@@ -279,7 +279,12 @@ export class Day {
    * draft left last time, or the entry as it is. Taken once, at opening, so a
    * redraw while typing cannot reset the editor to it.
    */
-  protected readonly editing = signal<{ id: number; from: EntryText } | null>(null);
+  protected readonly editing = signal<{
+    id: number;
+    from: EntryText;
+    /** The entry as saved, when it opened on a draft, for Ctrl+Z to go back to. */
+    original: EntryText | null;
+  } | null>(null);
 
   private readonly drafts = inject(Drafts);
 
@@ -289,11 +294,9 @@ export class Day {
    */
   protected openEntry(entry: Entry) {
     this.selection.clear();
-    const from = this.drafts.get<EntryText>(itemKey(entry)) ?? {
-      text: entry.text,
-      note: entry.note,
-    };
-    this.editing.set({ id: entry.id, from });
+    const saved = { text: entry.text, note: entry.note };
+    const draft = this.drafts.get<EntryText>(itemKey(entry));
+    this.editing.set({ id: entry.id, from: draft ?? saved, original: draft ? saved : null });
   }
 
   /** An edit is plain text, never the syntax again — see specification §3.2. */
