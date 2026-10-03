@@ -175,3 +175,11 @@ body {
   opacity: 1;
   text-decoration: underline;
 }
+
+.day-time-field {
+  color: var(--app-on-surface);
+  background-color: var(--app-surface);
+  border: 1px solid var(--checkbox-free-time);
+  border-radius: 2px;
+  outline: none;
+}

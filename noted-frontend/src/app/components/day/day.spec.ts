@@ -364,3 +364,69 @@ describe('Day editing a break', () => {
     expect(fixture.nativeElement.querySelector('[data-break-editor]')).toBeNull();
   });
 });
+
+describe('Day editing its hours', () => {
+  let http: HttpTestingController;
+  let appData: AppData;
+
+  beforeEach(() => {
+    TestBed.configureTestingModule({
+      providers: [provideHttpClient(), provideHttpClientTesting()],
+    });
+    http = TestBed.inject(HttpTestingController);
+    appData = TestBed.inject(AppData);
+  });
+
+  async function render(over: Partial<DayData> = {}) {
+    appData.week.set({ week: '2026-02-09', days: [{ ...day([]), ...over }] });
+    const fixture = TestBed.createComponent(Day);
+    fixture.componentRef.setInput('day', appData.week()!.days[0]);
+    fixture.detectChanges();
+    http.match(() => true).forEach(request => request.flush([]));
+    await settle();
+    fixture.detectChanges();
+    return fixture;
+  }
+
+  function edit(
+    fixture: Awaited<ReturnType<typeof render>>,
+    which: string,
+    value: string,
+    key: string,
+  ) {
+    fixture.nativeElement
+      .querySelector(`[data-${which}]`)
+      .dispatchEvent(new MouseEvent('dblclick'));
+    fixture.detectChanges();
+    const field = fixture.nativeElement.querySelector('input[type="time"]') as HTMLInputElement;
+    field.value = value;
+    field.dispatchEvent(new Event('input'));
+    field.dispatchEvent(new KeyboardEvent('keydown', { key }));
+    fixture.detectChanges();
+  }
+
+  it('changes the arrival on a double-click', async () => {
+    const fixture = await render({ arrival: '09:30:00', departure: '18:00:00' });
+    edit(fixture, 'arrival', '09:15', 'Enter');
+    expect(appData.week()!.days[0].arrival).toBe('09:15:00');
+    expect(fixture.nativeElement.querySelector('input[type="time"]')).toBeNull();
+  });
+
+  it('changes the departure on a double-click', async () => {
+    const fixture = await render({ arrival: '09:30:00', departure: '18:00:00' });
+    edit(fixture, 'departure', '18:45', 'Enter');
+    expect(appData.week()!.days[0].departure).toBe('18:45:00');
+  });
+
+  it('leaves the time alone on Esc', async () => {
+    const fixture = await render({ arrival: '09:30:00', departure: '18:00:00' });
+    edit(fixture, 'arrival', '07:00', 'Escape');
+    expect(appData.week()!.days[0].arrival).toBe('09:30:00');
+  });
+
+  it('offers a working day with no hours somewhere to write them', async () => {
+    const fixture = await render({ arrival: null, departure: null });
+    edit(fixture, 'departure', '18:00', 'Enter');
+    expect(appData.week()!.days[0].departure).toBe('18:00:00');
+  });
+});

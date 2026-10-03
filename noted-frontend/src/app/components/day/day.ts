@@ -1,17 +1,29 @@
-import { DatePipe, SlicePipe, UpperCasePipe } from '@angular/common';
+import { DatePipe, NgTemplateOutlet, UpperCasePipe } from '@angular/common';
 import { Component, inject, input, signal, viewChild } from '@angular/core';
 
 import { MatMenuModule } from '@angular/material/menu';
 
 import { BreakEditor } from 'app/components/break-editor/break-editor';
 import { EntryEditor } from 'app/components/entry-editor/entry-editor';
+import { Autofocus } from 'app/directives/autofocus';
 import { Break, BreakDraft, Day as DayData, DayItem, Entry, isBreak } from 'app/services/api';
 import { AppData } from 'app/services/app-data';
 import { clock, formatMinutes } from 'app/services/time';
 
+/** A day's two frame times. */
+type Clock = 'arrival' | 'departure';
+
 @Component({
   selector: 'app-day',
-  imports: [UpperCasePipe, DatePipe, SlicePipe, EntryEditor, BreakEditor, MatMenuModule],
+  imports: [
+    UpperCasePipe,
+    DatePipe,
+    NgTemplateOutlet,
+    Autofocus,
+    EntryEditor,
+    BreakEditor,
+    MatMenuModule,
+  ],
   templateUrl: './day.html',
 })
 export class Day {
@@ -37,6 +49,27 @@ export class Day {
 
   protected draftOf(entry: Entry): string {
     return entry.note ? `${entry.text}\n${entry.note}` : entry.text;
+  }
+
+  /** Which of the day's frame times is open for editing, if either. */
+  protected readonly editingClock = signal<Clock | null>(null);
+  protected readonly clock = clock;
+
+  protected onClockKey(event: KeyboardEvent, which: Clock, value: string) {
+    if (event.key === 'Enter') {
+      event.preventDefault();
+      this.saveClock(which, value);
+    } else if (event.key === 'Escape') {
+      event.preventDefault();
+      this.editingClock.set(null);
+    }
+  }
+
+  /** Clicking away keeps the time too; only Esc throws it away. */
+  protected saveClock(which: Clock, value: string) {
+    if (this.editingClock() !== which) return;
+    this.editingClock.set(null);
+    this.appData.setHours(this.day().date, { [which]: value ? `${value}:00` : null });
   }
 
   /** The break open for editing, if any. */

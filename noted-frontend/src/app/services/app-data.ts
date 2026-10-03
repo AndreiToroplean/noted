@@ -94,6 +94,11 @@ export class AppData {
     this.updateDay(date, day => place(day, draft));
   }
 
+  /** Set a day's arrival or departure. */
+  setHours(date: IsoDate, hours: Partial<Pick<Day, 'arrival' | 'departure'>>) {
+    this.updateDay(date, day => ({ ...day, ...hours }));
+  }
+
   /** Replace a break with what the editor made of it. */
   updateBreak(date: IsoDate, id: number, draft: BreakDraft) {
     this.updateDay(date, day => ({

@@ -11,9 +11,16 @@
     }
   </header>
 
-  @if (data.status === 'working' && data.arrival) {
-    <div class="day-time day-frame px-2 py-1 text-center text-xs" data-arrival>
-      {{ data.arrival | slice: 0 : 5 }}
+  @if (data.status === 'working') {
+    <div
+      class="day-time day-frame px-2 py-1 text-center text-xs"
+      data-arrival
+      (dblclick)="editingClock.set('arrival')"
+    >
+      <ng-container
+        [ngTemplateOutlet]="hours"
+        [ngTemplateOutletContext]="{ $implicit: 'arrival', time: data.arrival }"
+      />
     </div>
   }
 
@@ -129,9 +136,34 @@
     </ng-template>
   </mat-menu>
 
-  @if (data.status === 'working' && data.departure) {
-    <footer class="day-time day-frame px-2 py-1 text-center text-xs" data-departure>
-      {{ data.departure | slice: 0 : 5 }}
+  @if (data.status === 'working') {
+    <footer
+      class="day-time day-frame px-2 py-1 text-center text-xs"
+      data-departure
+      (dblclick)="editingClock.set('departure')"
+    >
+      <ng-container
+        [ngTemplateOutlet]="hours"
+        [ngTemplateOutletContext]="{ $implicit: 'departure', time: data.departure }"
+      />
     </footer>
   }
+
+  <!-- One of the day's two frame times, shown or open for editing. -->
+  <ng-template #hours let-which let-time="time">
+    @if (editingClock() === which) {
+      <input
+        #field
+        appAutofocus
+        type="time"
+        class="day-time-field px-1 text-center"
+        [attr.aria-label]="which"
+        [value]="time ? clock(time) : ''"
+        (keydown)="onClockKey($event, which, field.value)"
+        (blur)="saveClock(which, field.value)"
+      />
+    } @else {
+      {{ time ? clock(time) : '--:--' }}
+    }
+  </ng-template>
 </section>
