@@ -93,6 +93,11 @@ export class Day {
       event.preventDefault(); // acted on at keyup, as a native control does; this stops the scroll
       return;
     }
+    if (event.key === 'Enter') {
+      event.preventDefault();
+      this.edit(key);
+      return;
+    }
     const step = { ArrowUp: -1, ArrowDown: 1 }[event.key];
     if (step === undefined) return;
     event.preventDefault();
@@ -106,10 +111,27 @@ export class Day {
     this.focusOption(next);
   }
 
-  /** Space toggles the focused option, as Ctrl+click does. */
+  /**
+   * Space ticks the selection, or the focused item if it is not part of it.
+   * Mixed, it ticks them all; all done already, it unticks them. One edit, so
+   * one Ctrl+Z.
+   */
   protected onItemKeyup(key: string, event: KeyboardEvent) {
     if (event.target !== event.currentTarget || event.key !== ' ') return;
-    this.selection.click(this.day().date, key, this.order(), { ctrl: true, shift: false });
+    if (!this.isSelected(key)) this.selection.only(this.day().date, key);
+
+    const tasks = this.selectedTasks();
+    if (tasks.length === 0) return;
+    const done = tasks.some(entry => !entry.done);
+    this.appData.updateEntries(this.day().date, new Set(tasks.map(itemKey)), { done });
+  }
+
+  /** Open an item in its editor, as a double-click does. */
+  private edit(key: string) {
+    const item = this.day().items.find(other => itemKey(other) === key);
+    if (!item) return;
+    if (isBreak(item)) this.editingBreakId.set(item.id);
+    else this.editingId.set(item.id);
   }
 
   /** An item open in an editor stays put: dragging would take the text field with it. */

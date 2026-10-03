@@ -564,14 +564,54 @@ describe('Day selecting items', () => {
     expect(selected(fixture)).toEqual([1, 2]);
   });
 
-  it('moves without selecting under Ctrl, and toggles with Space', async () => {
+  it('moves without selecting under Ctrl', async () => {
     const fixture = await render();
     click(fixture, 0);
     key(fixture, 0, { key: 'ArrowDown', ctrlKey: true });
     key(fixture, 1, { key: 'ArrowDown', ctrlKey: true });
     expect(selected(fixture)).toEqual([0]);
+    expect(document.activeElement).toBe(options(fixture)[2]);
+  });
+
+  function done(): boolean[] {
+    return appData
+      .week()!
+      .days[0].items.filter(item => item.kind === 'task')
+      .map(item => (item as Entry).done);
+  }
+
+  it('ticks the selected entries on Space, then unticks them, breaks aside', async () => {
+    const fixture = await render();
+    click(fixture, 0);
+    click(fixture, 2, { shiftKey: true });
     key(fixture, 2, { key: ' ' }, 'keyup');
-    expect(selected(fixture)).toEqual([0, 2]);
+    expect(done()).toEqual([true, true, false]);
+
+    fixture.componentRef.setInput('day', appData.week()!.days[0]);
+    fixture.detectChanges();
+    key(fixture, 2, { key: ' ' }, 'keyup');
+    expect(done()).toEqual([false, false, false]);
+  });
+
+  it('ticks the focused entry on Space when it is not selected', async () => {
+    const fixture = await render();
+    click(fixture, 0);
+    key(fixture, 0, { key: 'ArrowDown', ctrlKey: true });
+    key(fixture, 1, { key: 'ArrowDown', ctrlKey: true });
+    key(fixture, 2, { key: ' ' }, 'keyup');
+    expect(done()).toEqual([false, true, false]);
+  });
+
+  it('opens the focused item for editing on Enter', async () => {
+    const fixture = await render();
+    key(fixture, 0, { key: 'Enter' });
+    expect(fixture.nativeElement.querySelector('textarea')?.value).toBe('One');
+  });
+
+  it('opens a focused break for editing on Enter', async () => {
+    const fixture = await render();
+    key(fixture, 1, { key: 'Enter' });
+    expect(fixture.nativeElement.querySelector('[data-break-editor]')).not.toBeNull();
   });
 });
 
