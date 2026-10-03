@@ -21,11 +21,30 @@
   <ul class="min-h-0 flex-1 list-none overflow-y-auto p-0" data-items>
     @for (item of data.items; track item.kind + '-' + item.id) {
       @if (asBreak(item); as pause) {
-        <li class="day-break flex items-center gap-2 px-2 py-1 text-xs" data-break>
-          <span class="day-break-rule flex-1"></span>
-          <span>{{ pause.is_noon ? 'lunch' : 'break' }} {{ describeBreak(pause) }}</span>
-          <span class="day-break-rule flex-1"></span>
-        </li>
+        @if (editingBreakId() === pause.id) {
+          <li>
+            <app-break-editor
+              [initial]="pause"
+              (submitted)="saveBreak(pause, $event)"
+              (cancelled)="editingBreakId.set(null)"
+            />
+          </li>
+        } @else {
+          <li
+            class="day-break flex items-center gap-2 px-2 py-1 text-xs"
+            data-break
+            (dblclick)="editingBreakId.set(pause.id)"
+          >
+            <span class="day-break-rule flex-1"></span>
+            <span
+              >{{ pause.is_noon ? 'lunch' : 'break' }} {{ describeBreak(pause) }}
+              @if (pause.description) {
+                · {{ pause.description }}
+              }
+            </span>
+            <span class="day-break-rule flex-1"></span>
+          </li>
+        }
       } @else if (asEntry(item); as entry) {
         <li class="flex gap-2 px-2 py-1 text-sm" [class.opacity-60]="entry.done">
           @if (entry.kind === 'task') {

@@ -322,3 +322,45 @@ describe('Day editing an entry', () => {
     expect(stored().category).toBe('M');
   });
 });
+
+describe('Day editing a break', () => {
+  let http: HttpTestingController;
+  let appData: AppData;
+
+  beforeEach(() => {
+    TestBed.configureTestingModule({
+      providers: [provideHttpClient(), provideHttpClientTesting()],
+    });
+    http = TestBed.inject(HttpTestingController);
+    appData = TestBed.inject(AppData);
+  });
+
+  it('opens a break for editing on a double-click and keeps the change', async () => {
+    // An entry with the same id as the break: the two are separate tables.
+    appData.week.set({
+      week: '2026-02-09',
+      days: [day([entry(null, { id: 4, text: 'Morning' }), pause({ id: 4, minutes: 60 })])],
+    });
+    const fixture = TestBed.createComponent(Day);
+    fixture.componentRef.setInput('day', appData.week()!.days[0]);
+    fixture.detectChanges();
+    http.match(() => true).forEach(request => request.flush([]));
+    await settle();
+    fixture.detectChanges();
+
+    fixture.nativeElement.querySelector('[data-break]').dispatchEvent(new MouseEvent('dblclick'));
+    fixture.detectChanges();
+    const editor = fixture.nativeElement.querySelector('[data-break-editor]') as HTMLElement;
+    expect((editor.querySelector('[data-minutes]') as HTMLInputElement).value).toBe('60');
+
+    (editor.querySelector('[data-more]') as HTMLElement).click();
+    fixture.detectChanges();
+    editor.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', ctrlKey: true }));
+    fixture.detectChanges();
+
+    const [morning, lunch] = appData.week()!.days[0].items;
+    expect(lunch).toMatchObject({ kind: 'break', minutes: 75, is_noon: true });
+    expect(morning).toMatchObject({ kind: 'task', text: 'Morning' });
+    expect(fixture.nativeElement.querySelector('[data-break-editor]')).toBeNull();
+  });
+});

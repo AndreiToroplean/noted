@@ -88,6 +88,8 @@ export class BreakEditor {
       event.preventDefault();
       this.submit();
     } else if (event.key.toLowerCase() === 'b' && ctrl) {
+      // Only a new break can become an entry; one being edited stays a break.
+      if (this.initial()) return;
       event.preventDefault();
       this.switchToEntry.emit();
     } else if (event.key === 'Escape') {

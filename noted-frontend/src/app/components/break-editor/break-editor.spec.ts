@@ -104,6 +104,21 @@ describe('BreakEditor', () => {
     expect(switched()).toBe(1);
   });
 
+  it('stays a break when it is one being edited', () => {
+    const { press, switched } = render({
+      id: 3,
+      position: 2,
+      kind: 'break',
+      is_noon: false,
+      description: null,
+      start: null,
+      end: null,
+      minutes: 30,
+    });
+    press('b', true);
+    expect(switched()).toBe(0);
+  });
+
   it('closes without asking when nothing was changed', () => {
     const { press, cancelled } = render();
     press('Escape');

@@ -39,6 +39,14 @@ export class Day {
     return entry.note ? `${entry.text}\n${entry.note}` : entry.text;
   }
 
+  /** The break open for editing, if any. */
+  protected readonly editingBreakId = signal<number | null>(null);
+
+  protected saveBreak(pause: Break, draft: BreakDraft) {
+    this.appData.updateBreak(this.day().date, pause.id, draft);
+    this.editingBreakId.set(null);
+  }
+
   protected setCategory(entry: Entry, category: string | null) {
     this.appData.updateEntry(this.day().date, entry.id, { category });
   }

@@ -94,6 +94,16 @@ export class AppData {
     this.updateDay(date, day => place(day, draft));
   }
 
+  /** Replace a break with what the editor made of it. */
+  updateBreak(date: IsoDate, id: number, draft: BreakDraft) {
+    this.updateDay(date, day => ({
+      ...day,
+      items: day.items.map(item =>
+        item.kind === 'break' && item.id === id ? { ...draft, id, position: item.position } : item,
+      ),
+    }));
+  }
+
   /** Change some of an entry's fields. Breaks have ids of their own, so only entries match. */
   updateEntry(date: IsoDate, id: number, change: Partial<Entry>) {
     this.updateDay(date, day => ({
