@@ -39,3 +39,14 @@ def test_seeding_leaves_edits_alone(session):
 
     seed.seed(session)
     assert session.get(Settings, 4).expected_minutes == edited
+
+
+def test_seeding_gives_a_category_left_without_a_meaning_its_own(session):
+    # Databases seeded before the meanings were written down have them blank.
+    session.add(Category(name="T", colour="#7f6000", meaning=""))
+    session.add(Category(name="M", colour="#351c75", meaning="Calls"))
+    session.commit()
+
+    seed.seed(session)
+    assert session.get(Category, "T").meaning == "Ticket"
+    assert session.get(Category, "M").meaning == "Calls"

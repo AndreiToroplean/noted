@@ -70,10 +70,15 @@ def seed(session: Session):
         if row.weekday not in known_weekdays:
             session.add(Settings.model_validate(row))
 
-    known_categories = set(session.exec(select(Category.name)).all())
+    known_categories = {row.name: row for row in session.exec(select(Category))}
     for row in CATEGORIES:
-        if row.name not in known_categories:
+        known = known_categories.get(row.name)
+        if known is None:
             session.add(Category.model_validate(row))
+        elif not known.meaning:
+            # Seeded before the meanings were written down: blank is missing, not an edit.
+            known.meaning = row.meaning
+            session.add(known)
 
     # A new user owes nothing and is owed nothing.
     if session.get(OvertimeBaseline, OvertimeBaseline.ROW_ID) is None:
