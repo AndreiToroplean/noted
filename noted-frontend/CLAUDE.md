@@ -63,6 +63,9 @@ The font is served from `node_modules`, not a CDN.
 **Dates** are shown with `| date` and no format argument (or an injected `DatePipe`); the
 format is set once in `services/dates.ts`.
 
+**Browser support:** current Chromium (Edge, Chrome) only. Noted runs locally for one
+user, so any feature current Chromium ships may be used without fallbacks.
+
 **Strictness.** TypeScript `strict` plus `strictTemplates`, `noImplicitReturns`, and
 `noPropertyAccessFromIndexSignature` are on. Keep them on; don't reach for `any` (it lints
 as a warning, which is not an invitation).
