@@ -57,18 +57,16 @@ describe('Week', () => {
     expect(columnsFor(week())).toBe(5);
   });
 
-  it('shows Saturday once it has something in it', () => {
-    expect(columnsFor(week(1))).toBe(6);
+  // One day of it alone would leave the other with no way to be shown.
+  it('shows the whole weekend once either day has something in it', () => {
+    expect(columnsFor(week(1))).toBe(7);
+    expect(columnsFor(week(0, 1))).toBe(7);
   });
 
-  it('shows a weekend day with hours in it, though nothing is written there', () => {
+  it('shows the weekend for hours in it, though nothing is written there', () => {
     const data = week();
     data.days[5] = { ...data.days[5], arrival: '10:00:00' };
-    expect(columnsFor(data)).toBe(6);
-  });
-
-  it('shows the whole weekend when both days have content', () => {
-    expect(columnsFor(week(1, 2))).toBe(7);
+    expect(columnsFor(data)).toBe(7);
   });
 
   it('shows the whole weekend, empty, when asked to', () => {

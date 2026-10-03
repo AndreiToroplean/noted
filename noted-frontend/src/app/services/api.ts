@@ -90,9 +90,17 @@ export interface Day {
   items: DayItem[];
 }
 
-/** Anything in a day: something written, or hours. What keeps a weekend day shown. */
+/** Anything in a day: something written, or hours. */
 export function hasContent(day: Day): boolean {
   return day.items.length > 0 || day.arrival !== null || day.departure !== null;
+}
+
+/**
+ * Anything on the weekend, which keeps both its days shown: one alone would
+ * leave the other with no way to be shown.
+ */
+export function weekendInUse(week: Week): boolean {
+  return week.days.slice(5).some(hasContent);
 }
 
 export interface Week {

@@ -16,9 +16,9 @@ import {
   Settings,
   Time,
   Week,
-  hasContent,
   itemKey,
   toWrite,
+  weekendInUse,
 } from 'app/services/api';
 
 /** A line as typed into a day, and the note typed under it. */
@@ -110,7 +110,10 @@ export class AppData {
   readonly weekendShown = linkedSignal({ source: this.selectedWeek, computation: () => false });
 
   /** Anything on the weekend, written or hours, which keeps it shown. */
-  readonly weekendInUse = computed(() => this.week()?.days.slice(5).some(hasContent) ?? false);
+  readonly weekendInUse = computed(() => {
+    const week = this.week();
+    return week ? weekendInUse(week) : false;
+  });
 
   /** The last version known to be on the server, so edits can be told from reloads. */
   private readonly persisted = linkedSignal<Week | undefined>(() => this.loaded.value());
