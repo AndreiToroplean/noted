@@ -8,6 +8,7 @@ import {
   BreakDraft,
   Category,
   Day,
+  DayItem,
   Entry,
   IsoDate,
   ParsedItem,
@@ -160,6 +161,23 @@ export class AppData {
     this.updateDay(date, day => place(day, parsed));
   }
 
+  /**
+   * Retype an entry: read what its editor holds as a new line would be read,
+   * and apply it over the entry. What the line names overrides; what it leaves
+   * out — a category, a project — the entry keeps. A line that reads as a break
+   * or a time turns the entry into that.
+   */
+  async retype(date: IsoDate, id: number, typed: { text: string; note: string | null }) {
+    const text = typed.note === null ? typed.text : `${typed.text}\n${typed.note}`;
+    let parsed: ParsedItem;
+    try {
+      parsed = await firstValueFrom(this.http.post<ParsedItem>(`${API_BASE}/parse`, { text }));
+    } catch (error) {
+      throw new Error(explain(error));
+    }
+    this.updateDay(date, day => overlay(day, id, parsed));
+  }
+
   /** Add a break made in the editor, already in fields, to the end of a day. */
   addBreak(date: IsoDate, draft: BreakDraft) {
     this.updateDay(date, day => place(day, draft));
@@ -305,6 +323,38 @@ function place(day: Day, parsed: ParsedItem): Day {
   }
   const item = { ...parsed, id: nextLocalId--, position: day.items.length };
   return { ...day, items: [...day.items, item] };
+}
+
+function overlay(day: Day, id: number, parsed: ParsedItem): Day {
+  const index = day.items.findIndex(item => item.kind !== 'break' && item.id === id);
+  if (index < 0) return day;
+  const entry = day.items[index] as Entry;
+  if (parsed.kind === 'clock') {
+    return place({ ...day, items: day.items.filter((_, at) => at !== index) }, parsed);
+  }
+  let item: DayItem;
+  if (parsed.kind === 'break') {
+    item = { ...parsed, id: nextLocalId--, position: entry.position };
+  } else if (parsed.kind === 'meta') {
+    item = {
+      ...entry,
+      kind: 'meta',
+      text: parsed.text,
+      note: parsed.note,
+      category: null,
+      project_id: null,
+    };
+  } else {
+    item = {
+      ...entry,
+      kind: 'task',
+      text: parsed.text,
+      note: parsed.note,
+      category: parsed.category ?? (entry.kind === 'meta' ? null : entry.category),
+      project_id: parsed.project_id ?? entry.project_id,
+    };
+  }
+  return { ...day, items: day.items.map((other, at) => (at === index ? item : other)) };
 }
 
 function explain(error: unknown): string {

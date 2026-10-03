@@ -22,7 +22,8 @@ export interface EntryText {
  * with what is in them, so nothing moves when editing starts.
  *
  * Enter goes from the text down to the note, which is the entry's second line;
- * Ctrl+Enter saves. Esc, or focus going anywhere else, closes without asking
+ * Ctrl+Enter saves. What is saved is read as a new line would be, so syntax
+ * typed here — a category, a project, a break — applies to the entry. Esc, or focus going anywhere else, closes without asking
  * and hands back what was typed, for the day to keep as a draft.
  *
  * Opened on such a draft, it knows the entry as saved too: Ctrl+Z, once the
@@ -38,6 +39,10 @@ export class InlineEntryEditor {
   readonly value = input.required<EntryText>();
   /** The entry as saved, when `value` is a draft of it. */
   readonly original = input<EntryText | null>(null);
+  /** Why the last save was refused, shown in place of the hint. */
+  readonly error = input<string | null>(null);
+  /** A save on its way: the fields hold still until it lands. */
+  readonly busy = input(false);
 
   readonly saved = output<EntryText>();
   readonly closed = output<EntryText>();

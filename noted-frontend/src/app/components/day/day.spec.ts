@@ -54,6 +54,20 @@ function day(items: DayItem[]): DayData {
   };
 }
 
+/** What `/parse` answers for a plain task line, before the test's own fields. */
+const parsedTask = {
+  kind: 'task',
+  done: false,
+  category: null,
+  project_id: null,
+  text: 'Fixed it',
+  note: null,
+  explicit_minutes: null,
+  explicit_start: null,
+  explicit_end: null,
+  approx_weight: null,
+};
+
 describe('Day entry cell', () => {
   let http: HttpTestingController;
   let appData: AppData;
@@ -345,10 +359,59 @@ describe('Day editing an entry', () => {
     text.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', ctrlKey: true }));
     fixture.detectChanges();
 
-    // Edited as plain text: nothing goes back through the syntax.
-    http.expectNone(`${API_BASE}/parse`);
-    expect(stored()).toMatchObject({ text: 'Fixed the header', note: 'it was the z-index' });
+    // Read as a new line would be, and laid over the entry.
+    const request = http.expectOne(`${API_BASE}/parse`);
+    expect(request.request.body).toEqual({ text: 'Fixed the header\nit was the z-index' });
+    request.flush({ ...parsedTask, text: 'Fixed the header', note: 'it was the z-index' });
+    await settle();
+    fixture.detectChanges();
+    expect(stored()).toMatchObject({
+      text: 'Fixed the header',
+      note: 'it was the z-index',
+      category: 'T',
+    });
     expect(fixture.nativeElement.querySelector('textarea')).toBeNull();
+  });
+
+  it('takes a category written at the head of the text over the one it had', async () => {
+    const fixture = await render();
+    fixture.nativeElement
+      .querySelector('[data-entry-text]')
+      .dispatchEvent(new MouseEvent('dblclick'));
+    fixture.detectChanges();
+    const text = fixture.nativeElement.querySelector('[data-edit-text]') as HTMLTextAreaElement;
+    text.value = '[M] Fixed it';
+    text.dispatchEvent(new Event('input'));
+    text.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', ctrlKey: true }));
+    http.expectOne(`${API_BASE}/parse`).flush({ ...parsedTask, category: 'M', note: 'the header' });
+    await settle();
+    fixture.detectChanges();
+    expect(stored()).toMatchObject({ text: 'Fixed it', category: 'M' });
+  });
+
+  it('stays open and says why when the line cannot be read', async () => {
+    const fixture = await render();
+    fixture.nativeElement
+      .querySelector('[data-entry-text]')
+      .dispatchEvent(new MouseEvent('dblclick'));
+    fixture.detectChanges();
+    const text = fixture.nativeElement.querySelector('[data-edit-text]') as HTMLTextAreaElement;
+    text.value = '[Zz] Fixed it';
+    text.dispatchEvent(new Event('input'));
+    text.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', ctrlKey: true }));
+    http
+      .expectOne(`${API_BASE}/parse`)
+      .flush(
+        { detail: 'There is no [Zz] category.' },
+        { status: 422, statusText: 'Unprocessable' },
+      );
+    await settle();
+    fixture.detectChanges();
+    expect(stored().category).toBe('T');
+    expect(fixture.nativeElement.querySelector('[data-edit-text]')).not.toBeNull();
+    expect(fixture.nativeElement.querySelector('[role="alert"]')?.textContent).toContain(
+      'There is no [Zz] category.',
+    );
   });
 
   it('changes the category from a menu on its tag, on a double-click', async () => {
@@ -964,6 +1027,8 @@ describe('Day drafts', () => {
     fixture.detectChanges();
     text = openEntry(fixture);
     press(text, 'Enter', true);
+    http.expectOne(`${API_BASE}/parse`).flush({ ...parsedTask, text: 'Fixed it, nearly' });
+    await settle();
     fixture.componentRef.setInput('day', appData.week()!.days[0]);
     fixture.detectChanges();
 

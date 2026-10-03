@@ -188,6 +188,12 @@ body {
   pointer-events: none;
 }
 
+.editor-hint-error {
+  background-color: var(--mat-sys-error-container);
+  color: var(--mat-sys-on-error-container);
+  white-space: normal;
+}
+
 .entry-editor-error {
   color: var(--mat-sys-error);
 }

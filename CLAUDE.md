@@ -49,8 +49,8 @@ optional second line, kept as a note
 ```
 
 The text is parsed **once**, at creation, and stored as fields — the raw string is never
-kept. After that, editing is interactive and per-field; nothing round-trips back through
-the syntax.
+kept. Editing shows the fields as plain text, never as syntax; syntax typed while editing
+is read like a new line and overrides only the fields it names.
 
 An entry is either a **task** or a **meta** entry: a bracketed annotation about the day
 rather than about work done, like `[On site]`. Meta entries are excluded from time

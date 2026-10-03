@@ -4,6 +4,7 @@
   rows="1"
   aria-label="Entry"
   data-edit-text
+  [readOnly]="busy()"
   [value]="text()"
   (input)="onInput('text', textField.value)"
   (keydown)="onTextKeydown($event)"
@@ -16,9 +17,14 @@
     aria-label="Note"
     placeholder="Note"
     data-edit-note
+    [readOnly]="busy()"
     [value]="note()"
     (input)="onInput('note', noteField.value)"
     (keydown)="onKeydown($event)"
   ></textarea>
 }
-<div class="editor-hint" role="note">Enter for a note · Ctrl+Enter to save · Esc to close</div>
+@if (error(); as message) {
+  <div class="editor-hint editor-hint-error" role="alert">{{ message }}</div>
+} @else {
+  <div class="editor-hint" role="note">Enter for a note · Ctrl+Enter to save · Esc to close</div>
+}

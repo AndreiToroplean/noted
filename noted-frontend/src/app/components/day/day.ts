@@ -294,23 +294,42 @@ export class Day {
    */
   protected openEntry(entry: Entry) {
     this.selection.clear();
+    this.editError.set(null);
     const saved = { text: entry.text, note: entry.note };
     const draft = this.drafts.get<EntryText>(itemKey(entry));
     this.editing.set({ id: entry.id, from: draft ?? saved, original: draft ? saved : null });
   }
 
-  /** An edit is plain text, never the syntax again — see specification §3.2. */
-  protected saveText(entry: Entry, edited: EntryText) {
-    this.appData.updateEntry(this.day().date, entry.id, edited);
-    this.drafts.drop(itemKey(entry));
-    this.editing.set(null);
+  /** Why the open entry's last save was refused, and whether one is on its way. */
+  protected readonly editError = signal<string | null>(null);
+  protected readonly editBusy = signal(false);
+
+  /**
+   * Saved as a new line would be: read through the syntax, and laid over the
+   * entry, so a category typed at its head replaces the one it had.
+   */
+  protected async saveText(entry: Entry, edited: EntryText) {
+    this.editBusy.set(true);
+    try {
+      await this.appData.retype(this.day().date, entry.id, edited);
+      this.drafts.drop(itemKey(entry));
+      this.editError.set(null);
+      this.editing.set(null);
+    } catch (error) {
+      this.editError.set(error instanceof Error ? error.message : String(error));
+    } finally {
+      this.editBusy.set(false);
+    }
   }
 
   /** Closed unsaved: anything that differs from the entry waits as a draft. */
   protected closeEdit(entry: Entry, edited: EntryText) {
+    // Already closed — a save that landed takes the field away, which blurs it.
+    if (this.editing()?.id !== entry.id) return;
     const unchanged = edited.text === entry.text && edited.note === entry.note;
     if (unchanged) this.drafts.drop(itemKey(entry));
     else this.drafts.keep(itemKey(entry), edited);
+    this.editError.set(null);
     this.editing.set(null);
   }
 

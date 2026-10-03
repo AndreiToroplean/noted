@@ -70,12 +70,16 @@ spreadsheet. See `parse` in `noted-api/app.py`.
 
 ### 3.2 Editing an entry
 
-Editing is interactive and per-field: click the category to change it, click the project,
-edit the text in place. Editing never goes back through the raw syntax.
+Editing opens the entry's text and note in place, as plain text — the fields are never
+written back out as syntax. What is typed there is read as a new line would be, and laid
+over the entry: anything the line names (a category, a project, a break) replaces what the
+entry had, and anything it leaves out stays. So `[M] ` typed at the head of the text
+changes the category, and a break's syntax turns the entry into a break. See `retype` in
+`services/app-data.ts`. The category can also be picked from its tag.
 
 This is the important half of the decision. Raw text is a fast path *into* the app, not the
-storage format, so the two can never drift apart and there is no round-trip to keep
-lossless.
+storage format: nothing is ever serialised back into syntax, so there is no round-trip to
+keep lossless.
 
 ### 3.3 Notes
 

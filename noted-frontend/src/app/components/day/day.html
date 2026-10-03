@@ -300,6 +300,8 @@
           class="min-w-0 flex-1 py-1"
           [value]="open.from"
           [original]="open.original"
+          [error]="editError()"
+          [busy]="editBusy()"
           (saved)="saveText(entry, $event)"
           (closed)="closeEdit(entry, $event)"
         />

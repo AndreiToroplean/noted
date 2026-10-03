@@ -207,6 +207,128 @@ describe('AppData typing into a day', () => {
   });
 });
 
+describe('AppData retyping an entry', () => {
+  let data: AppData;
+  let http: HttpTestingController;
+
+  const entry: Entry = {
+    id: 1,
+    position: 0,
+    kind: 'task',
+    done: true,
+    category: 'T',
+    project_id: 4,
+    text: 'Fixed it',
+    note: 'the header',
+    explicit_minutes: null,
+    explicit_start: null,
+    explicit_end: null,
+    approx_weight: null,
+  };
+  const later: Entry = { ...entry, id: 2, position: 1, text: 'Later' };
+
+  beforeEach(async () => {
+    TestBed.configureTestingModule({
+      providers: [provideHttpClient(), provideHttpClientTesting()],
+    });
+    data = TestBed.inject(AppData);
+    http = TestBed.inject(HttpTestingController);
+
+    TestBed.tick();
+    http.expectOne(`${API_BASE}/categories`).flush([]);
+    http.expectOne(`${API_BASE}/weeks`).flush([MONDAY]);
+    await settle();
+    const loaded = week();
+    loaded.days[0].items = [entry, later];
+    http.expectOne(`${API_BASE}/journal/${MONDAY}`).flush(loaded);
+    await settle();
+  });
+
+  async function retype(text: string, note: string | null, reply: object) {
+    const done = data.retype(MONDAY, 1, { text, note });
+    const request = http.expectOne(`${API_BASE}/parse`);
+    expect(request.request.body).toEqual({ text: note === null ? text : `${text}\n${note}` });
+    request.flush(reply);
+    await done;
+    return data.week()!.days[0];
+  }
+
+  const parsed = {
+    kind: 'task',
+    done: false,
+    category: null,
+    project_id: null,
+    text: 'Fixed it',
+    note: null,
+    explicit_minutes: null,
+    explicit_start: null,
+    explicit_end: null,
+    approx_weight: null,
+  };
+
+  it('keeps the category and project when the line names neither', async () => {
+    const monday = await retype('Fixed the header', null, { ...parsed, text: 'Fixed the header' });
+    expect(monday.items[0]).toMatchObject({
+      id: 1,
+      done: true,
+      category: 'T',
+      project_id: 4,
+      text: 'Fixed the header',
+      note: null,
+    });
+  });
+
+  it('overrides the category and project the line names', async () => {
+    const monday = await retype('[M] web: Fixed it', 'the header', {
+      ...parsed,
+      category: 'M',
+      project_id: 9,
+      note: 'the header',
+    });
+    expect(monday.items[0]).toMatchObject({ id: 1, category: 'M', project_id: 9, done: true });
+  });
+
+  it('turns into an annotation, with no category, when written as one', async () => {
+    const monday = await retype('[On site]', null, {
+      ...parsed,
+      kind: 'meta',
+      text: '[On site]',
+    });
+    expect(monday.items[0]).toMatchObject({ kind: 'meta', category: null, project_id: null });
+  });
+
+  it('turns into a break in the same place when written as one', async () => {
+    const monday = await retype('[15m]', null, {
+      kind: 'break',
+      is_noon: false,
+      description: null,
+      start: null,
+      end: null,
+      minutes: 15,
+    });
+    expect(monday.items.map(item => item.kind)).toEqual(['break', 'task']);
+    expect(monday.items[0]).toMatchObject({ minutes: 15 });
+  });
+
+  it("becomes the day's hours when written as an arrow, and leaves the list", async () => {
+    const monday = await retype('[-> 17:30]', null, { kind: 'clock', time: '17:30:00' });
+    expect(monday.items.map(item => item.id)).toEqual([2]);
+    expect(monday.departure).toBe('17:30:00');
+  });
+
+  it('says why a line was refused, and changes nothing', async () => {
+    const done = data.retype(MONDAY, 1, { text: '[Zz] Fixed it', note: null });
+    http
+      .expectOne(`${API_BASE}/parse`)
+      .flush(
+        { detail: 'There is no [Zz] category.' },
+        { status: 422, statusText: 'Unprocessable' },
+      );
+    await expect(done).rejects.toThrow('There is no [Zz] category.');
+    expect(data.week()!.days[0].items[0]).toEqual(entry);
+  });
+});
+
 describe('AppData editing an item', () => {
   let data: AppData;
   let http: HttpTestingController;
