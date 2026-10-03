@@ -8,12 +8,17 @@
     <div class="text-xs opacity-70">{{ data.date | date: 'dd/MM/yyyy' }}</div>
     @if (data.status !== 'working') {
       <div class="day-status text-xs tracking-wide">{{ data.status.replace('_', ' ') }}</div>
-    } @else if (data.arrival) {
-      <div class="day-time text-xs" data-arrival>{{ data.arrival | slice: 0 : 5 }}</div>
     }
   </header>
 
-  <ul class="flex-1 list-none p-0">
+  @if (data.status === 'working' && data.arrival) {
+    <div class="day-time day-frame px-2 py-1 text-center text-xs" data-arrival>
+      {{ data.arrival | slice: 0 : 5 }}
+    </div>
+  }
+
+  <!-- Only the entries scroll: the hours frame the day and stay where they are. -->
+  <ul class="min-h-0 flex-1 list-none overflow-y-auto p-0" data-items>
     @for (item of data.items; track item.kind + '-' + item.id) {
       @if (asBreak(item); as pause) {
         <li class="day-break flex items-center gap-2 px-2 py-1 text-xs" data-break>
@@ -43,7 +48,7 @@
   </ul>
 
   @if (data.status === 'working' && data.departure) {
-    <footer class="day-time px-2 py-1 text-center text-xs" data-departure>
+    <footer class="day-time day-frame px-2 py-1 text-center text-xs" data-departure>
       {{ data.departure | slice: 0 : 5 }}
     </footer>
   }

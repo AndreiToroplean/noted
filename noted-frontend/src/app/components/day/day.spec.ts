@@ -114,6 +114,17 @@ describe('Day hours', () => {
     expect(dom.querySelector('[data-departure]')?.textContent?.trim()).toBe('18:45');
   });
 
+  it('keeps arrival and departure out of the part that scrolls', async () => {
+    // They frame the day, so they stay put while a long day's entries scroll
+    // between them.
+    const dom = await render(
+      withHours({ arrival: '09:30:00', departure: '18:45:00', items: [entry(null)] }),
+    );
+    const list = dom.querySelector('[data-items]');
+    expect(list?.querySelector('li')).not.toBeNull();
+    expect(list?.querySelector('[data-arrival], [data-departure]')).toBeNull();
+  });
+
   it('shows a break given as a range', async () => {
     const dom = await render(
       withHours({ items: [pause({ start: '13:00:00', end: '14:00:00', minutes: null })] }),

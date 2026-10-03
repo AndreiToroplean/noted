@@ -87,6 +87,10 @@ body {
   color: var(--checkbox-free-time);
 }
 
+.day-frame {
+  background-color: var(--app-surface-raised);
+}
+
 .day-break {
   color: var(--checkbox-free-time);
 }

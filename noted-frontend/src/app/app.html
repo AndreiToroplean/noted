@@ -1,7 +1,7 @@
 <div class="flex h-full w-full flex-col">
   <app-topbar />
   @if (appData.week(); as week) {
-    <app-week [week]="week" />
+    <app-week [week]="week" class="block min-h-0 flex-1" />
   }
   <app-footer class="mt-auto" />
 </div>

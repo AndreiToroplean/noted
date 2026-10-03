@@ -1,5 +1,5 @@
-<div class="flex w-full gap-2">
+<div class="flex h-full w-full gap-2">
   @for (day of visibleDays(); track day.date) {
-    <app-day [day]="day" class="flex-1" />
+    <app-day [day]="day" class="min-w-0 flex-1" />
   }
 </div>
