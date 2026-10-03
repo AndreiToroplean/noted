@@ -40,6 +40,7 @@ describe('AppData', () => {
 
     TestBed.tick();
     http.expectOne(`${API_BASE}/categories`).flush([]);
+    http.expectOne(`${API_BASE}/settings`).flush([]);
     http.expectOne(`${API_BASE}/weeks`).flush([MONDAY]);
     await settle();
     http.expectOne(`${API_BASE}/journal/${MONDAY}`).flush(week());
@@ -157,6 +158,54 @@ describe('AppData', () => {
 
   afterEach(() => {
     http.verify();
+  });
+});
+
+describe('AppData coming back', () => {
+  it('turns the time left into a break, and puts the departure back to the default', async () => {
+    TestBed.configureTestingModule({
+      providers: [provideHttpClient(), provideHttpClientTesting()],
+    });
+    const data = TestBed.inject(AppData);
+    const http = TestBed.inject(HttpTestingController);
+    TestBed.tick();
+    http
+      .expectOne(`${API_BASE}/settings`)
+      .flush([{ weekday: 0, arrival: '09:30:00', departure: '18:30:00' }]);
+    await settle();
+    const left = week();
+    left.days[0] = { ...left.days[0], arrival: '09:30:00', departure: '12:30:00' };
+    data.week.set(left);
+
+    data.cameBack(MONDAY, '13:45:00');
+    const monday = data.week()!.days[0];
+    expect(monday.departure).toBe('18:30:00');
+    expect(monday.items).toEqual([
+      expect.objectContaining({
+        kind: 'break',
+        is_noon: false,
+        start: '12:30:00',
+        end: '13:45:00',
+        minutes: null,
+      }),
+    ]);
+  });
+
+  it("knows a date's default hours by its weekday", async () => {
+    TestBed.configureTestingModule({
+      providers: [provideHttpClient(), provideHttpClientTesting()],
+    });
+    const data = TestBed.inject(AppData);
+    const http = TestBed.inject(HttpTestingController);
+    TestBed.tick();
+    http.expectOne(`${API_BASE}/settings`).flush([
+      { weekday: 0, departure: '18:30:00' },
+      { weekday: 4, departure: '16:00:00' },
+    ]);
+    await settle();
+    expect(data.defaultsFor(MONDAY)?.departure).toBe('18:30:00');
+    expect(data.defaultsFor('2026-02-13')?.departure).toBe('16:00:00');
+    expect(data.defaultsFor('2026-02-14')).toBeUndefined();
   });
 });
 

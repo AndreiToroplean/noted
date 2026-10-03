@@ -96,6 +96,16 @@ export interface Category {
   colour: string;
 }
 
+/** A weekday's default hours, snapshot onto each day as it is created. Monday is 0. */
+export interface Settings {
+  weekday: number;
+  arrival: Time | null;
+  break_start: Time | null;
+  break_end: Time | null;
+  departure: Time | null;
+  expected_minutes: number;
+}
+
 export interface Project {
   id: number;
   path: string;

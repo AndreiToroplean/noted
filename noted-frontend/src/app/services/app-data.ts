@@ -12,6 +12,8 @@ import {
   Entry,
   IsoDate,
   ParsedItem,
+  Settings,
+  Time,
   Week,
   itemKey,
   toWrite,
@@ -55,6 +57,17 @@ export class AppData {
   readonly categoriesByName = computed(
     () => new Map(this.categories.value().map(category => [category.name, category])),
   );
+
+  /** The default hours of each weekday, which a day's hours start from. */
+  readonly settings = httpResource<Settings[]>(() => `${API_BASE}/settings`, {
+    defaultValue: [],
+  });
+
+  /** The default hours of a date's weekday. */
+  defaultsFor(date: IsoDate): Settings | undefined {
+    const weekday = (new Date(`${date}T00:00`).getDay() + 6) % 7;
+    return this.settings.value().find(row => row.weekday === weekday);
+  }
 
   readonly weeks = httpResource<IsoDate[]>(() => `${API_BASE}/weeks`, { defaultValue: [] });
 
@@ -202,6 +215,26 @@ export class AppData {
   /** Set a day's arrival or departure. */
   setHours(date: IsoDate, hours: Partial<Pick<Day, 'arrival' | 'departure'>>) {
     this.updateDay(date, day => ({ ...day, ...hours }));
+  }
+
+  /**
+   * Back from where the departure said they had gone: the time away becomes a
+   * break, and the departure goes back to the default, the day not being over.
+   */
+  cameBack(date: IsoDate, at: Time) {
+    const departure = this.defaultsFor(date)?.departure ?? null;
+    this.updateDay(date, day => {
+      if (!day.departure) return day;
+      const away: BreakDraft = {
+        kind: 'break',
+        is_noon: false,
+        description: null,
+        start: day.departure,
+        end: at,
+        minutes: null,
+      };
+      return place({ ...day, departure }, away);
+    });
   }
 
   /** Replace a break with what the editor made of it. */
