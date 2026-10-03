@@ -15,6 +15,7 @@
     <div
       class="day-time day-frame flex items-center justify-center gap-2 px-2 py-1 text-xs"
       data-arrival
+      [class.day-time-missing]="missingArrival()"
       (dblclick)="editingClock.set('arrival')"
     >
       <ng-container
@@ -232,6 +233,7 @@
     <footer
       class="day-time day-frame flex items-center justify-center gap-2 px-2 py-1 text-xs"
       data-departure
+      [class.day-time-missing]="missingDeparture()"
       (dblclick)="editingClock.set('departure')"
     >
       <ng-container

@@ -687,6 +687,28 @@ describe('Day marking its hours as they happen', () => {
     expect(mon().querySelector('[data-leaving]')).toBeNull();
   });
 
+  it('flags a departure missing once the day is over', async () => {
+    const [mon] = await render(new Date(2026, 1, 11, 12, 0), { departure: null });
+    expect(mon().querySelector('[data-departure]')!.classList).toContain('day-time-missing');
+    expect(mon().querySelector('[data-arrival]')!.classList).not.toContain('day-time-missing');
+  });
+
+  it('does not flag a departure missing while the day goes on, and offers to leave', async () => {
+    const [mon] = await render(new Date(2026, 1, 9, 12, 0), { departure: null });
+    expect(mon().querySelector('[data-departure]')!.classList).not.toContain('day-time-missing');
+    expect(mon().querySelector('[data-leaving]')).not.toBeNull();
+  });
+
+  it('flags an arrival missing under a departure, whenever it is', async () => {
+    const [mon] = await render(new Date(2026, 1, 9, 12, 0), { arrival: null });
+    expect(mon().querySelector('[data-arrival]')!.classList).toContain('day-time-missing');
+  });
+
+  it('flags nothing on a day with no hours at all', async () => {
+    const [mon] = await render(new Date(2026, 1, 11, 12, 0), { arrival: null, departure: null });
+    expect(mon().querySelector('.day-time-missing')).toBeNull();
+  });
+
   it('offers no leaving from a day without an arrival', async () => {
     const [mon] = await render(new Date(2026, 1, 9, 12, 30), { arrival: null });
     expect(mon().querySelector('[data-leaving]')).toBeNull();

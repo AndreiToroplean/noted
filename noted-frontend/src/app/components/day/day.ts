@@ -554,24 +554,39 @@ export class Day {
   });
 
   /**
-   * "Leaving now", or "Came back now" once left: from the day's arrival until
-   * the next day's, so past midnight is still the day it started. A day with no
-   * arrival, a weekend's, was never arrived at to leave.
+   * Whether the day is going on: from its arrival until the next day's, so past
+   * midnight is still the day it started. A day with no arrival, a weekend's,
+   * was never arrived at.
    */
-  protected readonly offersLeaving = computed(() => {
+  private readonly goingOn = computed(() => {
     const day = this.day();
-    const now = this.moment();
-    if (!this.knowsDefaults() || !day.arrival) return false;
+    if (!day.arrival) return false;
     const next = dayFrom(day.date, 1);
     const nextArrival =
       this.dayOn(next)?.arrival ?? this.appData.defaultsFor(next)?.arrival ?? null;
     const from = moment(day.date, day.arrival);
     const until = nextArrival ? moment(next, nextArrival) : moment(dayFrom(next, 1), '00:00');
+    const now = this.moment();
     return now >= from && now < until;
   });
 
-  /** Left already: the departure is no longer the default. */
-  protected readonly away = computed(() => this.marked(this.day(), 'departure'));
+  /** "Leaving now", or "Came back now" once left, while the day goes on. */
+  protected readonly offersLeaving = computed(() => this.knowsDefaults() && this.goingOn());
+
+  /** Left already: there is a departure, and it is no longer the default. */
+  protected readonly away = computed(
+    () => this.day().departure !== null && this.marked(this.day(), 'departure'),
+  );
+
+  /** A departure with no arrival: always a mistake. */
+  protected readonly missingArrival = computed(
+    () => this.day().arrival === null && this.day().departure !== null,
+  );
+
+  /** An arrival with no departure, once the day is no longer going on. */
+  protected readonly missingDeparture = computed(
+    () => this.day().arrival !== null && this.day().departure === null && !this.goingOn(),
+  );
 
   protected arrivedNow() {
     this.appData.setHours(this.day().date, { arrival: `${now()}:00` });

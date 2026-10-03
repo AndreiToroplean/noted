@@ -142,7 +142,8 @@ Arrival and departure can be marked as they happen, with buttons in the day colu
 `offersArrival` / `offersLeaving` in `components/day/day.ts`. Leaving sets the departure,
 so a day that ends there needs nothing more; coming back turns the time away into a break
 and puts the departure back to the default. A departure earlier than its arrival is the
-next morning's.
+next morning's. A day with one of the two and not the other is flagged in red, the departure only
+once the day is no longer going on: see `missingArrival` / `missingDeparture`.
 
 Breaks are created either by typing the bracket syntax inline, like an entry, or with an
 *add break* button and its keyboard shortcut. However they're created, they render as

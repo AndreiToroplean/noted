@@ -81,6 +81,12 @@ body {
   background-color: var(--app-frame);
 }
 
+/* A time that should be there and is not, in the red of failed work. */
+.day-frame.day-time-missing {
+  color: var(--app-on-surface);
+  background-color: var(--cell-not-done);
+}
+
 .day-break {
   color: var(--checkbox-free-time);
 }
