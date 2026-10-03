@@ -188,6 +188,16 @@ export class AppData {
     }));
   }
 
+  /** Change the same fields on several entries, named by `itemKey`, in one edit. */
+  updateEntries(date: IsoDate, keys: ReadonlySet<string>, change: Partial<Entry>) {
+    this.updateDay(date, day => ({
+      ...day,
+      items: day.items.map(item =>
+        item.kind !== 'break' && keys.has(itemKey(item)) ? { ...item, ...change } : item,
+      ),
+    }));
+  }
+
   /** Change some of an entry's fields. Breaks have ids of their own, so only entries match. */
   updateEntry(date: IsoDate, id: number, change: Partial<Entry>) {
     this.updateDay(date, day => ({

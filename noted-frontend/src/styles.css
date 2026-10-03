@@ -141,8 +141,46 @@ body {
   color: var(--checkbox-not-done);
 }
 
-.entry-swatch-empty {
-  border: 1px dashed var(--app-outline);
+/*
+ * The cell at the head of a task: the category's colour, with the done checkbox
+ * and the category's letters drawn in whichever of black or white reads on it.
+ * Uncategorised, it takes the raised surface.
+ */
+.entry-cell {
+  --cell: var(--category, var(--app-surface-raised));
+  background-color: var(--cell);
+  color: contrast-color(var(--cell));
+  border-radius: var(--mat-sys-corner-extra-small) 0 0 var(--mat-sys-corner-extra-small);
+  font-size: 0.75rem;
+  font-weight: 600;
+  line-height: 1.25rem;
+}
+
+/*
+ * The category's letters, on a tag of their own. Monospaced and two characters
+ * wide — no category is longer — so every tag is the same width, whatever it
+ * says. Its fill is a wash of the cell's own text colour, so it reads on any
+ * category's colour.
+ */
+.entry-tag {
+  box-sizing: content-box;
+  width: 2ch;
+  padding-inline: --spacing(0.5);
+  border-radius: var(--mat-sys-corner-small);
+  background-color: color-mix(in srgb, contrast-color(var(--cell)) 22%, transparent);
+  font-family: var(--font-mono);
+  text-align: center;
+}
+
+.entry-done {
+  accent-color: contrast-color(var(--cell));
+  margin: 0;
+  cursor: pointer;
+}
+
+/* A leading icon drawn solid, as the colour samples in the category menu are. */
+.mat-icon.filled {
+  font-variation-settings: 'FILL' 1;
 }
 
 .break-editor {

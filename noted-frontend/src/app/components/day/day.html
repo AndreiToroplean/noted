@@ -77,19 +77,35 @@
               </div>
             }
           } @else if (asEntry(item); as entry) {
-            <div class="flex gap-2 px-2 py-1 text-sm" [class.opacity-60]="entry.done">
+            <div class="flex items-stretch gap-2 pr-2 text-sm">
               @if (entry.kind === 'task') {
-                @let colour = colourOf(entry.category);
-                <button
-                  type="button"
-                  class="entry-swatch mt-1 h-3 w-3 shrink-0 cursor-pointer rounded-sm"
-                  [class.entry-swatch-empty]="!colour"
-                  [attr.data-category]="colour ? entry.category : null"
-                  [attr.aria-label]="'Category: ' + (entry.category ?? 'none')"
-                  [style.background-color]="colour"
-                  [matMenuTriggerFor]="categoryMenu"
-                  [matMenuTriggerData]="{ entry }"
-                ></button>
+                @let category = categoryOf(entry.category);
+                <!--
+                  The cell: as tall as the entry, filled with the category's
+                  colour, holding the done checkbox and the category's letters.
+                -->
+                <label
+                  class="entry-cell flex shrink-0 flex-col items-center justify-between gap-0.5 px-1 py-1"
+                  data-category-cell
+                  [style.--category]="category?.colour"
+                  [attr.data-category]="entry.category"
+                >
+                  <input
+                    type="checkbox"
+                    class="entry-done"
+                    [checked]="entry.done"
+                    [attr.aria-label]="entry.done ? 'Done' : 'Not done'"
+                    (change)="toggleDone(entry)"
+                  />
+                  <span
+                    class="entry-tag"
+                    [matTooltip]="category?.meaning ?? ''"
+                    [matTooltipDisabled]="!category?.meaning"
+                    >{{ entry.category }}</span
+                  >
+                </label>
+              } @else {
+                <span class="w-1 shrink-0"></span>
               }
               @if (editingId() === entry.id) {
                 <app-entry-editor
@@ -99,7 +115,11 @@
                   (cancelled)="editingId.set(null)"
                 />
               } @else {
-                <div class="min-w-0 flex-1" data-entry-text (dblclick)="editingId.set(entry.id)">
+                <div
+                  class="min-w-0 flex-1 py-1"
+                  data-entry-text
+                  (dblclick)="editingId.set(entry.id)"
+                >
                   <div>{{ entry.text }}</div>
                   @if (entry.note) {
                     <div class="text-xs opacity-60">{{ entry.note }}</div>
@@ -152,6 +172,12 @@
     #itemMenuTrigger="matMenuTrigger"
   ></div>
   <mat-menu #itemMenu="matMenu">
+    @if (selectionHasTasks()) {
+      <button mat-menu-item [matMenuTriggerFor]="categoryMenu" data-category-submenu>
+        <mat-icon>label</mat-icon>
+        Category
+      </button>
+    }
     <button mat-menu-item data-delete-selected (click)="deleteSelected()">
       <mat-icon>delete</mat-icon>
       {{ selectedCount() === 1 ? 'Delete' : 'Delete ' + selectedCount() + ' items' }}
@@ -159,25 +185,29 @@
   </mat-menu>
 
   <mat-menu #categoryMenu="matMenu">
-    <ng-template matMenuContent let-entry="entry">
-      @for (category of categories(); track category.name) {
-        <button
-          mat-menu-item
-          [attr.data-choose-category]="category.name"
-          (click)="setCategory(entry, category.name)"
-        >
-          <span
-            class="mr-2 inline-block h-3 w-3 rounded-sm align-middle"
-            [style.background-color]="category.colour"
-          ></span>
-          {{ category.name }}
-          @if (category.meaning) {
-            <span class="opacity-60">— {{ category.meaning }}</span>
-          }
-        </button>
+    @for (category of categories(); track category.name) {
+      <button
+        mat-menu-item
+        [attr.data-choose-category]="category.name"
+        (click)="setCategoryOfSelected(category.name)"
+      >
+        <mat-icon class="filled" [style.color]="category.colour">square</mat-icon>
+        <span>{{ category.name }}</span>
+        @if (category.meaning) {
+          <span class="opacity-60">{{ category.meaning }}</span>
+        }
+        @if (selectedCategory() === category.name) {
+          <mat-icon class="ml-auto" data-current>check</mat-icon>
+        }
+      </button>
+    }
+    <button mat-menu-item data-choose-category="" (click)="setCategoryOfSelected(null)">
+      <mat-icon>label_off</mat-icon>
+      <span>None</span>
+      @if (selectedCategory() === null) {
+        <mat-icon data-current>check</mat-icon>
       }
-      <button mat-menu-item data-choose-category="" (click)="setCategory(entry, null)">None</button>
-    </ng-template>
+    </button>
   </mat-menu>
 
   @if (data.status === 'working') {

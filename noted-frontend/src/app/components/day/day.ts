@@ -4,6 +4,7 @@ import { Component, ElementRef, computed, inject, input, signal, viewChild } fro
 import { CdkDrag, CdkDragDrop, CdkDragPlaceholder, CdkDropList } from '@angular/cdk/drag-drop';
 import { MatIconModule } from '@angular/material/icon';
 import { MatMenuModule, MatMenuTrigger } from '@angular/material/menu';
+import { MatTooltipModule } from '@angular/material/tooltip';
 
 import { BreakEditor } from 'app/components/break-editor/break-editor';
 import { EntryEditor } from 'app/components/entry-editor/entry-editor';
@@ -11,6 +12,7 @@ import { Autofocus } from 'app/directives/autofocus';
 import {
   Break,
   BreakDraft,
+  Category,
   Day as DayData,
   DayItem,
   Entry,
@@ -36,6 +38,7 @@ type Clock = 'arrival' | 'departure';
     BreakEditor,
     MatMenuModule,
     MatIconModule,
+    MatTooltipModule,
     CdkDropList,
     CdkDrag,
     CdkDragPlaceholder,
@@ -201,8 +204,29 @@ export class Day {
     this.editingBreakId.set(null);
   }
 
-  protected setCategory(entry: Entry, category: string | null) {
-    this.appData.updateEntry(this.day().date, entry.id, { category });
+  protected toggleDone(entry: Entry) {
+    this.appData.updateEntry(this.day().date, entry.id, { done: !entry.done });
+  }
+
+  /** The selected tasks: what the context menu's Category acts on. */
+  private readonly selectedTasks = computed(() =>
+    this.day().items.filter(
+      (item): item is Entry =>
+        item.kind === 'task' && this.selection.has(this.day().date, itemKey(item)),
+    ),
+  );
+  protected readonly selectionHasTasks = computed(() => this.selectedTasks().length > 0);
+
+  /** The category the selected tasks share, to tick in the menu; undefined if they differ. */
+  protected readonly selectedCategory = computed(() => {
+    const categories = new Set(this.selectedTasks().map(entry => entry.category));
+    return categories.size === 1 ? [...categories][0] : undefined;
+  });
+
+  /** One edit for the lot, so one Ctrl+Z puts every one back. */
+  protected setCategoryOfSelected(category: string | null) {
+    const keys = new Set(this.selectedTasks().map(itemKey));
+    this.appData.updateEntries(this.day().date, keys, { category });
   }
 
   /** What the row at the foot of the day is open for, if anything. */
@@ -249,8 +273,8 @@ export class Day {
     return isBreak(item) ? null : item;
   }
 
-  protected colourOf(category: string | null): string | null {
-    return category ? (this.appData.categoriesByName().get(category)?.colour ?? null) : null;
+  protected categoryOf(name: string | null): Category | null {
+    return name ? (this.appData.categoriesByName().get(name) ?? null) : null;
   }
 
   /** A break says either when it ran or how long it was, never both. */

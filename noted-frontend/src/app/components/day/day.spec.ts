@@ -54,37 +54,72 @@ function day(items: DayItem[]): DayData {
   };
 }
 
-describe('Day', () => {
+describe('Day entry cell', () => {
   let http: HttpTestingController;
+  let appData: AppData;
 
   beforeEach(() => {
     TestBed.configureTestingModule({
       providers: [provideHttpClient(), provideHttpClientTesting()],
     });
     http = TestBed.inject(HttpTestingController);
+    appData = TestBed.inject(AppData);
   });
 
-  async function swatchFor(category: string | null): Promise<HTMLElement | null> {
+  async function render(over: Partial<Entry> = {}) {
+    appData.week.set({ week: '2026-02-09', days: [day([entry('M', over)])] });
     const fixture = TestBed.createComponent(Day);
-    fixture.componentRef.setInput('day', day([entry(category)]));
+    fixture.componentRef.setInput('day', appData.week()!.days[0]);
     fixture.detectChanges();
-
     http
       .match(`${API_BASE}/categories`)
       .forEach(request => request.flush([{ name: 'M', meaning: 'Meeting', colour: '#351c75' }]));
+    http.match(() => true).forEach(request => request.flush([]));
     await settle();
     fixture.detectChanges();
-
-    return fixture.nativeElement.querySelector('[data-category]');
+    return fixture;
   }
 
-  it('colours an entry from the category the API defines', async () => {
-    // rgb, because that is how the DOM reports a colour it has parsed.
-    expect((await swatchFor('M'))?.style.backgroundColor).toBe('rgb(53, 28, 117)');
+  function cell(fixture: Awaited<ReturnType<typeof render>>): HTMLElement {
+    return fixture.nativeElement.querySelector('[data-category-cell]');
+  }
+
+  it('fills the cell with the colour the API gives the category', async () => {
+    const fixture = await render();
+    expect(cell(fixture).style.getPropertyValue('--category')).toBe('#351c75');
   });
 
-  it('leaves an entry with no category uncoloured', async () => {
-    expect(await swatchFor(null)).toBeNull();
+  it('names the category in the cell, spelt as the vocabulary spells it', async () => {
+    const fixture = await render({ category: 'M' });
+    expect(cell(fixture).textContent?.trim()).toBe('M');
+  });
+
+  it('leaves the cell uncoloured for an entry with no category', async () => {
+    const fixture = await render({ category: null });
+    expect(cell(fixture).style.getPropertyValue('--category')).toBe('');
+  });
+
+  it('ticks and unticks the entry from the checkbox in the cell', async () => {
+    const fixture = await render({ done: false });
+    const box = cell(fixture).querySelector('input[type="checkbox"]') as HTMLInputElement;
+    expect(box.checked).toBe(false);
+    box.click();
+    expect((appData.week()!.days[0].items[0] as Entry).done).toBe(true);
+    // The week passes the changed day back down, as it does in the app.
+    fixture.componentRef.setInput('day', appData.week()!.days[0]);
+    fixture.detectChanges();
+    box.click();
+    expect((appData.week()!.days[0].items[0] as Entry).done).toBe(false);
+  });
+
+  it('does not dim a done entry', async () => {
+    const fixture = await render({ done: true });
+    expect(fixture.nativeElement.querySelector('.opacity-60:not(.text-xs)')).toBeNull();
+  });
+
+  it('has no cell for an annotation, which is not something to do', async () => {
+    const fixture = await render({ kind: 'meta', category: null, text: '[On site]' });
+    expect(cell(fixture)).toBeNull();
   });
 });
 
@@ -313,15 +348,20 @@ describe('Day editing an entry', () => {
     expect(fixture.nativeElement.querySelector('textarea')).toBeNull();
   });
 
-  it('changes the category from the swatch', async () => {
+  it('changes the category from the right-click menu', async () => {
     const fixture = await render();
-    (fixture.nativeElement.querySelector('[data-category]') as HTMLElement).click();
+    fixture.nativeElement
+      .querySelector('[role="option"]')
+      .dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, cancelable: true }));
     fixture.detectChanges();
-    await fixture.whenStable();
+    await settle();
+    (document.querySelector('[data-category-submenu]') as HTMLElement).click();
+    fixture.detectChanges();
+    await settle();
 
-    const choice = document.querySelector('[data-choose-category="M"]') as HTMLElement;
-    expect(choice).not.toBeNull();
-    choice.click();
+    const current = document.querySelector('[data-choose-category="T"]') as HTMLElement;
+    expect(current.querySelector('[data-current]')).not.toBeNull();
+    (document.querySelector('[data-choose-category="M"]') as HTMLElement).click();
     expect(stored().category).toBe('M');
   });
 });
