@@ -35,7 +35,8 @@ with, `importer.py` reads the old spreadsheet, `app.py` the routes. The two mode
 deliberately separate: a week is written back whole, so entries arrive without ids — their
 order in the list *is* their position — and come back with ids on read.
 
-**The database** is one SQLite file at `data/noted.db`, gitignored, and never committed.
+**The database** is one SQLite file at `data/noted.db` (beside the exe once packaged),
+gitignored, and never committed.
 What *is* committed is `seed.py`: the default hours, the category vocabulary and the
 overtime baseline a new user starts from. It runs on first open and by hand via
 `python seed.py`, and only ever fills in what is missing, so it never overwrites an edit.

@@ -19,6 +19,10 @@ A single git repository at the root, containing two projects:
 Each has its own `CLAUDE.md` with project-specific conventions. `noted.code-workspace`
 opens both as a multi-root VS Code workspace.
 
+`build.ps1` packages both into a portable `dist/Noted.exe` with PyInstaller: the API serves
+the built frontend from its own origin (`noted-api/noted.py`), and the database lives beside
+the exe.
+
 ## Documentation
 
 | Document | What it's for |
