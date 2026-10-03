@@ -135,6 +135,32 @@ body {
   outline: none;
 }
 
+/*
+ * A field that looks exactly like the text it edits: same type, no box, no
+ * padding of its own, and as tall as what is in it. Editing in place moves
+ * nothing; the item's focus ring is what says it is being edited.
+ */
+.inline-field {
+  display: block;
+  width: 100%;
+  min-height: 1lh;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  resize: none;
+  overflow: hidden;
+  outline: none;
+  field-sizing: content;
+}
+
+.day-item:has(.inline-field:focus) {
+  outline: 2px solid var(--app-accent);
+  outline-offset: -2px;
+}
+
 .entry-editor-error {
   color: var(--mat-sys-error);
 }

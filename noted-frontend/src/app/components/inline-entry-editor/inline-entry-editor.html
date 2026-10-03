@@ -1,0 +1,23 @@
+<textarea
+  #textField
+  class="inline-field"
+  rows="1"
+  aria-label="Entry"
+  data-edit-text
+  [value]="text()"
+  (input)="text.set(textField.value)"
+  (keydown)="onTextKeydown($event)"
+></textarea>
+@if (note() !== null) {
+  <textarea
+    #noteField
+    class="inline-field text-xs opacity-60"
+    rows="1"
+    aria-label="Note"
+    placeholder="Note"
+    data-edit-note
+    [value]="note()"
+    (input)="note.set(noteField.value)"
+    (keydown)="onKeydown($event)"
+  ></textarea>
+}

@@ -276,11 +276,11 @@
         <span class="w-1 shrink-0"></span>
       }
       @if (editingId() === entry.id) {
-        <app-entry-editor
-          class="min-w-0 flex-1"
-          [initial]="draftOf(entry)"
-          (submitted)="saveText(entry, $event)"
-          (cancelled)="editingId.set(null)"
+        <app-inline-entry-editor
+          class="min-w-0 flex-1 py-1"
+          [value]="{ text: entry.text, note: entry.note }"
+          (saved)="saveText(entry, $event)"
+          (closed)="editingId.set(null)"
         />
       } @else {
         <div class="min-w-0 flex-1 py-1" data-entry-text (dblclick)="editingId.set(entry.id)">

@@ -328,18 +328,21 @@ describe('Day editing an entry', () => {
     return appData.week()!.days[0].items[0] as Entry;
   }
 
-  it('opens the text and note for editing on a double-click', async () => {
+  it('edits the text and note where they are, on a double-click', async () => {
     const fixture = await render();
     fixture.nativeElement
       .querySelector('[data-entry-text]')
       .dispatchEvent(new MouseEvent('dblclick'));
     fixture.detectChanges();
-    const field = fixture.nativeElement.querySelector('textarea') as HTMLTextAreaElement;
-    expect(field.value).toBe('Fixed it\nthe header');
+    const text = fixture.nativeElement.querySelector('[data-edit-text]') as HTMLTextAreaElement;
+    const note = fixture.nativeElement.querySelector('[data-edit-note]') as HTMLTextAreaElement;
+    expect([text.value, note.value]).toEqual(['Fixed it', 'the header']);
 
-    field.value = 'Fixed the header\nit was the z-index';
-    field.dispatchEvent(new Event('input'));
-    field.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', ctrlKey: true }));
+    text.value = 'Fixed the header';
+    text.dispatchEvent(new Event('input'));
+    note.value = 'it was the z-index';
+    note.dispatchEvent(new Event('input'));
+    text.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', ctrlKey: true }));
     fixture.detectChanges();
 
     // Edited as plain text: nothing goes back through the syntax.

@@ -23,6 +23,10 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 
 import { BreakEditor } from 'app/components/break-editor/break-editor';
 import { EntryEditor } from 'app/components/entry-editor/entry-editor';
+import {
+  EntryText,
+  InlineEntryEditor,
+} from 'app/components/inline-entry-editor/inline-entry-editor';
 import { Autofocus } from 'app/directives/autofocus';
 import {
   Break,
@@ -51,6 +55,7 @@ type Clock = 'arrival' | 'departure';
     NgTemplateOutlet,
     Autofocus,
     EntryEditor,
+    InlineEntryEditor,
     BreakEditor,
     MatMenuModule,
     MatIconModule,
@@ -271,19 +276,10 @@ export class Day {
   /** The entry open for editing, if any. */
   protected readonly editingId = signal<number | null>(null);
 
-  /**
-   * An edit is plain text, never the syntax again — see specification §3.2. The
-   * first line is the entry and the rest its note, as when it was typed.
-   */
-  protected saveText(entry: Entry, typed: string) {
-    const [first, ...rest] = typed.split('\n');
-    const note = rest.join('\n').trim();
-    this.appData.updateEntry(this.day().date, entry.id, { text: first.trim(), note: note || null });
+  /** An edit is plain text, never the syntax again — see specification §3.2. */
+  protected saveText(entry: Entry, edited: EntryText) {
+    this.appData.updateEntry(this.day().date, entry.id, edited);
     this.editingId.set(null);
-  }
-
-  protected draftOf(entry: Entry): string {
-    return entry.note ? `${entry.text}\n${entry.note}` : entry.text;
   }
 
   /** Which of the day's frame times is open for editing, if either. */
@@ -406,5 +402,8 @@ export class Day {
 
 /** Whether an event came from inside one of the editors an option can hold. */
 function insideEditor(target: EventTarget | null): boolean {
-  return target instanceof Element && target.closest('app-entry-editor, app-break-editor') !== null;
+  return (
+    target instanceof Element &&
+    target.closest('app-entry-editor, app-inline-entry-editor, app-break-editor') !== null
+  );
 }
