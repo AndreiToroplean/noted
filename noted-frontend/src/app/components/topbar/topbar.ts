@@ -1,10 +1,12 @@
 import { Component, inject } from '@angular/core';
 
+import { MatIconModule } from '@angular/material/icon';
+
 import { AppData } from 'app/services/app-data';
 
 @Component({
   selector: 'app-topbar',
-  imports: [],
+  imports: [MatIconModule],
   templateUrl: './topbar.html',
 })
 export class Topbar {

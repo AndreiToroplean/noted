@@ -1,5 +1,9 @@
 <div class="flex items-center gap-3 px-3 py-2">
-  <span class="font-semibold tracking-widest">NOTED</span>
+  <!-- The app's icon, as the tab and the exe show it: the symbol in the accent. -->
+  <span class="flex items-center gap-1.5">
+    <mat-icon class="topbar-logo" aria-hidden="true">edit_note</mat-icon>
+    <span class="font-semibold tracking-widest">NOTED</span>
+  </span>
   <span class="ml-auto text-xs opacity-70">
     @if (appData.saveFailed()) {
       Could not save

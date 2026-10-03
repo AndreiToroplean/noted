@@ -349,6 +349,10 @@ body {
   --mat-button-text-label-text-size: var(--mat-sys-label-small-size);
 }
 
+.topbar-logo {
+  color: var(--app-accent);
+}
+
 .app-footer {
   border-top: 1px solid var(--app-outline);
   /* The tabs' own divider stopped short of the scroll arrows; the footer draws it instead. */
