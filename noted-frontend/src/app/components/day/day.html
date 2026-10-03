@@ -326,7 +326,7 @@
         <div class="min-w-0 flex-1 py-1" data-entry-text (dblclick)="openEntry(entry)">
           <div>{{ entry.text }}</div>
           @if (entry.note) {
-            <div class="text-xs opacity-60">{{ entry.note }}</div>
+            <div class="whitespace-pre-line opacity-60">{{ entry.note }}</div>
           }
         </div>
       }

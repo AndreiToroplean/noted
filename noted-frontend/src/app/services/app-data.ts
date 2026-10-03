@@ -23,8 +23,6 @@ export interface Typed {
   note: string | null;
 }
 
-const LINE_BREAK = '\n';
-
 /**
  * How long the week sits still before it is written back. Long enough that
  * typing a line doesn't produce a request per keystroke, short enough that
@@ -177,7 +175,7 @@ export class AppData {
 
   /** A line as typed, with its note as the line under it, read by the API's grammar. */
   private async read(typed: Typed): Promise<ParsedItem> {
-    const text = typed.note === null ? typed.text : [typed.text, typed.note].join(LINE_BREAK);
+    const text = typed.note === null ? typed.text : `${typed.text}\n${typed.note}`;
     try {
       return await firstValueFrom(this.http.post<ParsedItem>(`${API_BASE}/parse`, { text }));
     } catch (error) {

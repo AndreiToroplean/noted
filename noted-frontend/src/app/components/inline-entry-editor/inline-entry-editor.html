@@ -1,37 +1,23 @@
 <textarea
-  #textField
+  #field
   class="inline-field"
   rows="1"
   aria-label="Entry"
   [placeholder]="adding() ? '[T] project: what was done' : ''"
   data-edit-text
   [readOnly]="busy()"
-  [value]="text()"
-  (input)="onInput('text', textField.value)"
-  (keydown)="onTextKeydown($event)"
+  [value]="content()"
+  (input)="onInput(field.value)"
+  (keydown)="onKeydown($event)"
 ></textarea>
-@if (note() !== null) {
-  <textarea
-    #noteField
-    class="inline-field text-xs opacity-60"
-    rows="1"
-    aria-label="Note"
-    placeholder="Note"
-    data-edit-note
-    [readOnly]="busy()"
-    [value]="note()"
-    (input)="onInput('note', noteField.value)"
-    (keydown)="onKeydown($event)"
-  ></textarea>
-}
 @if (error(); as message) {
   <div class="editor-hint editor-hint-error" role="alert">{{ message }}</div>
 } @else {
   <div class="editor-hint" role="note">
     @if (adding()) {
-      Enter for a note · Ctrl+Enter to add · Ctrl+B for a break · Esc to close
+      Ctrl+Enter to add · Ctrl+B for a break · Esc to close
     } @else {
-      Enter for a note · Ctrl+Enter to save · Esc to close
+      Ctrl+Enter to save · Esc to close
     }
   </div>
 }

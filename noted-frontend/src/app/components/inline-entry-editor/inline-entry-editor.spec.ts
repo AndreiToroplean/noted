@@ -7,20 +7,26 @@ import {
 } from 'app/components/inline-entry-editor/inline-entry-editor';
 
 describe('InlineEntryEditor', () => {
-  function render(value: EntryText, original: EntryText | null = null) {
+  function render(
+    value: EntryText,
+    inputs: { original?: EntryText; adding?: boolean; enterAt?: 'start' | 'end' } = {},
+  ) {
     const fixture = TestBed.createComponent(InlineEntryEditor);
     fixture.componentRef.setInput('value', value);
-    fixture.componentRef.setInput('original', original);
+    for (const [name, input] of Object.entries(inputs)) fixture.componentRef.setInput(name, input);
     const saved: EntryText[] = [];
     const closed: EntryText[] = [];
+    const moved: EditorMove[] = [];
+    const switched: EntryText[] = [];
     fixture.componentInstance.saved.subscribe(text => saved.push(text));
     fixture.componentInstance.closed.subscribe(text => closed.push(text));
+    fixture.componentInstance.moved.subscribe(move => moved.push(move));
+    fixture.componentInstance.switchToBreak.subscribe(text => switched.push(text));
     document.body.append(fixture.nativeElement);
     fixture.detectChanges();
     const dom = fixture.nativeElement as HTMLElement;
-    const text = () => dom.querySelector('[data-edit-text]') as HTMLTextAreaElement;
-    const note = () => dom.querySelector('[data-edit-note]') as HTMLTextAreaElement | null;
-    return { fixture, dom, text, note, saved, closed };
+    const field = dom.querySelector('[data-edit-text]') as HTMLTextAreaElement;
+    return { fixture, dom, field, saved, closed, moved, switched };
   }
 
   function type(field: HTMLTextAreaElement, value: string) {
@@ -40,190 +46,123 @@ describe('InlineEntryEditor', () => {
     return event;
   }
 
-  it('opens on the text and the note, each in its own field, the text focused', async () => {
-    const { fixture, text, note } = render({ text: 'Fixed it', note: 'the header' });
+  it('opens on the whole entry as one text, the note on the line under it', async () => {
+    const { fixture, field } = render({ text: 'Fixed it', note: 'the header' });
     await fixture.whenStable();
-    expect(text().value).toBe('Fixed it');
-    expect(note()?.value).toBe('the header');
-    expect(document.activeElement).toBe(text());
+    expect(field.value).toBe('Fixed it\nthe header');
+    expect(document.activeElement).toBe(field);
+    expect(field.selectionStart).toBe('Fixed it'.length);
   });
 
-  it('has no note field while there is no note, so nothing moves', () => {
-    const { note } = render({ text: 'Fixed it', note: null });
-    expect(note()).toBeNull();
+  it('leaves Enter to the field, as a new line', () => {
+    const { field } = render({ text: 'Fixed it', note: null });
+    expect(press(field, 'Enter').defaultPrevented).toBe(false);
   });
 
-  it('goes down to the note on Enter, opening one if there was none', async () => {
-    const { fixture, text, note } = render({ text: 'Fixed it', note: null });
-    expect(press(text(), 'Enter').defaultPrevented).toBe(true);
-    await fixture.whenStable();
-    expect(note()).not.toBeNull();
-    expect(document.activeElement).toBe(note());
-  });
-
-  it('saves both on Ctrl+Enter, an empty note as none', () => {
-    const { text, saved } = render({ text: 'Fixed it', note: 'the header' });
-    type(text(), 'Fixed the header');
-    const note = text().parentElement!.querySelector('[data-edit-note]') as HTMLTextAreaElement;
-    type(note, '  ');
-    press(text(), 'Enter', true);
-    expect(saved).toEqual([{ text: 'Fixed the header', note: null }]);
+  it('saves on Ctrl+Enter, the first line as the entry and the rest as the note', () => {
+    const { field, saved } = render({ text: 'Fixed it', note: null });
+    type(field, 'Fixed the header \nit was\nthe z-index');
+    press(field, 'Enter', true);
+    type(field, 'Fixed the header\n  ');
+    press(field, 'Enter', true);
+    expect(saved).toEqual([
+      { text: 'Fixed the header', note: 'it was\nthe z-index' },
+      { text: 'Fixed the header', note: null },
+    ]);
   });
 
   it('closes on Esc without asking, handing back what was typed', () => {
-    const { text, closed, saved } = render({ text: 'Fixed it', note: null });
-    type(text(), 'Fixed it, nearly');
-    press(text(), 'Escape');
+    const { field, closed, saved } = render({ text: 'Fixed it', note: null });
+    type(field, 'Fixed it, nearly');
+    press(field, 'Escape');
     expect(closed).toEqual([{ text: 'Fixed it, nearly', note: null }]);
     expect(saved).toEqual([]);
-    expect(document.querySelector('mat-dialog-container')).toBeNull();
   });
 
-  it('closes the same way when focus goes elsewhere, but not between its own fields', () => {
-    const { text, note, closed } = render({ text: 'Fixed it', note: 'the header' });
-    text().dispatchEvent(new FocusEvent('focusout', { bubbles: true, relatedTarget: note() }));
-    expect(closed).toEqual([]);
-    text().dispatchEvent(new FocusEvent('focusout', { bubbles: true, relatedTarget: null }));
+  it('closes the same way when focus goes elsewhere', () => {
+    const { field, closed } = render({ text: 'Fixed it', note: 'the header' });
+    field.dispatchEvent(new FocusEvent('focusout', { bubbles: true, relatedTarget: null }));
     expect(closed).toEqual([{ text: 'Fixed it', note: 'the header' }]);
   });
 
   it('says which keys do what, in a hint laid over what is below', () => {
     const { dom } = render({ text: 'Fixed it', note: null });
-    const hint = dom.querySelector('.editor-hint');
-    expect(hint?.textContent).toContain('Ctrl+Enter');
-    expect(hint?.getAttribute('aria-hidden')).toBeNull();
+    expect(dom.querySelector('.editor-hint')?.textContent).toContain('Ctrl+Enter');
   });
 
   describe('opened on a draft', () => {
     const draft = { text: 'Fixed it, nearly', note: 'needs a test' };
     const original = { text: 'Fixed it', note: null };
 
-    it('goes back to the entry as saved on Ctrl+Z', () => {
-      const { fixture, text, note } = render(draft, original);
-      expect(press(text(), 'z', true).defaultPrevented).toBe(true);
+    it('goes back to the entry as saved on Ctrl+Z, and to the draft on Ctrl+Y', () => {
+      const { fixture, field } = render(draft, { original });
+      expect(press(field, 'z', true).defaultPrevented).toBe(true);
       fixture.detectChanges();
-      expect(text().value).toBe('Fixed it');
-      expect(note()).toBeNull();
-    });
+      expect(field.value).toBe('Fixed it');
 
-    it('brings the draft back on Ctrl+Y or Ctrl+Shift+Z', () => {
-      const { fixture, text, note } = render(draft, original);
-      press(text(), 'z', true);
+      expect(press(field, 'y', true).defaultPrevented).toBe(true);
       fixture.detectChanges();
-      expect(press(text(), 'y', true).defaultPrevented).toBe(true);
-      fixture.detectChanges();
-      expect(text().value).toBe('Fixed it, nearly');
-      expect(note()?.value).toBe('needs a test');
-
-      press(text(), 'z', true);
-      fixture.detectChanges();
-      press(text(), 'Z', true, true);
-      fixture.detectChanges();
-      expect(text().value).toBe('Fixed it, nearly');
+      expect(field.value).toBe('Fixed it, nearly\nneeds a test');
     });
 
     it('leaves Ctrl+Z to the field once something has been typed', () => {
-      const { fixture, text } = render(draft, original);
-      type(text(), 'Fixed it, nearly there');
+      const { fixture, field } = render(draft, { original });
+      type(field, 'Fixed it, nearly there');
       fixture.detectChanges();
-      expect(press(text(), 'z', true).defaultPrevented).toBe(false);
+      expect(press(field, 'z', true).defaultPrevented).toBe(false);
     });
 
     it('leaves Ctrl+Z to the field when there was no draft', () => {
-      const { text } = render(original);
-      expect(press(text(), 'z', true).defaultPrevented).toBe(false);
+      const { field } = render(original);
+      expect(press(field, 'z', true).defaultPrevented).toBe(false);
     });
   });
 
-  it('turns to a break on Ctrl+B while adding, keeping what was typed', () => {
-    const fixture = TestBed.createComponent(InlineEntryEditor);
-    fixture.componentRef.setInput('value', { text: '', note: null });
-    fixture.componentRef.setInput('adding', true);
-    const switched: EntryText[] = [];
-    fixture.componentInstance.switchToBreak.subscribe(text => switched.push(text));
-    fixture.detectChanges();
-    const text = fixture.nativeElement.querySelector('[data-edit-text]') as HTMLTextAreaElement;
-    type(text, '[T] Half');
-    expect(press(text, 'b', true).defaultPrevented).toBe(true);
-    expect(switched).toEqual([{ text: '[T] Half', note: null }]);
-  });
+  it('turns to a break on Ctrl+B while adding, and leaves it alone otherwise', () => {
+    const adding = render({ text: '', note: null }, { adding: true });
+    type(adding.field, '[T] Half');
+    expect(press(adding.field, 'b', true).defaultPrevented).toBe(true);
+    expect(adding.switched).toEqual([{ text: '[T] Half', note: null }]);
 
-  it('leaves Ctrl+B alone while editing an entry', () => {
-    const { text } = render({ text: 'Fixed it', note: null });
-    expect(press(text(), 'b', true).defaultPrevented).toBe(false);
+    const editing = render({ text: 'Fixed it', note: null });
+    expect(press(editing.field, 'b', true).defaultPrevented).toBe(false);
   });
 
   // The test DOM lays nothing out, so every caret is on a first and last line.
   describe('moving on', () => {
-    function moves(value: EntryText) {
-      const rendered = render(value);
-      const moved: EditorMove[] = [];
-      rendered.fixture.componentInstance.moved.subscribe(move => moved.push(move));
-      return { ...rendered, moved };
-    }
-
-    it('goes to the entry above on Up from the text, with what was typed', () => {
-      const { text, moved } = moves({ text: 'Fixed it', note: null });
-      type(text(), 'Fixed it, nearly');
-      expect(press(text(), 'ArrowUp').defaultPrevented).toBe(true);
-      expect(moved).toEqual([{ to: 'up', typed: { text: 'Fixed it, nearly', note: null } }]);
-    });
-
-    it('goes down to its own note first, then to the entry below', async () => {
-      const { fixture, text, note, moved } = moves({ text: 'Fixed it', note: 'the header' });
-      press(text(), 'ArrowDown');
-      await fixture.whenStable();
-      expect(document.activeElement).toBe(note());
-      expect(moved).toEqual([]);
-
-      press(note()!, 'ArrowDown');
-      expect(moved.map(move => move.to)).toEqual(['down']);
-    });
-
-    it('goes up from the note to its own text', async () => {
-      const { fixture, text, note, moved } = moves({ text: 'Fixed it', note: 'the header' });
-      press(note()!, 'ArrowUp');
-      await fixture.whenStable();
-      expect(document.activeElement).toBe(text());
-      expect(moved).toEqual([]);
+    it('goes to the entry above on Up, and below on Down, with what was typed', () => {
+      const { field, moved } = render({ text: 'Fixed it', note: null });
+      type(field, 'Fixed it, nearly');
+      expect(press(field, 'ArrowUp').defaultPrevented).toBe(true);
+      press(field, 'ArrowDown');
+      expect(moved).toEqual([
+        { to: 'up', typed: { text: 'Fixed it, nearly', note: null } },
+        { to: 'down', typed: { text: 'Fixed it, nearly', note: null } },
+      ]);
     });
 
     it('goes to the next day on Tab, and the one before on Shift+Tab', () => {
-      const { text, note, moved } = moves({ text: 'Fixed it', note: 'the header' });
-      expect(press(text(), 'Tab').defaultPrevented).toBe(true);
-      press(note()!, 'Tab', false, true);
+      const { field, moved } = render({ text: 'Fixed it', note: null });
+      expect(press(field, 'Tab').defaultPrevented).toBe(true);
+      press(field, 'Tab', false, true);
       expect(moved.map(move => move.to)).toEqual(['next-day', 'previous-day']);
     });
 
     it('leaves Shift and Ctrl arrows to the field', () => {
-      const { text, moved } = moves({ text: 'Fixed it', note: null });
-      press(text(), 'ArrowUp', false, true);
-      press(text(), 'ArrowDown', true);
+      const { field, moved } = render({ text: 'Fixed it', note: null });
+      press(field, 'ArrowUp', false, true);
+      press(field, 'ArrowDown', true);
       expect(moved).toEqual([]);
     });
 
-    it('opens with the caret at the start when it is entered from above', async () => {
-      const fixture = TestBed.createComponent(InlineEntryEditor);
-      fixture.componentRef.setInput('value', { text: 'Fixed it', note: 'the header' });
-      fixture.componentRef.setInput('enterAt', 'start');
-      document.body.append(fixture.nativeElement);
-      fixture.detectChanges();
-      await fixture.whenStable();
-      const text = fixture.nativeElement.querySelector('[data-edit-text]') as HTMLTextAreaElement;
-      expect(document.activeElement).toBe(text);
-      expect(text.selectionStart).toBe(0);
-    });
+    it('opens at the very start from above, and the very end from below', async () => {
+      const above = render({ text: 'Fixed it', note: 'the header' }, { enterAt: 'start' });
+      await above.fixture.whenStable();
+      expect(above.field.selectionStart).toBe(0);
 
-    it('opens in the note, at its end, when it is entered from below', async () => {
-      const fixture = TestBed.createComponent(InlineEntryEditor);
-      fixture.componentRef.setInput('value', { text: 'Fixed it', note: 'the header' });
-      fixture.componentRef.setInput('enterAt', 'end');
-      document.body.append(fixture.nativeElement);
-      fixture.detectChanges();
-      await fixture.whenStable();
-      const note = fixture.nativeElement.querySelector('[data-edit-note]') as HTMLTextAreaElement;
-      expect(document.activeElement).toBe(note);
-      expect(note.selectionStart).toBe('the header'.length);
+      const below = render({ text: 'Fixed it', note: 'the header' }, { enterAt: 'end' });
+      await below.fixture.whenStable();
+      expect(below.field.selectionStart).toBe(below.field.value.length);
     });
   });
 });

@@ -268,14 +268,9 @@ describe('Day adding an entry', () => {
   it('takes a note on the line below, as an entry being edited does', async () => {
     const fixture = await render();
     const field = open(fixture);
-    field.value = '[T] Fixed it';
+    field.value = '[T] Fixed it\nthe header';
     field.dispatchEvent(new Event('input'));
-    field.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', cancelable: true }));
-    fixture.detectChanges();
-    const note = fixture.nativeElement.querySelector('[data-edit-note]') as HTMLTextAreaElement;
-    note.value = 'the header';
-    note.dispatchEvent(new Event('input'));
-    note.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', ctrlKey: true }));
+    field.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', ctrlKey: true }));
     const request = http.expectOne(`${API_BASE}/parse`);
     expect(request.request.body).toEqual({ text: '[T] Fixed it\nthe header' });
     request.flush(entry('T', { text: 'Fixed it', note: 'the header' }));
@@ -375,13 +370,10 @@ describe('Day editing an entry', () => {
       .dispatchEvent(new MouseEvent('dblclick'));
     fixture.detectChanges();
     const text = fixture.nativeElement.querySelector('[data-edit-text]') as HTMLTextAreaElement;
-    const note = fixture.nativeElement.querySelector('[data-edit-note]') as HTMLTextAreaElement;
-    expect([text.value, note.value]).toEqual(['Fixed it', 'the header']);
+    expect(text.value).toBe('Fixed it\nthe header');
 
-    text.value = 'Fixed the header';
+    text.value = 'Fixed the header\nit was the z-index';
     text.dispatchEvent(new Event('input'));
-    note.value = 'it was the z-index';
-    note.dispatchEvent(new Event('input'));
     text.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', ctrlKey: true }));
     fixture.detectChanges();
 
@@ -1016,18 +1008,12 @@ describe('Day drafts', () => {
     const text = openEntry(fixture);
     type(text, 'Fixed it, nearly');
     fixture.detectChanges();
-    press(text, 'Enter');
+    type(text, 'Fixed it, nearly\nNeeds a test');
     fixture.detectChanges();
-    const note = field(fixture, '[data-edit-note]');
-    expect(note).not.toBeNull();
-    type(note, 'Needs a test');
-    fixture.detectChanges();
-    press(note, 'Escape');
+    press(text, 'Escape');
     fixture.detectChanges();
 
-    const reopened = openEntry(fixture);
-    expect(reopened.value).toBe('Fixed it, nearly');
-    expect(field(fixture, '[data-edit-note]').value).toBe('Needs a test');
+    expect(openEntry(fixture).value).toBe('Fixed it, nearly\nNeeds a test');
   });
 
   it('goes back from a resumed draft to the entry as saved on Ctrl+Z', async () => {
