@@ -938,3 +938,35 @@ describe('Day drafts', () => {
     expect(field(fixture, 'app-entry-editor textarea').value).toBe('[T] Half a thought');
   });
 });
+
+describe('Day break drafts', () => {
+  it('keeps a break being edited as a draft when it is closed, unsaved', async () => {
+    TestBed.configureTestingModule({
+      providers: [provideHttpClient(), provideHttpClientTesting()],
+    });
+    const http = TestBed.inject(HttpTestingController);
+    const appData = TestBed.inject(AppData);
+    appData.week.set({ week: '2026-02-09', days: [day([pause({ id: 4, minutes: 60 })])] });
+    const fixture = TestBed.createComponent(Day);
+    fixture.componentRef.setInput('day', appData.week()!.days[0]);
+    fixture.detectChanges();
+    http.match(() => true).forEach(request => request.flush([]));
+    await settle();
+    fixture.detectChanges();
+
+    const open = () => {
+      fixture.nativeElement.querySelector('[data-break]').dispatchEvent(new MouseEvent('dblclick'));
+      fixture.detectChanges();
+      return fixture.nativeElement.querySelector('[data-break-editor]') as HTMLElement;
+    };
+    let editor = open();
+    (editor.querySelector('[data-more]') as HTMLElement).click();
+    fixture.detectChanges();
+    editor.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    fixture.detectChanges();
+
+    expect(appData.week()!.days[0].items[0]).toMatchObject({ minutes: 60 });
+    editor = open();
+    expect((editor.querySelector('[data-minutes]') as HTMLInputElement).value).toBe('75');
+  });
+});

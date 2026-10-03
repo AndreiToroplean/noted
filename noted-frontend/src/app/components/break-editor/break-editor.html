@@ -105,5 +105,11 @@
   @if (error(); as message) {
     <div class="entry-editor-error" role="alert">{{ message }}</div>
   }
-  <div class="opacity-50">Ctrl+Enter to keep · Ctrl+B for an entry · Esc to cancel</div>
+  <div class="editor-hint" role="note">
+    Ctrl+Enter to keep ·
+    @if (canSwitch()) {
+      Ctrl+B for an entry ·
+    }
+    Esc to close
+  </div>
 </div>

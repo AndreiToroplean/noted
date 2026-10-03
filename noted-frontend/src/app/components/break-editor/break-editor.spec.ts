@@ -13,14 +13,15 @@ describe('BreakEditor', () => {
     vi.useRealTimers();
   });
 
-  function render(initial: Break | null = null) {
+  function render(initial: Break | null = null, canSwitch = false) {
     const fixture = TestBed.createComponent(BreakEditor);
     if (initial) fixture.componentRef.setInput('initial', initial);
+    fixture.componentRef.setInput('canSwitch', canSwitch);
     const submitted: BreakDraft[] = [];
-    let cancelled = 0;
+    const closed: (BreakDraft | null)[] = [];
     let switched = 0;
     fixture.componentInstance.submitted.subscribe(draft => submitted.push(draft));
-    fixture.componentInstance.cancelled.subscribe(() => cancelled++);
+    fixture.componentInstance.closed.subscribe(draft => closed.push(draft));
     fixture.componentInstance.switchToEntry.subscribe(() => switched++);
     fixture.detectChanges();
     const dom = fixture.nativeElement as HTMLElement;
@@ -28,7 +29,7 @@ describe('BreakEditor', () => {
       fixture,
       dom,
       submitted,
-      cancelled: () => cancelled,
+      closed,
       switched: () => switched,
       press(key: string, ctrlKey = false) {
         dom
@@ -99,7 +100,7 @@ describe('BreakEditor', () => {
   });
 
   it('goes back to typing an entry on Ctrl+B', () => {
-    const { press, switched } = render();
+    const { press, switched } = render(null, true);
     press('b', true);
     expect(switched()).toBe(1);
   });
@@ -119,10 +120,27 @@ describe('BreakEditor', () => {
     expect(switched()).toBe(0);
   });
 
-  it('closes without asking when nothing was changed', () => {
-    const { press, cancelled } = render();
+  it('closes on Esc with nothing to keep when nothing was changed', () => {
+    const { press, closed } = render();
     press('Escape');
-    expect(cancelled()).toBe(1);
+    expect(closed).toEqual([null]);
+  });
+
+  it('closes on Esc without asking, handing back a change', () => {
+    const { click, press, closed } = render();
+    click('[data-more]');
+    press('Escape');
+    expect(closed).toEqual([expect.objectContaining({ minutes: 30 })]);
+    expect(document.querySelector('mat-dialog-container')).toBeNull();
+  });
+
+  it('closes the same way when focus goes elsewhere', () => {
+    const { dom, click, closed } = render();
+    click('[data-more]');
+    dom
+      .querySelector('[data-break-editor]')!
+      .dispatchEvent(new FocusEvent('focusout', { bubbles: true, relatedTarget: null }));
+    expect(closed).toEqual([expect.objectContaining({ minutes: 30 })]);
   });
 
   it('opens on an existing break', () => {

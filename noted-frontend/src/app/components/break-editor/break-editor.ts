@@ -3,6 +3,7 @@ import {
   ElementRef,
   afterNextRender,
   computed,
+  effect,
   inject,
   input,
   linkedSignal,
@@ -12,13 +13,9 @@ import {
   viewChild,
 } from '@angular/core';
 
-import { MatDialog } from '@angular/material/dialog';
 import { MatIconModule } from '@angular/material/icon';
 
-import { firstValueFrom } from 'rxjs';
-
-import { ConfirmDiscard } from 'app/components/confirm-discard/confirm-discard';
-import { Break, BreakDraft } from 'app/services/api';
+import { BreakDraft } from 'app/services/api';
 import { clock, formatMinutes } from 'app/services/time';
 
 /** Breaks are counted in quarter hours, so that is what one click moves by. */
@@ -26,21 +23,29 @@ const STEP = 15;
 
 /**
  * A break, said one of the two ways a break can be: how long it was, or when
- * it started and ended. Ctrl+Enter keeps it, Esc asks before losing a change,
- * and Ctrl+B goes back to typing an entry.
+ * it started and ended. Ctrl+Enter keeps it, and Ctrl+B goes back to typing an
+ * entry. Esc, or focus going anywhere else, closes it without asking and hands
+ * back any change, for the day to keep as a draft.
  */
 @Component({
   selector: 'app-break-editor',
   imports: [MatIconModule],
   templateUrl: './break-editor.html',
+  host: { '(focusout)': 'onFocusOut($event)' },
 })
 export class BreakEditor {
-  /** The break being edited, or nothing for a new one. */
-  readonly initial = input<Break | null>(null);
+  /** What the editor opens on: the break being edited, a draft left earlier, or nothing. */
+  readonly initial = input<BreakDraft | null>(null);
+  /** Whether Ctrl+B may turn it back into an entry: only a new break can. */
+  readonly canSwitch = input(false);
 
   readonly submitted = output<BreakDraft>();
-  readonly cancelled = output<void>();
-  readonly switchToEntry = output<void>();
+  /**
+   * Closed unsaved, by Esc or by focus going elsewhere: what was made of the
+   * break, for the day to keep as a draft, or null if nothing was changed.
+   */
+  readonly closed = output<BreakDraft | null>();
+  readonly switchToEntry = output<BreakDraft | null>();
 
   protected readonly mode = linkedSignal<'duration' | 'range'>(() =>
     this.initial()?.start ? 'range' : 'duration',
@@ -60,21 +65,25 @@ export class BreakEditor {
 
   protected readonly length = computed(() => formatMinutes(this.minutes()));
 
-  /** What the editor opened on, to tell a change from a look. */
-  private readonly openedOn = computed(() => {
-    this.initial();
-    return untracked(() => JSON.stringify(this.draft()));
-  });
+  /**
+   * What the editor opened on, to tell a change from a look. Taken as it opens,
+   * by an effect, since a computed would only be worked out when first read —
+   * after the change it is meant to be compared with.
+   */
+  private openedOn = '';
 
-  private readonly dialog = inject(MatDialog);
+  private readonly host = inject<ElementRef<HTMLElement>>(ElementRef).nativeElement;
   private readonly first = viewChild<ElementRef<HTMLElement>>('first');
 
   constructor() {
-    const host = inject<ElementRef<HTMLElement>>(ElementRef).nativeElement;
+    effect(() => {
+      this.initial();
+      this.openedOn = untracked(() => JSON.stringify(this.draft()));
+    });
     afterNextRender(() => {
       this.first()?.nativeElement.focus();
       // Focus only brings the first field into view; the rest of the editor should come too.
-      host.scrollIntoView?.({ block: 'nearest' });
+      this.host.scrollIntoView?.({ block: 'nearest' });
     });
   }
 
@@ -88,14 +97,26 @@ export class BreakEditor {
       event.preventDefault();
       this.submit();
     } else if (event.key.toLowerCase() === 'b' && ctrl) {
-      // Only a new break can become an entry; one being edited stays a break.
-      if (this.initial()) return;
+      if (!this.canSwitch()) return;
       event.preventDefault();
-      this.switchToEntry.emit();
+      this.switchToEntry.emit(this.changes());
     } else if (event.key === 'Escape') {
       event.preventDefault();
-      void this.cancel();
+      this.closed.emit(this.changes());
     }
+  }
+
+  /** Focus leaving for anything outside the editor is the same as Esc. */
+  protected onFocusOut(event: FocusEvent) {
+    const next = event.relatedTarget;
+    if (next instanceof Node && this.host.contains(next)) return;
+    this.closed.emit(this.changes());
+  }
+
+  /** The break as edited, or null if it is still what the editor opened on. */
+  private changes(): BreakDraft | null {
+    const draft = this.draft();
+    return JSON.stringify(draft) === this.openedOn ? null : draft;
   }
 
   protected setMinutes(value: string) {
@@ -122,16 +143,6 @@ export class BreakEditor {
     }
     this.error.set(null);
     this.submitted.emit(this.draft());
-  }
-
-  private async cancel() {
-    if (JSON.stringify(this.draft()) === this.openedOn()) {
-      this.cancelled.emit();
-      return;
-    }
-    const discard = await firstValueFrom(this.dialog.open(ConfirmDiscard).afterClosed());
-    if (discard) this.cancelled.emit();
-    else this.first()?.nativeElement.focus();
   }
 }
 

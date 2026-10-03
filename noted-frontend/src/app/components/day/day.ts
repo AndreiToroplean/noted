@@ -330,8 +330,20 @@ export class Day {
   /** The break open for editing, if any. */
   protected readonly editingBreakId = signal<number | null>(null);
 
+  /** What a break's editor opens on: the draft left last time, or the break as it is. */
+  protected breakDraftOf(pause: Break): BreakDraft {
+    return this.drafts.get<BreakDraft>(itemKey(pause)) ?? pause;
+  }
+
   protected saveBreak(pause: Break, draft: BreakDraft) {
     this.appData.updateBreak(this.day().date, pause.id, draft);
+    this.drafts.drop(itemKey(pause));
+    this.editingBreakId.set(null);
+  }
+
+  /** Closed unsaved: a change waits as a draft. */
+  protected closeBreakEdit(pause: Break, changed: BreakDraft | null) {
+    if (changed) this.drafts.keep(itemKey(pause), changed);
     this.editingBreakId.set(null);
   }
 
@@ -408,7 +420,25 @@ export class Day {
     this.adding.set('break');
   }
 
+  /** A new break left half-made in this day, if any. */
+  private readonly newBreakKey = computed(() => `new-break-${this.day().date}`);
+  protected readonly newBreakDraft = computed(() =>
+    this.drafts.get<BreakDraft>(this.newBreakKey()),
+  );
+
+  protected closeBreakEditor(changed: BreakDraft | null) {
+    if (changed) this.drafts.keep(this.newBreakKey(), changed);
+    this.adding.set(null);
+  }
+
+  /** Ctrl+B back to typing: the break made so far waits as a draft. */
+  protected switchToEntry(changed: BreakDraft | null) {
+    if (changed) this.drafts.keep(this.newBreakKey(), changed);
+    this.adding.set('entry');
+  }
+
   protected addBreak(draft: BreakDraft) {
+    this.drafts.drop(this.newBreakKey());
     this.appData.addBreak(this.day().date, draft);
     // Back to entries, which is what follows a break far more often than another.
     this.adding.set('entry');

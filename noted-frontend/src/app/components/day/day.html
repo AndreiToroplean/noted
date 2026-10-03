@@ -106,9 +106,11 @@
         />
       } @else if (adding() === 'break') {
         <app-break-editor
+          [initial]="newBreakDraft() ?? null"
+          [canSwitch]="true"
           (submitted)="addBreak($event)"
-          (cancelled)="closeEditor()"
-          (switchToEntry)="adding.set('entry')"
+          (closed)="closeBreakEditor($event)"
+          (switchToEntry)="switchToEntry($event)"
         />
       } @else {
         <!--
@@ -233,9 +235,9 @@
   @if (asBreak(item); as pause) {
     @if (editingBreakId() === pause.id) {
       <app-break-editor
-        [initial]="pause"
+        [initial]="breakDraftOf(pause)"
         (submitted)="saveBreak(pause, $event)"
-        (cancelled)="editingBreakId.set(null)"
+        (closed)="closeBreakEdit(pause, $event)"
       />
     } @else {
       <div
