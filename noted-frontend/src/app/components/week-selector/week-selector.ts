@@ -14,11 +14,11 @@ export class WeekSelector {
   protected readonly appData = inject(AppData);
 
   protected readonly selectedIndex = computed(() =>
-    this.appData.weeks.value().indexOf(this.appData.selectedWeek() ?? ''),
+    this.appData.weekList().indexOf(this.appData.selectedWeek() ?? ''),
   );
 
   protected selectWeek(index: number) {
-    const week = this.appData.weeks.value()[index];
+    const week = this.appData.weekList()[index];
     if (week) this.appData.selectedWeek.set(week);
   }
 }

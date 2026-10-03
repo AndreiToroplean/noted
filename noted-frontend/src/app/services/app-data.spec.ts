@@ -255,3 +255,47 @@ describe('AppData editing an item', () => {
     expect(second).toMatchObject({ text: 'Second', category: 'M', note: 'and a note' });
   });
 });
+
+describe('AppData starting a week', () => {
+  let data: AppData;
+  let http: HttpTestingController;
+
+  async function load(weeks: string[]) {
+    TestBed.configureTestingModule({
+      providers: [provideHttpClient(), provideHttpClientTesting()],
+    });
+    data = TestBed.inject(AppData);
+    http = TestBed.inject(HttpTestingController);
+    TestBed.tick();
+    http.expectOne(`${API_BASE}/categories`).flush([]);
+    http.expectOne(`${API_BASE}/weeks`).flush(weeks);
+    await settle();
+    http.match(() => true).forEach(request => request.flush(week()));
+    await settle();
+  }
+
+  beforeEach(() => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date(2026, 1, 11, 9, 0)); // a Wednesday, in the week of MONDAY
+  });
+
+  afterEach(() => {
+    http.match(() => true).forEach(request => request.flush(week()));
+    vi.useRealTimers();
+  });
+
+  it('lists an opened week in its place and selects it', async () => {
+    await load([MONDAY, '2026-02-02']);
+    data.openWeek('2026-02-23');
+    data.openWeek('2026-01-26');
+    expect(data.weekList()).toEqual(['2026-02-23', MONDAY, '2026-02-02', '2026-01-26']);
+    expect(data.selectedWeek()).toBe('2026-01-26');
+  });
+
+  it('just selects a week that is already there', async () => {
+    await load([MONDAY, '2026-02-02']);
+    data.openWeek('2026-02-02');
+    expect(data.weekList()).toEqual([MONDAY, '2026-02-02']);
+    expect(data.selectedWeek()).toBe('2026-02-02');
+  });
+});

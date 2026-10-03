@@ -118,3 +118,16 @@ export function isoDate(date: Date): IsoDate {
   const day = `${date.getDate()}`.padStart(2, '0');
   return `${date.getFullYear()}-${month}-${day}`;
 }
+
+/** The Monday of the week a date falls in, which is what names the week. */
+export function mondayOf(date: Date): IsoDate {
+  const monday = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+  monday.setDate(monday.getDate() - ((monday.getDay() + 6) % 7));
+  return isoDate(monday);
+}
+
+/** A week some number of weeks on, or back when negative. */
+export function addWeeks(week: IsoDate, weeks: number): IsoDate {
+  const [year, month, day] = week.split('-').map(Number);
+  return isoDate(new Date(year, month - 1, day + weeks * 7));
+}

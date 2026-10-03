@@ -1,9 +1,16 @@
-<mat-tab-group
-  [selectedIndex]="selectedIndex()"
-  (selectedIndexChange)="selectWeek($event)"
-  headerPosition="below"
->
-  @for (week of appData.weeks.value(); track week) {
-    <mat-tab [label]="(week | date) || ''" />
-  }
-</mat-tab-group>
+<!--
+  Rebuilt whenever the list changes. The tab group keeps its selection by index,
+  so a week inserted in front of the selected one would otherwise leave the
+  highlight on its neighbour.
+-->
+@for (weeks of [appData.weekList()]; track weeks) {
+  <mat-tab-group
+    [selectedIndex]="selectedIndex()"
+    (selectedIndexChange)="selectWeek($event)"
+    headerPosition="below"
+  >
+    @for (week of weeks; track week) {
+      <mat-tab [label]="(week | date) || ''" />
+    }
+  </mat-tab-group>
+}

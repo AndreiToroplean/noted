@@ -48,12 +48,26 @@ export class AppData {
   readonly weeks = httpResource<IsoDate[]>(() => `${API_BASE}/weeks`, { defaultValue: [] });
 
   /**
+   * Weeks opened here that have nothing saved yet. A week exists only as the
+   * days stored in it, so a new one is listed from here until it is written to.
+   */
+  private readonly opened = signal<IsoDate[]>([]);
+
+  /** Every week there is to choose from, newest first. */
+  readonly weekList = computed(
+    () => [...new Set([...this.weeks.value(), ...this.opened()])].sort().reverse(),
+    // The list reloads after every save, nearly always unchanged; only a real
+    // change should reach what is built from it.
+    { equal: (a, b) => a.length === b.length && a.every((week, index) => week === b[index]) },
+  );
+
+  /**
    * The newest week to begin with, then whichever the user picks. The list
    * reloads after every save, and that must not move them off the week they
    * are editing.
    */
   readonly selectedWeek = linkedSignal<IsoDate[], IsoDate | null>({
-    source: this.weeks.value,
+    source: this.weekList,
     computation: (weeks, previous) =>
       previous?.value && weeks.includes(previous.value) ? previous.value : (weeks[0] ?? null),
   });
@@ -81,6 +95,12 @@ export class AppData {
       const handle = setTimeout(() => this.save(draft), SAVE_DEBOUNCE_MS);
       onCleanup(() => clearTimeout(handle));
     });
+  }
+
+  /** Go to a week, listing it first if it is new. */
+  openWeek(week: IsoDate) {
+    if (!this.weekList().includes(week)) this.opened.update(opened => [...opened, week]);
+    this.selectedWeek.set(week);
   }
 
   /**

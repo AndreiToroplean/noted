@@ -1,0 +1,32 @@
+<h2 mat-dialog-title>Start a week</h2>
+<mat-dialog-content>
+  <div
+    class="flex items-center justify-center gap-2 outline-none"
+    role="group"
+    aria-label="Week"
+    tabindex="0"
+    appAutofocus
+    data-pick-week
+    (keydown)="onKeydown($event)"
+  >
+    <button mat-icon-button aria-label="A week earlier" (click)="step(-1)" data-earlier>
+      <mat-icon>chevron_left</mat-icon>
+    </button>
+    <div class="w-32 text-center">
+      <div class="text-xs opacity-60">Week of Monday</div>
+      <div class="text-lg" data-week>{{ week() | date }}</div>
+    </div>
+    <button mat-icon-button aria-label="A week later" (click)="step(1)" data-later>
+      <mat-icon>chevron_right</mat-icon>
+    </button>
+  </div>
+  <div class="mt-2 h-4 text-center text-xs opacity-60">
+    @if (exists()) {
+      That week is already in the journal; it will just be opened.
+    }
+  </div>
+</mat-dialog-content>
+<mat-dialog-actions align="end">
+  <button mat-button mat-dialog-close>Cancel</button>
+  <button mat-flat-button (click)="take()">{{ exists() ? 'Open' : 'Start' }}</button>
+</mat-dialog-actions>
