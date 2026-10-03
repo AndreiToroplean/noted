@@ -1,5 +1,6 @@
 """The database: one local SQLite file, created and seeded on first run."""
 
+import sys
 import threading
 from pathlib import Path
 
@@ -8,7 +9,17 @@ from sqlmodel import Session, SQLModel, create_engine
 from seed import seed
 
 
-DATABASE_PATH = Path("data") / "noted.db"
+def default_path() -> Path:
+    """Next to the exe once packaged, so the app is one folder you can carry.
+
+    In development it stays in the gitignored `data/`, beside the code.
+    """
+    if getattr(sys, "frozen", False):
+        return Path(sys.executable).parent / "noted.db"
+    return Path("data") / "noted.db"
+
+
+DATABASE_PATH = default_path()
 
 _engine = None
 _engine_lock = threading.Lock()
