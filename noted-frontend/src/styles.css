@@ -266,6 +266,20 @@ body {
   opacity: var(--mat-sys-focus-state-layer-opacity);
 }
 
+/*
+ * Failed: a past day's unfinished work, in the spreadsheet's red. On the item
+ * itself, so it takes the item's rounded corners. It outranks the category's
+ * colour (specification §8), which is why it sets the cell too; only being
+ * selected shows over it.
+ */
+.day-item-failed {
+  background-color: var(--cell-not-done);
+}
+
+.day-item-failed .entry-cell {
+  --cell: var(--checkbox-not-done);
+}
+
 .day-item-selected {
   background-color: var(--mat-sys-secondary-container);
   color: var(--mat-sys-on-secondary-container);

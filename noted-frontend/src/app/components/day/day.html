@@ -37,8 +37,11 @@
     >
       @for (item of data.items; track keyOf(item)) {
         @let key = keyOf(item);
+        @let failed = isFailedItem(item);
         <li
           class="day-item"
+          [class.day-item-failed]="failed"
+          [attr.data-failed]="failed ? '' : null"
           cdkDrag
           [cdkDragDisabled]="isEditing(item)"
           role="option"

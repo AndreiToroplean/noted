@@ -670,3 +670,50 @@ describe('Day dragging items', () => {
     expect(appData.week()!.days[0].items.map(item => item.id)).toEqual([2, 1]);
   });
 });
+
+describe('Day failed entries', () => {
+  let http: HttpTestingController;
+
+  beforeEach(() => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date(2026, 1, 11, 9, 0)); // Wednesday 11 February
+    TestBed.configureTestingModule({
+      providers: [provideHttpClient(), provideHttpClientTesting()],
+    });
+    http = TestBed.inject(HttpTestingController);
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  async function failed(date: string, over: Partial<Entry> = {}): Promise<boolean> {
+    const fixture = TestBed.createComponent(Day);
+    fixture.componentRef.setInput('day', { ...day([entry('T', over)]), date });
+    fixture.detectChanges();
+    http.match(() => true).forEach(request => request.flush([]));
+    await settle();
+    fixture.detectChanges();
+    return fixture.nativeElement.querySelector('[data-failed]') !== null;
+  }
+
+  it('marks an unfinished entry on a past day as failed', async () => {
+    expect(await failed('2026-02-10', { done: false })).toBe(true);
+  });
+
+  it('does not fail what is still today, or ahead', async () => {
+    expect(await failed('2026-02-11', { done: false })).toBe(false);
+    expect(await failed('2026-02-12', { done: false })).toBe(false);
+  });
+
+  it('does not fail what was done, or what has no text', async () => {
+    expect(await failed('2026-02-10', { done: true })).toBe(false);
+    expect(await failed('2026-02-10', { done: false, text: '' })).toBe(false);
+  });
+
+  it('never fails an annotation', async () => {
+    expect(await failed('2026-02-10', { kind: 'meta', category: null, text: '[On site]' })).toBe(
+      false,
+    );
+  });
+});

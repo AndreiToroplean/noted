@@ -18,6 +18,7 @@ import {
   Entry,
   IsoDate,
   isBreak,
+  isoDate,
   itemKey,
 } from 'app/services/api';
 import { AppData } from 'app/services/app-data';
@@ -202,6 +203,14 @@ export class Day {
   protected saveBreak(pause: Break, draft: BreakDraft) {
     this.appData.updateBreak(this.day().date, pause.id, draft);
     this.editingBreakId.set(null);
+  }
+
+  /** Whether the day is over: what turns its unfinished work into failed work. */
+  private readonly past = computed(() => this.day().date < isoDate(new Date()));
+
+  /** Specification §8: past, not done, and with something written. Red beats every other colour. */
+  protected isFailedItem(item: DayItem): boolean {
+    return this.past() && item.kind === 'task' && !item.done && item.text.trim() !== '';
   }
 
   protected toggleDone(entry: Entry) {
