@@ -109,15 +109,32 @@
           (switchToEntry)="adding.set('entry')"
         />
       } @else {
-        <button
-          type="button"
-          class="day-add w-full px-2 py-1 text-left text-sm"
+        <!--
+          An entry still to be written: the same shape as the others, empty and
+          faded. Clicking it, or Enter or Space on it, starts writing one.
+        -->
+        <div
+          class="day-item day-add cursor-pointer"
+          role="button"
+          tabindex="0"
           aria-label="Add an entry"
           data-add
           (click)="adding.set('entry')"
+          (keydown.enter)="adding.set('entry')"
+          (keydown.space)="$event.preventDefault()"
+          (keyup.space)="adding.set('entry')"
         >
-          +
-        </button>
+          <div class="flex items-stretch gap-2 pr-2 text-sm" aria-hidden="true">
+            <span
+              class="entry-cell flex shrink-0 flex-col items-center justify-between gap-0.5 px-1 py-1"
+            >
+              <input type="checkbox" class="entry-done" disabled tabindex="-1" />
+              <span class="entry-tag"></span>
+            </span>
+          </div>
+          <!-- Centred on the whole row, cell and all, so it sits in the middle of the day. -->
+          <span class="day-add-plus" aria-hidden="true"><mat-icon>add</mat-icon></span>
+        </div>
       }
     </div>
   </div>

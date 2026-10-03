@@ -100,16 +100,28 @@ body {
   border-bottom: 1px solid var(--app-outline);
 }
 
+/* The row for a new entry: an entry's shape, faded until reached for. */
 .day-add {
-  color: var(--app-on-surface);
-  opacity: 0.35;
-  cursor: pointer;
+  opacity: 0.4;
+  transition: opacity 90ms linear;
 }
 
 .day-add:hover,
-.day-add:focus-visible {
+.day-add:focus-within {
   opacity: 0.8;
-  background-color: var(--app-entry);
+}
+
+.day-add-plus {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  pointer-events: none;
+}
+
+/* Nothing to tick yet: the checkbox is there for the shape, not the pointer. */
+.day-add .entry-done {
+  pointer-events: none;
 }
 
 .entry-editor-field {
@@ -156,6 +168,8 @@ body {
   background-color: color-mix(in srgb, contrast-color(var(--cell)) 22%, transparent);
   font-family: var(--font-mono);
   text-align: center;
+  /* A line tall even with nothing in it, so an empty tag still shows. */
+  min-height: 1lh;
 }
 
 .entry-done {
