@@ -22,6 +22,9 @@ import {
  */
 const SAVE_DEBOUNCE_MS = 800;
 
+/** How many changes back Ctrl+Z reaches. */
+const UNDO_DEPTH = 200;
+
 /**
  * Ids for items made here and not yet saved. Negative so they can never meet
  * one the server assigned; they are dropped on the way out, like every id.
@@ -82,6 +85,23 @@ export class AppData {
 
   /** The last version known to be on the server, so edits can be told from reloads. */
   private readonly persisted = linkedSignal<Week | undefined>(() => this.loaded.value());
+
+  /**
+   * Earlier versions of the week, newest last, and versions undone. Kept per
+   * week: moving to another week starts both afresh, since a change to one week
+   * is not something to take back from another.
+   */
+  private readonly past = linkedSignal<IsoDate | null, Week[]>({
+    source: this.selectedWeek,
+    computation: () => [],
+  });
+  private readonly future = linkedSignal<IsoDate | null, Week[]>({
+    source: this.selectedWeek,
+    computation: () => [],
+  });
+
+  readonly canUndo = computed(() => this.past().length > 0);
+  readonly canRedo = computed(() => this.future().length > 0);
 
   readonly loading = this.loaded.isLoading;
   readonly saving = signal(false);
@@ -148,11 +168,35 @@ export class AppData {
     }));
   }
 
+  /** Take back the last change. It is written back like any other edit. */
+  undo() {
+    const current = this.week();
+    const previous = this.past().at(-1);
+    if (!current || !previous) return;
+    this.past.update(past => past.slice(0, -1));
+    this.future.update(future => [...future, current]);
+    this.week.set(previous);
+  }
+
+  redo() {
+    const current = this.week();
+    const next = this.future().at(-1);
+    if (!current || !next) return;
+    this.future.update(future => future.slice(0, -1));
+    this.past.update(past => [...past, current]);
+    this.week.set(next);
+  }
+
+  /** Every edit comes through here, which is what makes every edit undoable. */
   private updateDay(date: IsoDate, change: (day: Day) => Day) {
-    this.week.update(
-      week =>
-        week && { ...week, days: week.days.map(day => (day.date === date ? change(day) : day)) },
-    );
+    const before = this.week();
+    if (!before) return;
+    this.week.set({
+      ...before,
+      days: before.days.map(day => (day.date === date ? change(day) : day)),
+    });
+    this.past.update(past => [...past.slice(1 - UNDO_DEPTH), before]);
+    this.future.set([]);
   }
 
   private save(draft: Week) {

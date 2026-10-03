@@ -13,7 +13,7 @@ import { AppData } from 'app/services/app-data';
   providers: [DatePipe],
   templateUrl: './app.html',
   styleUrl: './app.css',
-  host: { class: 'contents' },
+  host: { class: 'contents', '(document:keydown)': 'onKeydown($event)' },
 })
 export class App {
   protected appData = inject(AppData);
@@ -29,4 +29,25 @@ export class App {
       this.title.setTitle(week ? `Noted – ${this.dates.transform(week)}` : 'Noted');
     });
   }
+
+  /** App-wide shortcuts. A field being typed in keeps its own. */
+  protected onKeydown(event: KeyboardEvent) {
+    if (isTyping(event.target)) return;
+    const ctrl = event.ctrlKey || event.metaKey;
+    const key = event.key.toLowerCase();
+    if (ctrl && key === 'z' && !event.shiftKey) {
+      event.preventDefault();
+      this.appData.undo();
+    } else if (ctrl && (key === 'y' || (key === 'z' && event.shiftKey))) {
+      event.preventDefault();
+      this.appData.redo();
+    }
+  }
+}
+
+function isTyping(target: EventTarget | null): boolean {
+  return (
+    target instanceof HTMLElement &&
+    (target.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName))
+  );
 }

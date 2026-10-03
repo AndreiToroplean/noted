@@ -299,3 +299,69 @@ describe('AppData starting a week', () => {
     expect(data.selectedWeek()).toBe('2026-02-02');
   });
 });
+
+describe('AppData undo', () => {
+  let data: AppData;
+  let http: HttpTestingController;
+
+  beforeEach(async () => {
+    TestBed.configureTestingModule({
+      providers: [provideHttpClient(), provideHttpClientTesting()],
+    });
+    data = TestBed.inject(AppData);
+    http = TestBed.inject(HttpTestingController);
+    TestBed.tick();
+    http.expectOne(`${API_BASE}/categories`).flush([]);
+    http.expectOne(`${API_BASE}/weeks`).flush([MONDAY, '2026-02-02']);
+    await settle();
+    http.expectOne(`${API_BASE}/journal/${MONDAY}`).flush(week());
+    await settle();
+  });
+
+  function arrival() {
+    return data.week()!.days[0].arrival;
+  }
+
+  it('takes back the last change, then the one before', () => {
+    data.setHours(MONDAY, { arrival: '09:00:00' });
+    data.setHours(MONDAY, { arrival: '10:00:00' });
+    data.undo();
+    expect(arrival()).toBe('09:00:00');
+    data.undo();
+    expect(arrival()).toBeNull();
+  });
+
+  it('puts an undone change back on redo', () => {
+    data.setHours(MONDAY, { arrival: '09:00:00' });
+    data.undo();
+    data.redo();
+    expect(arrival()).toBe('09:00:00');
+  });
+
+  it('forgets what could be redone once something new is changed', () => {
+    data.setHours(MONDAY, { arrival: '09:00:00' });
+    data.undo();
+    data.setHours(MONDAY, { arrival: '11:00:00' });
+    data.redo();
+    expect(arrival()).toBe('11:00:00');
+  });
+
+  it('does nothing with nothing to undo', () => {
+    data.undo();
+    data.redo();
+    expect(arrival()).toBeNull();
+  });
+
+  it('starts afresh on another week', async () => {
+    data.setHours(MONDAY, { arrival: '09:00:00' });
+    data.selectedWeek.set('2026-02-02');
+    TestBed.tick();
+    const other = week();
+    other.week = '2026-02-02';
+    http.expectOne(`${API_BASE}/journal/2026-02-02`).flush(other);
+    await settle();
+    data.undo();
+    expect(data.week()!.week).toBe('2026-02-02');
+    expect(data.canUndo()).toBe(false);
+  });
+});
