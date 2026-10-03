@@ -49,9 +49,6 @@
           (cdkDragStarted)="onDragStarted()"
           (cdkDragEnded)="onDragEnded()"
           [class.day-item-folded]="isFolded(key)"
-          [attr.data-carrying]="
-            pressed()?.key === key && pressed()!.count > 1 ? pressed()!.count : null
-          "
           role="option"
           [attr.aria-selected]="isSelected(key)"
           [class.day-item-selected]="isSelected(key)"
@@ -64,85 +61,35 @@
           (focus)="focused.set(key)"
           (contextmenu)="onItemContextMenu(key, $event)"
         >
-          @if (asBreak(item); as pause) {
-            @if (editingBreakId() === pause.id) {
-              <app-break-editor
-                [initial]="pause"
-                (submitted)="saveBreak(pause, $event)"
-                (cancelled)="editingBreakId.set(null)"
-              />
-            } @else {
-              <div
-                class="day-break flex items-center gap-2 px-2 py-1 text-xs"
-                data-break
-                (dblclick)="editingBreakId.set(pause.id)"
-              >
-                <span class="day-break-rule flex-1"></span>
-                <span
-                  >{{ pause.is_noon ? 'lunch' : 'break' }} {{ describeBreak(pause) }}
-                  @if (pause.description) {
-                    · {{ pause.description }}
-                  }
-                </span>
-                <span class="day-break-rule flex-1"></span>
-              </div>
-            }
-          } @else if (asEntry(item); as entry) {
-            <div class="flex items-stretch gap-2 pr-2 text-sm">
-              @if (entry.kind === 'task') {
-                @let category = categoryOf(entry.category);
-                <!--
-                  The cell: as tall as the entry, filled with the category's
-                  colour, holding the done checkbox and the category's letters.
-                -->
-                <label
-                  class="entry-cell flex shrink-0 flex-col items-center justify-between gap-0.5 px-1 py-1"
-                  data-category-cell
-                  [style.--category]="category?.colour"
-                  [attr.data-category]="entry.category"
-                >
-                  <input
-                    type="checkbox"
-                    class="entry-done"
-                    [checked]="entry.done"
-                    [attr.aria-label]="entry.done ? 'Done' : 'Not done'"
-                    (change)="toggleDone(entry)"
-                  />
-                  <span
-                    class="entry-tag"
-                    [matTooltip]="category?.meaning ?? ''"
-                    [matTooltipDisabled]="!category?.meaning"
-                    >{{ entry.category }}</span
-                  >
-                </label>
-              } @else {
-                <span class="w-1 shrink-0"></span>
-              }
-              @if (editingId() === entry.id) {
-                <app-entry-editor
-                  class="min-w-0 flex-1"
-                  [initial]="draftOf(entry)"
-                  (submitted)="saveText(entry, $event)"
-                  (cancelled)="editingId.set(null)"
-                />
-              } @else {
-                <div
-                  class="min-w-0 flex-1 py-1"
-                  data-entry-text
-                  (dblclick)="editingId.set(entry.id)"
-                >
-                  <div>{{ entry.text }}</div>
-                  @if (entry.note) {
-                    <div class="text-xs opacity-60">{{ entry.note }}</div>
-                  }
-                </div>
-              }
-            </div>
-          }
+          <ng-container
+            [ngTemplateOutlet]="itemBody"
+            [ngTemplateOutletContext]="{ $implicit: item }"
+          />
           <!-- The gap the item will drop into, so the day shows its new shape while dragging. -->
           <ng-template cdkDragPlaceholder
             ><div class="day-item-drop-gap" [style.height.px]="carriedHeight()"></div
           ></ng-template>
+          <!--
+            What is held while dragging: everything the drag carries, as it
+            looks in the day, so the hand holds what the gap is waiting for.
+          -->
+          <ng-template cdkDragPreview>
+            <ul class="day-drag-preview list-none p-0" [style.width.px]="pressed()?.width">
+              @for (carried of carriedItems(); track keyOf(carried)) {
+                <li
+                  class="day-item"
+                  [class.day-item-break]="carried.kind === 'break'"
+                  [class.day-item-failed]="isFailedItem(carried)"
+                  [class.day-item-selected]="isSelected(keyOf(carried))"
+                >
+                  <ng-container
+                    [ngTemplateOutlet]="itemBody"
+                    [ngTemplateOutletContext]="{ $implicit: carried }"
+                  />
+                </li>
+              }
+            </ul>
+          </ng-template>
         </li>
       }
     </ul>
@@ -254,3 +201,78 @@
     }
   </ng-template>
 </section>
+
+<!-- One item's content: used in the day, and again in the hand while dragging. -->
+<ng-template #itemBody let-item>
+  @if (asBreak(item); as pause) {
+    @if (editingBreakId() === pause.id) {
+      <app-break-editor
+        [initial]="pause"
+        (submitted)="saveBreak(pause, $event)"
+        (cancelled)="editingBreakId.set(null)"
+      />
+    } @else {
+      <div
+        class="day-break flex items-center gap-2 px-2 py-1 text-xs"
+        data-break
+        (dblclick)="editingBreakId.set(pause.id)"
+      >
+        <span class="day-break-rule flex-1"></span>
+        <span
+          >{{ pause.is_noon ? 'lunch' : 'break' }} {{ describeBreak(pause) }}
+          @if (pause.description) {
+            · {{ pause.description }}
+          }
+        </span>
+        <span class="day-break-rule flex-1"></span>
+      </div>
+    }
+  } @else if (asEntry(item); as entry) {
+    <div class="flex items-stretch gap-2 pr-2 text-sm">
+      @if (entry.kind === 'task') {
+        @let category = categoryOf(entry.category);
+        <!--
+        The cell: as tall as the entry, filled with the category's
+        colour, holding the done checkbox and the category's letters.
+      -->
+        <label
+          class="entry-cell flex shrink-0 flex-col items-center justify-between gap-0.5 px-1 py-1"
+          data-category-cell
+          [style.--category]="category?.colour"
+          [attr.data-category]="entry.category"
+        >
+          <input
+            type="checkbox"
+            class="entry-done"
+            [checked]="entry.done"
+            [attr.aria-label]="entry.done ? 'Done' : 'Not done'"
+            (change)="toggleDone(entry)"
+          />
+          <span
+            class="entry-tag"
+            [matTooltip]="category?.meaning ?? ''"
+            [matTooltipDisabled]="!category?.meaning"
+            >{{ entry.category }}</span
+          >
+        </label>
+      } @else {
+        <span class="w-1 shrink-0"></span>
+      }
+      @if (editingId() === entry.id) {
+        <app-entry-editor
+          class="min-w-0 flex-1"
+          [initial]="draftOf(entry)"
+          (submitted)="saveText(entry, $event)"
+          (cancelled)="editingId.set(null)"
+        />
+      } @else {
+        <div class="min-w-0 flex-1 py-1" data-entry-text (dblclick)="editingId.set(entry.id)">
+          <div>{{ entry.text }}</div>
+          @if (entry.note) {
+            <div class="text-xs opacity-60">{{ entry.note }}</div>
+          }
+        </div>
+      }
+    </div>
+  }
+</ng-template>

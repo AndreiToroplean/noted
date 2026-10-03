@@ -10,7 +10,13 @@ import {
   viewChild,
 } from '@angular/core';
 
-import { CdkDrag, CdkDragDrop, CdkDragPlaceholder, CdkDropList } from '@angular/cdk/drag-drop';
+import {
+  CdkDrag,
+  CdkDragDrop,
+  CdkDragPlaceholder,
+  CdkDragPreview,
+  CdkDropList,
+} from '@angular/cdk/drag-drop';
 import { MatIconModule } from '@angular/material/icon';
 import { MatMenuModule, MatMenuTrigger } from '@angular/material/menu';
 import { MatTooltipModule } from '@angular/material/tooltip';
@@ -52,6 +58,7 @@ type Clock = 'arrival' | 'departure';
     CdkDropList,
     CdkDrag,
     CdkDragPlaceholder,
+    CdkDragPreview,
   ],
   templateUrl: './day.html',
 })
@@ -109,11 +116,21 @@ export class Day {
     const join = parseFloat(getComputedStyle(rows[0]).marginBottom) || 0;
     const height = rows.reduce((total, row) => total + row.getBoundingClientRect().height, 0);
     this.selection.carriedHeight.set(height + join * (rows.length - 1));
-    this.pressed.set({ key, count: rows.length });
+    this.pressed.set({ key, keys, width: rows[0].getBoundingClientRect().width });
   }
 
-  /** The item last pressed, and how many it would carry: the preview shows the count. */
-  protected readonly pressed = signal<{ key: string; count: number } | null>(null);
+  /** The item last pressed, what it would carry, and how wide the day draws it. */
+  protected readonly pressed = signal<{
+    key: string;
+    keys: ReadonlySet<string>;
+    width: number;
+  } | null>(null);
+
+  /** What a drag of the pressed item holds, in the day's order: the preview draws these. */
+  protected readonly carriedItems = computed(() => {
+    const keys = this.pressed()?.keys;
+    return keys ? this.day().items.filter(item => keys.has(itemKey(item))) : [];
+  });
 
   /** Whether one of this day's items is being dragged right now. */
   private readonly dragging = signal(false);
@@ -137,7 +154,7 @@ export class Day {
   protected isFolded(key: string): boolean {
     const pressed = this.pressed();
     if (!this.dragging() || !pressed || key === pressed.key) return false;
-    return this.selection.carriedBy(this.day().date, pressed.key).has(key);
+    return pressed.keys.has(key);
   }
 
   protected readonly carriedHeight = this.selection.carriedHeight;
