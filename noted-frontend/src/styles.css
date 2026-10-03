@@ -223,6 +223,9 @@ body {
   text-align: center;
   /* A line tall even with nothing in it, so an empty tag still shows. */
   min-height: 1lh;
+  /* A double-click opens its menu, rather than selecting the letters. */
+  cursor: pointer;
+  user-select: none;
 }
 
 .entry-done {

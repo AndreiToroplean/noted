@@ -372,25 +372,29 @@ export class Day {
     this.appData.updateEntry(this.day().date, entry.id, { done: !entry.done });
   }
 
-  /** The selected tasks: what the context menu's Category acts on. */
+  /** The selected tasks: what Space ticks. */
   private readonly selectedTasks = computed(() =>
     this.day().items.filter(
       (item): item is Entry =>
         item.kind === 'task' && this.selection.has(this.day().date, itemKey(item)),
     ),
   );
-  protected readonly selectionHasTasks = computed(() => this.selectedTasks().length > 0);
 
-  /** The category the selected tasks share, to tick in the menu; undefined if they differ. */
-  protected readonly selectedCategory = computed(() => {
-    const categories = new Set(this.selectedTasks().map(entry => entry.category));
-    return categories.size === 1 ? [...categories][0] : undefined;
-  });
+  /** The entry whose category menu is open. */
+  protected readonly categoryFor = signal<Entry | null>(null);
+  private readonly categoryMenu = viewChild.required<MatMenuTrigger>('categoryMenuTrigger');
 
-  /** One edit for the lot, so one Ctrl+Z puts every one back. */
-  protected setCategoryOfSelected(category: string | null) {
-    const keys = new Set(this.selectedTasks().map(itemKey));
-    this.appData.updateEntries(this.day().date, keys, { category });
+  /** A double-click on the category's tag opens the menu of categories under it. */
+  protected openCategoryMenu(entry: Entry, event: MouseEvent) {
+    const tag = (event.currentTarget as HTMLElement).getBoundingClientRect();
+    this.categoryFor.set(entry);
+    this.menuAt.set({ x: tag.left, y: tag.bottom });
+    this.categoryMenu().openMenu();
+  }
+
+  protected setCategory(category: string | null) {
+    const entry = this.categoryFor();
+    if (entry) this.appData.updateEntry(this.day().date, entry.id, { category });
   }
 
   /** What the row at the foot of the day is open for, if anything. */

@@ -351,14 +351,11 @@ describe('Day editing an entry', () => {
     expect(fixture.nativeElement.querySelector('textarea')).toBeNull();
   });
 
-  it('changes the category from the right-click menu', async () => {
+  it('changes the category from a menu on its tag, on a double-click', async () => {
     const fixture = await render();
     fixture.nativeElement
-      .querySelector('[role="option"]')
-      .dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, cancelable: true }));
-    fixture.detectChanges();
-    await settle();
-    (document.querySelector('[data-category-submenu]') as HTMLElement).click();
+      .querySelector('.entry-tag')
+      .dispatchEvent(new MouseEvent('dblclick', { bubbles: true }));
     fixture.detectChanges();
     await settle();
 
@@ -366,6 +363,26 @@ describe('Day editing an entry', () => {
     expect(current.querySelector('[data-current]')).not.toBeNull();
     (document.querySelector('[data-choose-category="M"]') as HTMLElement).click();
     expect(stored().category).toBe('M');
+  });
+
+  it('offers no category in the right-click menu', async () => {
+    const fixture = await render();
+    fixture.nativeElement
+      .querySelector('[role="option"]')
+      .dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, cancelable: true }));
+    fixture.detectChanges();
+    await settle();
+    expect(document.querySelector('[data-delete-selected]')).not.toBeNull();
+    expect(document.querySelector('[data-category-submenu]')).toBeNull();
+  });
+
+  it('ticks only from the checkbox itself, not the rest of the cell', async () => {
+    const fixture = await render();
+    (fixture.nativeElement as HTMLElement).querySelector<HTMLElement>('.entry-tag')!.click();
+    fixture.detectChanges();
+    expect(stored().done).toBe(false);
+    (fixture.nativeElement as HTMLElement).querySelector<HTMLInputElement>('.entry-done')!.click();
+    expect(stored().done).toBe(true);
   });
 });
 

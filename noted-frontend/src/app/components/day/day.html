@@ -151,7 +151,10 @@
     </div>
   </div>
 
-  <!-- An invisible anchor at the pointer, which is where the item menu opens. -->
+  <!--
+    Invisible anchors where the menus open: the item menu at the pointer, the
+    category menu under the tag.
+  -->
   <div
     class="pointer-events-none fixed h-0 w-0"
     aria-hidden="true"
@@ -160,13 +163,15 @@
     [matMenuTriggerFor]="itemMenu"
     #itemMenuTrigger="matMenuTrigger"
   ></div>
+  <div
+    class="pointer-events-none fixed h-0 w-0"
+    aria-hidden="true"
+    [style.left.px]="menuAt().x"
+    [style.top.px]="menuAt().y"
+    [matMenuTriggerFor]="categoryMenu"
+    #categoryMenuTrigger="matMenuTrigger"
+  ></div>
   <mat-menu #itemMenu="matMenu">
-    @if (selectionHasTasks()) {
-      <button mat-menu-item [matMenuTriggerFor]="categoryMenu" data-category-submenu>
-        <mat-icon>label</mat-icon>
-        Category
-      </button>
-    }
     <button mat-menu-item data-delete-selected (click)="deleteSelected()">
       <mat-icon>delete</mat-icon>
       {{ selectedCount() === 1 ? 'Delete' : 'Delete ' + selectedCount() + ' items' }}
@@ -178,22 +183,22 @@
       <button
         mat-menu-item
         [attr.data-choose-category]="category.name"
-        (click)="setCategoryOfSelected(category.name)"
+        (click)="setCategory(category.name)"
       >
         <mat-icon class="filled" [style.color]="category.colour">square</mat-icon>
         <span>{{ category.name }}</span>
         @if (category.meaning) {
           <span class="opacity-60">{{ category.meaning }}</span>
         }
-        @if (selectedCategory() === category.name) {
+        @if (categoryFor()?.category === category.name) {
           <mat-icon class="ml-auto" data-current>check</mat-icon>
         }
       </button>
     }
-    <button mat-menu-item data-choose-category="" (click)="setCategoryOfSelected(null)">
+    <button mat-menu-item data-choose-category="" (click)="setCategory(null)">
       <mat-icon>label_off</mat-icon>
       <span>None</span>
-      @if (selectedCategory() === null) {
+      @if (categoryFor()?.category === null) {
         <mat-icon data-current>check</mat-icon>
       }
     </button>
@@ -264,7 +269,7 @@
         The cell: as tall as the entry, filled with the category's
         colour, holding the done checkbox and the category's letters.
       -->
-        <label
+        <div
           class="entry-cell flex shrink-0 flex-col items-center justify-between gap-0.5 px-1 py-1"
           data-category-cell
           [style.--category]="category?.colour"
@@ -281,9 +286,11 @@
             class="entry-tag"
             [matTooltip]="category?.meaning ?? ''"
             [matTooltipDisabled]="!category?.meaning"
+            data-category-tag
+            (dblclick)="openCategoryMenu(entry, $event)"
             >{{ entry.category }}</span
           >
-        </label>
+        </div>
       } @else {
         <span class="w-1 shrink-0"></span>
       }
