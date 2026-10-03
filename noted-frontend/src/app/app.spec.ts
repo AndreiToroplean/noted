@@ -8,6 +8,7 @@ import { settle } from 'testing/settle';
 import { API_BASE } from 'app/services/api';
 import { AppData } from 'app/services/app-data';
 import { provideDateFormat } from 'app/services/dates';
+import { Selection } from 'app/services/selection';
 import { App } from './app';
 
 describe('App', () => {
@@ -54,6 +55,38 @@ describe('App', () => {
       press(document.body, 'Z', { shiftKey: true });
       expect(undo).toHaveBeenCalledTimes(1);
       expect(redo).toHaveBeenCalledTimes(2);
+    });
+
+    function withSelection() {
+      const fixture = TestBed.createComponent(App);
+      fixture.detectChanges();
+      const selection = TestBed.inject(Selection);
+      selection.only('2026-02-09', 'entry-1');
+      return selection;
+    }
+
+    it('clears the selection on Esc', () => {
+      const selection = withSelection();
+      press(document.body, 'Escape', { ctrlKey: false });
+      expect(selection.size()).toBe(0);
+    });
+
+    it('clears the selection on a click outside any item', () => {
+      const selection = withSelection();
+      document.body.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+      expect(selection.size()).toBe(0);
+    });
+
+    it('keeps the selection for a click in a menu or dialog', () => {
+      const selection = withSelection();
+      const overlay = document.createElement('div');
+      overlay.className = 'cdk-overlay-container';
+      const item = document.createElement('button');
+      overlay.append(item);
+      document.body.append(overlay);
+      item.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+      expect(selection.size()).toBe(1);
+      overlay.remove();
     });
 
     it('leaves Ctrl+Z to a field being typed in', () => {

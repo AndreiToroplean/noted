@@ -6,6 +6,7 @@ import { Footer } from 'app/components/footer/footer';
 import { Topbar } from 'app/components/topbar/topbar';
 import { Week } from 'app/components/week/week';
 import { AppData } from 'app/services/app-data';
+import { Selection } from 'app/services/selection';
 
 @Component({
   selector: 'app-root',
@@ -13,11 +14,16 @@ import { AppData } from 'app/services/app-data';
   providers: [DatePipe],
   templateUrl: './app.html',
   styleUrl: './app.css',
-  host: { class: 'contents', '(document:keydown)': 'onKeydown($event)' },
+  host: {
+    class: 'contents',
+    '(document:keydown)': 'onKeydown($event)',
+    '(document:click)': 'onClick($event)',
+  },
 })
 export class App {
   protected appData = inject(AppData);
 
+  private readonly selection = inject(Selection);
   private readonly title = inject(Title);
   private readonly dates = inject(DatePipe);
 
@@ -41,7 +47,21 @@ export class App {
     } else if (ctrl && (key === 'y' || (key === 'z' && event.shiftKey))) {
       event.preventDefault();
       this.appData.redo();
+    } else if (event.key === 'Escape') {
+      this.selection.clear();
     }
+  }
+
+  /**
+   * A click on nothing in particular lets go of the selection. Menus and dialogs
+   * are exempt: they are usually acting on it.
+   */
+  protected onClick(event: MouseEvent) {
+    const target = event.target;
+    if (target instanceof Element && target.closest('[role="option"], .cdk-overlay-container')) {
+      return;
+    }
+    this.selection.clear();
   }
 }
 

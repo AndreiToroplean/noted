@@ -25,67 +25,87 @@
   }
 
   <!-- Only the entries scroll: the hours frame the day and stay where they are. -->
-  <ul class="min-h-0 flex-1 list-none overflow-y-auto p-0" data-items>
-    @for (item of data.items; track item.kind + '-' + item.id) {
-      @if (asBreak(item); as pause) {
-        @if (editingBreakId() === pause.id) {
-          <li>
-            <app-break-editor
-              [initial]="pause"
-              (submitted)="saveBreak(pause, $event)"
-              (cancelled)="editingBreakId.set(null)"
-            />
-          </li>
-        } @else {
-          <li
-            class="day-break flex items-center gap-2 px-2 py-1 text-xs"
-            data-break
-            (dblclick)="editingBreakId.set(pause.id)"
-          >
-            <span class="day-break-rule flex-1"></span>
-            <span
-              >{{ pause.is_noon ? 'lunch' : 'break' }} {{ describeBreak(pause) }}
-              @if (pause.description) {
-                · {{ pause.description }}
+  <div class="min-h-0 flex-1 overflow-y-auto" data-items>
+    <ul
+      class="list-none p-0"
+      role="listbox"
+      aria-multiselectable="true"
+      [attr.aria-label]="(data.date | date: 'EEEE') + ', what was done'"
+    >
+      @for (item of data.items; track keyOf(item)) {
+        @let key = keyOf(item);
+        <li
+          class="day-item"
+          role="option"
+          [attr.aria-selected]="isSelected(key)"
+          [class.day-item-selected]="isSelected(key)"
+          [attr.tabindex]="tabStop() === key ? 0 : -1"
+          [attr.data-key]="key"
+          (click)="onItemClick(key, $event)"
+          (mousedown)="onItemMousedown($event)"
+          (keydown)="onItemKeydown(key, $event)"
+          (keyup)="onItemKeyup(key, $event)"
+          (focus)="focused.set(key)"
+        >
+          @if (asBreak(item); as pause) {
+            @if (editingBreakId() === pause.id) {
+              <app-break-editor
+                [initial]="pause"
+                (submitted)="saveBreak(pause, $event)"
+                (cancelled)="editingBreakId.set(null)"
+              />
+            } @else {
+              <div
+                class="day-break flex items-center gap-2 px-2 py-1 text-xs"
+                data-break
+                (dblclick)="editingBreakId.set(pause.id)"
+              >
+                <span class="day-break-rule flex-1"></span>
+                <span
+                  >{{ pause.is_noon ? 'lunch' : 'break' }} {{ describeBreak(pause) }}
+                  @if (pause.description) {
+                    · {{ pause.description }}
+                  }
+                </span>
+                <span class="day-break-rule flex-1"></span>
+              </div>
+            }
+          } @else if (asEntry(item); as entry) {
+            <div class="flex gap-2 px-2 py-1 text-sm" [class.opacity-60]="entry.done">
+              @if (entry.kind === 'task') {
+                @let colour = colourOf(entry.category);
+                <button
+                  type="button"
+                  class="entry-swatch mt-1 h-3 w-3 shrink-0 cursor-pointer rounded-sm"
+                  [class.entry-swatch-empty]="!colour"
+                  [attr.data-category]="colour ? entry.category : null"
+                  [attr.aria-label]="'Category: ' + (entry.category ?? 'none')"
+                  [style.background-color]="colour"
+                  [matMenuTriggerFor]="categoryMenu"
+                  [matMenuTriggerData]="{ entry }"
+                ></button>
               }
-            </span>
-            <span class="day-break-rule flex-1"></span>
-          </li>
-        }
-      } @else if (asEntry(item); as entry) {
-        <li class="flex gap-2 px-2 py-1 text-sm" [class.opacity-60]="entry.done">
-          @if (entry.kind === 'task') {
-            @let colour = colourOf(entry.category);
-            <button
-              type="button"
-              class="entry-swatch mt-1 h-3 w-3 shrink-0 cursor-pointer rounded-sm"
-              [class.entry-swatch-empty]="!colour"
-              [attr.data-category]="colour ? entry.category : null"
-              [attr.aria-label]="'Category: ' + (entry.category ?? 'none')"
-              [style.background-color]="colour"
-              [matMenuTriggerFor]="categoryMenu"
-              [matMenuTriggerData]="{ entry }"
-            ></button>
-          }
-          @if (editingId() === entry.id) {
-            <app-entry-editor
-              class="min-w-0 flex-1"
-              [initial]="draftOf(entry)"
-              (submitted)="saveText(entry, $event)"
-              (cancelled)="editingId.set(null)"
-            />
-          } @else {
-            <div class="min-w-0 flex-1" data-entry-text (dblclick)="editingId.set(entry.id)">
-              <div>{{ entry.text }}</div>
-              @if (entry.note) {
-                <div class="text-xs opacity-60">{{ entry.note }}</div>
+              @if (editingId() === entry.id) {
+                <app-entry-editor
+                  class="min-w-0 flex-1"
+                  [initial]="draftOf(entry)"
+                  (submitted)="saveText(entry, $event)"
+                  (cancelled)="editingId.set(null)"
+                />
+              } @else {
+                <div class="min-w-0 flex-1" data-entry-text (dblclick)="editingId.set(entry.id)">
+                  <div>{{ entry.text }}</div>
+                  @if (entry.note) {
+                    <div class="text-xs opacity-60">{{ entry.note }}</div>
+                  }
+                </div>
               }
             </div>
           }
         </li>
       }
-    }
-    <li>
+    </ul>
+    <div>
       @if (adding() === 'entry') {
         <app-entry-editor
           [error]="addError()"
@@ -111,8 +131,8 @@
           +
         </button>
       }
-    </li>
-  </ul>
+    </div>
+  </div>
 
   <mat-menu #categoryMenu="matMenu">
     <ng-template matMenuContent let-entry="entry">

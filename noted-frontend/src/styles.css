@@ -189,3 +189,15 @@ body {
   /* The tabs' own divider stopped short of the scroll arrows; the footer draws it instead. */
   --mat-tab-divider-height: 0;
 }
+
+.day-item {
+  outline: none;
+}
+
+.day-item:focus-visible {
+  box-shadow: inset 0 0 0 1px var(--app-accent);
+}
+
+.day-item-selected {
+  background-color: color-mix(in srgb, var(--app-accent) 18%, transparent);
+}

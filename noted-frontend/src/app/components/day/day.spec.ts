@@ -152,7 +152,7 @@ describe('Day hours', () => {
     );
     const rows = [...dom.querySelectorAll('li')]
       .filter(row => !row.querySelector('[data-add]'))
-      .map(row => (row.hasAttribute('data-break') ? 'break' : row.textContent?.trim()));
+      .map(row => (row.querySelector('[data-break]') ? 'break' : row.textContent?.trim()));
     expect(rows).toEqual(['Morning', 'break', 'Afternoon']);
   });
 
@@ -428,5 +428,106 @@ describe('Day editing its hours', () => {
     const fixture = await render({ arrival: null, departure: null });
     edit(fixture, 'departure', '18:00', 'Enter');
     expect(appData.week()!.days[0].departure).toBe('18:00:00');
+  });
+});
+
+describe('Day selecting items', () => {
+  let http: HttpTestingController;
+  let appData: AppData;
+
+  beforeEach(() => {
+    TestBed.configureTestingModule({
+      providers: [provideHttpClient(), provideHttpClientTesting()],
+    });
+    http = TestBed.inject(HttpTestingController);
+    appData = TestBed.inject(AppData);
+  });
+
+  async function render() {
+    appData.week.set({
+      week: '2026-02-09',
+      days: [
+        day([
+          entry(null, { id: 1, text: 'One' }),
+          pause({ id: 1 }),
+          entry(null, { id: 2, text: 'Two' }),
+          entry(null, { id: 3, text: 'Three' }),
+        ]),
+      ],
+    });
+    const fixture = TestBed.createComponent(Day);
+    fixture.componentRef.setInput('day', appData.week()!.days[0]);
+    fixture.detectChanges();
+    http.match(() => true).forEach(request => request.flush([]));
+    await settle();
+    fixture.detectChanges();
+    return fixture;
+  }
+
+  function options(fixture: Awaited<ReturnType<typeof render>>): HTMLElement[] {
+    return [...fixture.nativeElement.querySelectorAll('[role="option"]')];
+  }
+
+  function selected(fixture: Awaited<ReturnType<typeof render>>): number[] {
+    return options(fixture).flatMap((option, index) =>
+      option.getAttribute('aria-selected') === 'true' ? [index] : [],
+    );
+  }
+
+  function click(
+    fixture: Awaited<ReturnType<typeof render>>,
+    index: number,
+    mods: MouseEventInit = {},
+  ) {
+    options(fixture)[index].dispatchEvent(new MouseEvent('click', { bubbles: true, ...mods }));
+    fixture.detectChanges();
+  }
+
+  function key(
+    fixture: Awaited<ReturnType<typeof render>>,
+    index: number,
+    init: KeyboardEventInit,
+    type = 'keydown',
+  ) {
+    options(fixture)[index].dispatchEvent(new KeyboardEvent(type, { bubbles: true, ...init }));
+    fixture.detectChanges();
+  }
+
+  it('is a list of options that can be several at once', async () => {
+    const fixture = await render();
+    const list = fixture.nativeElement.querySelector('[role="listbox"]');
+    expect(list.getAttribute('aria-multiselectable')).toBe('true');
+    expect(options(fixture)).toHaveLength(4);
+    expect(selected(fixture)).toEqual([]);
+  });
+
+  it('selects on click, adds with Ctrl and takes a range with Shift', async () => {
+    const fixture = await render();
+    click(fixture, 0);
+    expect(selected(fixture)).toEqual([0]);
+    click(fixture, 3, { ctrlKey: true });
+    expect(selected(fixture)).toEqual([0, 3]);
+    click(fixture, 2, { shiftKey: true });
+    expect(selected(fixture)).toEqual([2, 3]);
+  });
+
+  it('moves and selects with the arrow keys, extending with Shift', async () => {
+    const fixture = await render();
+    click(fixture, 0);
+    key(fixture, 0, { key: 'ArrowDown' });
+    expect(selected(fixture)).toEqual([1]);
+    expect(document.activeElement).toBe(options(fixture)[1]);
+    key(fixture, 1, { key: 'ArrowDown', shiftKey: true });
+    expect(selected(fixture)).toEqual([1, 2]);
+  });
+
+  it('moves without selecting under Ctrl, and toggles with Space', async () => {
+    const fixture = await render();
+    click(fixture, 0);
+    key(fixture, 0, { key: 'ArrowDown', ctrlKey: true });
+    key(fixture, 1, { key: 'ArrowDown', ctrlKey: true });
+    expect(selected(fixture)).toEqual([0]);
+    key(fixture, 2, { key: ' ' }, 'keyup');
+    expect(selected(fixture)).toEqual([0, 2]);
   });
 });
