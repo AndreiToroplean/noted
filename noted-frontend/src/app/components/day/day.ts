@@ -4,9 +4,11 @@ import {
   Component,
   ElementRef,
   computed,
+  effect,
   inject,
   input,
   signal,
+  untracked,
   viewChild,
 } from '@angular/core';
 
@@ -23,6 +25,7 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 
 import { BreakEditor } from 'app/components/break-editor/break-editor';
 import {
+  EditorMove,
   EntryText,
   InlineEntryEditor,
 } from 'app/components/inline-entry-editor/inline-entry-editor';
@@ -41,11 +44,15 @@ import {
 } from 'app/services/api';
 import { AppData } from 'app/services/app-data';
 import { Drafts } from 'app/services/drafts';
+import { EditHandoff } from 'app/services/edit-handoff';
 import { Selection } from 'app/services/selection';
 import { clock, formatMinutes } from 'app/services/time';
 
 /** A day's two frame times. */
 type Clock = 'arrival' | 'departure';
+
+/** Where an editor's caret starts — see `InlineEntryEditor.enterAt`. */
+type EnterAt = 'text' | 'start' | 'end';
 
 /** An entry with nothing written in it yet. */
 const BLANK: EntryText = { text: '', note: null };
@@ -71,6 +78,9 @@ const BLANK: EntryText = { text: '', note: null };
 })
 export class Day {
   readonly day = input.required<DayData>();
+  /** The days shown either side, where Shift+Tab and Tab take the editing. */
+  readonly previousDate = input<IsoDate | null>(null);
+  readonly nextDate = input<IsoDate | null>(null);
 
   private readonly appData = inject(AppData);
   private readonly selection = inject(Selection);
@@ -285,6 +295,7 @@ export class Day {
     from: EntryText;
     /** The entry as saved, when it opened on a draft, for Ctrl+Z to go back to. */
     original: EntryText | null;
+    enterAt: EnterAt;
   } | null>(null);
 
   private readonly drafts = inject(Drafts);
@@ -293,13 +304,70 @@ export class Day {
    * Editing is of one item, and its own highlight says which, so the selection
    * lets go rather than wash over the text being typed.
    */
-  protected openEntry(entry: Entry) {
+  protected openEntry(entry: Entry, enterAt: EnterAt = 'text') {
     this.selection.clear();
     this.editError.set(null);
     const saved = { text: entry.text, note: entry.note };
     const draft = this.drafts.get<EntryText>(itemKey(entry));
-    this.editing.set({ id: entry.id, from: draft ?? saved, original: draft ? saved : null });
+    this.editing.set({
+      id: entry.id,
+      from: draft ?? saved,
+      original: draft ? saved : null,
+      enterAt,
+    });
   }
+
+  /** The day's entries in order, breaks aside: what Up and Down travel through. */
+  private readonly entries = computed(() =>
+    this.day().items.filter((item): item is Entry => !isBreak(item)),
+  );
+
+  private readonly handoff = inject(EditHandoff);
+
+  /**
+   * The keyboard leaving an editor: `from` is the entry it was open on, or null
+   * for the row for a new one. What was typed waits as a draft, as it would on
+   * Esc. Breaks are passed over, their fields having their own use for arrows.
+   * With nowhere to go, the editor stays open.
+   */
+  protected onMoved(from: Entry | null, move: EditorMove) {
+    const entries = this.entries();
+    const index = from ? entries.findIndex(entry => entry.id === from.id) : entries.length;
+    const leave = () => (from ? this.closeEdit(from, move.typed) : this.closeEditor(move.typed));
+
+    if (move.to === 'up') {
+      const above = entries[index - 1];
+      if (!above) return;
+      leave();
+      this.openEntry(above, 'end');
+    } else if (move.to === 'down') {
+      if (!from) return;
+      const below = entries[index + 1];
+      leave();
+      if (below) this.openEntry(below, 'start');
+      else this.writeEntry('start');
+    } else {
+      const forward = move.to === 'next-day';
+      const date = forward ? this.nextDate() : this.previousDate();
+      if (!date) return;
+      leave();
+      this.handoff.hand(date, forward ? 'first' : 'last');
+    }
+  }
+
+  /** Editing handed over from another day: open the entry it asks for. */
+  private readonly takeHandoff = effect(() => {
+    const request = this.handoff.request();
+    if (request?.date !== this.day().date) return;
+    untracked(() => {
+      this.handoff.request.set(null);
+      const entries = this.entries();
+      const entry = request.at === 'first' ? entries[0] : entries.at(-1);
+      const enterAt = request.at === 'first' ? 'start' : 'end';
+      if (entry) this.openEntry(entry, enterAt);
+      else this.writeEntry(enterAt);
+    });
+  });
 
   /** Why the open entry's last save was refused, and whether one is on its way. */
   protected readonly editError = signal<string | null>(null);
@@ -423,10 +491,12 @@ export class Day {
   protected readonly addBusy = signal(false);
   /** What the new line's editor starts from: a draft, or nothing yet. */
   protected readonly newFrom = signal<EntryText>(BLANK);
+  protected readonly newEnterAt = signal<EnterAt>('text');
 
   /** Open the row for writing an entry, where the last one was left. */
-  protected writeEntry() {
+  protected writeEntry(enterAt: EnterAt = 'text') {
     this.newFrom.set(this.newDraft() ?? BLANK);
+    this.newEnterAt.set(enterAt);
     this.adding.set('entry');
   }
 

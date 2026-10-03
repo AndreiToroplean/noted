@@ -1110,3 +1110,109 @@ describe('Day break drafts', () => {
     expect((editor.querySelector('[data-minutes]') as HTMLInputElement).value).toBe('75');
   });
 });
+
+describe('Day moving between entries from the keyboard', () => {
+  let http: HttpTestingController;
+  let appData: AppData;
+
+  beforeEach(() => {
+    TestBed.configureTestingModule({
+      providers: [provideHttpClient(), provideHttpClientTesting()],
+    });
+    http = TestBed.inject(HttpTestingController);
+    appData = TestBed.inject(AppData);
+  });
+
+  const monday = '2026-02-09';
+  const tuesday = '2026-02-10';
+
+  async function render() {
+    appData.week.set({
+      week: monday,
+      days: [
+        day([entry('T', { id: 1, text: 'One' }), entry('T', { id: 2, position: 1, text: 'Two' })]),
+        { ...day([entry('M', { id: 3, text: 'Three' })]), date: tuesday },
+      ],
+    });
+    const fixtures = appData.week()!.days.map((data, index, days) => {
+      const fixture = TestBed.createComponent(Day);
+      fixture.componentRef.setInput('day', data);
+      fixture.componentRef.setInput('previousDate', days[index - 1]?.date ?? null);
+      fixture.componentRef.setInput('nextDate', days[index + 1]?.date ?? null);
+      document.body.append(fixture.nativeElement);
+      fixture.detectChanges();
+      return fixture;
+    });
+    http.match(() => true).forEach(request => request.flush([]));
+    await settle();
+    fixtures.forEach(fixture => fixture.detectChanges());
+    return fixtures;
+  }
+
+  type Fixture = Awaited<ReturnType<typeof render>>[number];
+
+  function editing(fixture: Fixture): string | null {
+    const field = fixture.nativeElement.querySelector('[data-edit-text]') as HTMLTextAreaElement;
+    return field?.value ?? null;
+  }
+
+  function press(fixture: Fixture, key: string, shiftKey = false) {
+    const field = fixture.nativeElement.querySelector('[data-edit-text]') as HTMLTextAreaElement;
+    field.dispatchEvent(
+      new KeyboardEvent('keydown', { key, shiftKey, bubbles: true, cancelable: true }),
+    );
+    fixture.detectChanges();
+  }
+
+  function open(fixture: Fixture, index: number) {
+    fixture.nativeElement
+      .querySelectorAll('[data-entry-text]')
+      [index].dispatchEvent(new MouseEvent('dblclick'));
+    fixture.detectChanges();
+  }
+
+  it('goes down to the next entry, keeping what was typed as a draft', async () => {
+    const [mon] = await render();
+    open(mon, 0);
+    const field = mon.nativeElement.querySelector('[data-edit-text]') as HTMLTextAreaElement;
+    field.value = 'One, nearly';
+    field.dispatchEvent(new Event('input'));
+    press(mon, 'ArrowDown');
+    expect(editing(mon)).toBe('Two');
+
+    press(mon, 'ArrowUp');
+    expect(editing(mon)).toBe('One, nearly');
+  });
+
+  it('goes down from the last entry to the row for a new one, and back up', async () => {
+    const [mon] = await render();
+    open(mon, 1);
+    press(mon, 'ArrowDown');
+    expect(mon.nativeElement.querySelector('[data-adding] [data-edit-text]')).not.toBeNull();
+
+    press(mon, 'ArrowUp');
+    expect(editing(mon)).toBe('Two');
+    expect(mon.nativeElement.querySelector('[data-adding]')).toBeNull();
+  });
+
+  it('stays put on Up from the first entry', async () => {
+    const [mon] = await render();
+    open(mon, 0);
+    press(mon, 'ArrowUp');
+    expect(editing(mon)).toBe('One');
+  });
+
+  it('goes to the next day on Tab, and back to the last entry before on Shift+Tab', async () => {
+    const [mon, tue] = await render();
+    open(mon, 0);
+    press(mon, 'Tab');
+    tue.detectChanges();
+    expect(editing(mon)).toBeNull();
+    expect(editing(tue)).toBe('Three');
+
+    press(tue, 'Tab', true);
+    mon.detectChanges();
+    expect(editing(tue)).toBeNull();
+    expect(editing(mon)).toBe('Two');
+  });
+});

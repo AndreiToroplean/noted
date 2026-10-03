@@ -1,6 +1,7 @@
 import { TestBed } from '@angular/core/testing';
 
 import {
+  EditorMove,
   EntryText,
   InlineEntryEditor,
 } from 'app/components/inline-entry-editor/inline-entry-editor';
@@ -150,5 +151,79 @@ describe('InlineEntryEditor', () => {
   it('leaves Ctrl+B alone while editing an entry', () => {
     const { text } = render({ text: 'Fixed it', note: null });
     expect(press(text(), 'b', true).defaultPrevented).toBe(false);
+  });
+
+  // The test DOM lays nothing out, so every caret is on a first and last line.
+  describe('moving on', () => {
+    function moves(value: EntryText) {
+      const rendered = render(value);
+      const moved: EditorMove[] = [];
+      rendered.fixture.componentInstance.moved.subscribe(move => moved.push(move));
+      return { ...rendered, moved };
+    }
+
+    it('goes to the entry above on Up from the text, with what was typed', () => {
+      const { text, moved } = moves({ text: 'Fixed it', note: null });
+      type(text(), 'Fixed it, nearly');
+      expect(press(text(), 'ArrowUp').defaultPrevented).toBe(true);
+      expect(moved).toEqual([{ to: 'up', typed: { text: 'Fixed it, nearly', note: null } }]);
+    });
+
+    it('goes down to its own note first, then to the entry below', async () => {
+      const { fixture, text, note, moved } = moves({ text: 'Fixed it', note: 'the header' });
+      press(text(), 'ArrowDown');
+      await fixture.whenStable();
+      expect(document.activeElement).toBe(note());
+      expect(moved).toEqual([]);
+
+      press(note()!, 'ArrowDown');
+      expect(moved.map(move => move.to)).toEqual(['down']);
+    });
+
+    it('goes up from the note to its own text', async () => {
+      const { fixture, text, note, moved } = moves({ text: 'Fixed it', note: 'the header' });
+      press(note()!, 'ArrowUp');
+      await fixture.whenStable();
+      expect(document.activeElement).toBe(text());
+      expect(moved).toEqual([]);
+    });
+
+    it('goes to the next day on Tab, and the one before on Shift+Tab', () => {
+      const { text, note, moved } = moves({ text: 'Fixed it', note: 'the header' });
+      expect(press(text(), 'Tab').defaultPrevented).toBe(true);
+      press(note()!, 'Tab', false, true);
+      expect(moved.map(move => move.to)).toEqual(['next-day', 'previous-day']);
+    });
+
+    it('leaves Shift and Ctrl arrows to the field', () => {
+      const { text, moved } = moves({ text: 'Fixed it', note: null });
+      press(text(), 'ArrowUp', false, true);
+      press(text(), 'ArrowDown', true);
+      expect(moved).toEqual([]);
+    });
+
+    it('opens with the caret at the start when it is entered from above', async () => {
+      const fixture = TestBed.createComponent(InlineEntryEditor);
+      fixture.componentRef.setInput('value', { text: 'Fixed it', note: 'the header' });
+      fixture.componentRef.setInput('enterAt', 'start');
+      document.body.append(fixture.nativeElement);
+      fixture.detectChanges();
+      await fixture.whenStable();
+      const text = fixture.nativeElement.querySelector('[data-edit-text]') as HTMLTextAreaElement;
+      expect(document.activeElement).toBe(text);
+      expect(text.selectionStart).toBe(0);
+    });
+
+    it('opens in the note, at its end, when it is entered from below', async () => {
+      const fixture = TestBed.createComponent(InlineEntryEditor);
+      fixture.componentRef.setInput('value', { text: 'Fixed it', note: 'the header' });
+      fixture.componentRef.setInput('enterAt', 'end');
+      document.body.append(fixture.nativeElement);
+      fixture.detectChanges();
+      await fixture.whenStable();
+      const note = fixture.nativeElement.querySelector('[data-edit-note]') as HTMLTextAreaElement;
+      expect(document.activeElement).toBe(note);
+      expect(note.selectionStart).toBe('the header'.length);
+    });
   });
 });

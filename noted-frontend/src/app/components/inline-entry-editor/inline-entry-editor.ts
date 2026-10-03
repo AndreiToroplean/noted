@@ -12,10 +12,18 @@ import {
   viewChild,
 } from '@angular/core';
 
+import { caretLines } from 'app/components/inline-entry-editor/caret';
+
 /** What an entry says: its line and its note. */
 export interface EntryText {
   text: string;
   note: string | null;
+}
+
+/** Where the keyboard is taking the editing, and what was typed before it left. */
+export interface EditorMove {
+  to: 'up' | 'down' | 'next-day' | 'previous-day';
+  typed: EntryText;
 }
 
 /**
@@ -52,11 +60,19 @@ export class InlineEntryEditor {
   readonly busy = input(false);
   /** Writing a new entry rather than editing one. */
   readonly adding = input(false);
+  /**
+   * Where the caret starts: at the end of the text, as a double-click leaves
+   * it; at the very start, coming down from above; or at the very end, note
+   * and all, coming up from below.
+   */
+  readonly enterAt = input<'text' | 'start' | 'end'>('text');
 
   readonly saved = output<EntryText>();
   readonly closed = output<EntryText>();
   /** Ctrl+B, while adding: make a break instead, with what was typed kept. */
   readonly switchToBreak = output<EntryText>();
+  /** The keyboard leaving for another entry, with what was typed here. */
+  readonly moved = output<EditorMove>();
 
   protected readonly text = linkedSignal(() => this.value().text);
   protected readonly note = linkedSignal(() => this.value().note);
@@ -71,9 +87,11 @@ export class InlineEntryEditor {
 
   constructor() {
     afterNextRender(() => {
-      const field = this.textField().nativeElement;
-      field.focus();
-      field.setSelectionRange(field.value.length, field.value.length);
+      const enterAt = this.enterAt();
+      const note = this.noteField()?.nativeElement;
+      if (enterAt === 'start') this.place(this.textField().nativeElement, 'start');
+      else if (enterAt === 'end' && note) this.place(note, 'end');
+      else this.place(this.textField().nativeElement, 'end');
     });
     // A fresh value starts over. Written into the fields straight away, as a
     // binding may not see a change from a value it never drew; and focus goes
@@ -106,7 +124,51 @@ export class InlineEntryEditor {
     this.onKeydown(event);
   }
 
+  /**
+   * Up and Down move the caret as in any field, and leave it only from its
+   * first or last line: from the text down to the note, from the note up to the
+   * text, and past either end to the entry above or below. Tab and Shift+Tab go
+   * to the next day and the one before.
+   */
+  private moveOn(event: KeyboardEvent): boolean {
+    if (this.busy() || event.ctrlKey || event.metaKey || event.altKey) return false;
+    const field = event.target as HTMLTextAreaElement;
+    const inNote = field === this.noteField()?.nativeElement;
+    let to: EditorMove['to'] | null = null;
+    if (event.key === 'Tab') {
+      to = event.shiftKey ? 'previous-day' : 'next-day';
+    } else if (event.shiftKey) {
+      return false;
+    } else if (event.key === 'ArrowUp' && caretLines(field).first) {
+      if (inNote) {
+        event.preventDefault();
+        this.place(this.textField().nativeElement, 'end');
+        return true;
+      }
+      to = 'up';
+    } else if (event.key === 'ArrowDown' && caretLines(field).last) {
+      const note = this.noteField()?.nativeElement;
+      if (!inNote && note) {
+        event.preventDefault();
+        this.place(note, 'start');
+        return true;
+      }
+      to = 'down';
+    }
+    if (!to) return false;
+    event.preventDefault();
+    this.moved.emit({ to, typed: this.current() });
+    return true;
+  }
+
+  private place(field: HTMLTextAreaElement, at: 'start' | 'end') {
+    field.focus();
+    const position = at === 'start' ? 0 : field.value.length;
+    field.setSelectionRange(position, position);
+  }
+
   protected onKeydown(event: KeyboardEvent) {
+    if (this.moveOn(event)) return;
     const ctrl = event.ctrlKey || event.metaKey;
     const key = event.key.toLowerCase();
     const undo = ctrl && key === 'z' && !event.shiftKey;

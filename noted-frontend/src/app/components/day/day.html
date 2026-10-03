@@ -105,11 +105,13 @@
               class="min-w-0 flex-1 py-1"
               [value]="newFrom()"
               [adding]="true"
+              [enterAt]="newEnterAt()"
               [error]="addError()"
               [busy]="addBusy()"
               (saved)="add($event)"
               (closed)="closeEditor($event)"
               (switchToBreak)="switchToBreak($event)"
+              (moved)="onMoved(null, $event)"
             />
           </div>
         </div>
@@ -313,10 +315,12 @@
           class="min-w-0 flex-1 py-1"
           [value]="open.from"
           [original]="open.original"
+          [enterAt]="open.enterAt"
           [error]="editError()"
           [busy]="editBusy()"
           (saved)="saveText(entry, $event)"
           (closed)="closeEdit(entry, $event)"
+          (moved)="onMoved(entry, $event)"
         />
       } @else {
         <div class="min-w-0 flex-1 py-1" data-entry-text (dblclick)="openEntry(entry)">

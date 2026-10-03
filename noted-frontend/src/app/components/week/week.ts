@@ -3,7 +3,7 @@ import { Component, computed, input } from '@angular/core';
 import { CdkDropListGroup } from '@angular/cdk/drag-drop';
 
 import { Day } from 'app/components/day/day';
-import { Day as DayData, Week as WeekData } from 'app/services/api';
+import { Day as DayData, IsoDate, Week as WeekData } from 'app/services/api';
 
 @Component({
   selector: 'app-week',
@@ -20,6 +20,11 @@ export class Week {
   protected readonly visibleDays = computed<DayData[]>(() =>
     this.week().days.filter((day, index) => index < 5 || hasContent(day)),
   );
+
+  /** The date of the shown day at an index, or null past either end. */
+  protected dateAt(index: number): IsoDate | null {
+    return index >= 0 ? (this.visibleDays()[index]?.date ?? null) : null;
+  }
 }
 
 function hasContent(day: DayData): boolean {
