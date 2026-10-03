@@ -12,16 +12,30 @@ from fastapi.middleware.cors import CORSMiddleware
 from sqlmodel import Session, col, delete, select
 
 import db
-from models import Break, Category, Day, DayStatus, Entry, OvertimeBaseline, Project, Settings
+import importer
+from models import (
+    Break,
+    Category,
+    Day,
+    DayStatus,
+    Entry,
+    EntryKind,
+    OvertimeBaseline,
+    Project,
+    Settings,
+)
 from schemas import (
     BreakIn,
     BreakOut,
     CategoryIn,
+    ClockOut,
     DayOut,
     EntryIn,
     EntryOut,
     OvertimeIn,
     OvertimeOut,
+    ParsedItem,
+    ParseIn,
     ProjectIn,
     ProjectPatch,
     SettingsIn,
@@ -178,6 +192,72 @@ def replace_week(week: str, payload: WeekIn, session: Session = Depends(db.sessi
 
     session.commit()
     return read_week(week, session)
+
+
+@app.post("/parse", response_model=ParsedItem)
+def parse(payload: ParseIn, session: Session = Depends(db.session)):
+    """Read one typed line into fields, with the spreadsheet's own grammar.
+
+    The importer already reads every form the journal was ever written in, so a
+    new entry is read by the same code: a line typed today means what it would
+    have meant in the spreadsheet. The text is not kept — see specification §3.
+    """
+    text = payload.text.strip()
+    if not text:
+        raise HTTPException(status_code=422, detail="Nothing was written.")
+
+    parsed = importer.parse_entry(text)
+
+    if parsed.kind == EntryKind.META:
+        day = importer.ParsedDay()
+        if importer.consume_marker(parsed.text[1:-1].strip(), day, first=True):
+            if day.breaks:
+                pause = day.breaks[0]
+                return BreakIn(
+                    is_noon=pause.is_noon,
+                    description=pause.description or parsed.note,
+                    start=pause.start,
+                    end=pause.end,
+                    minutes=pause.minutes,
+                )
+            if day.arrival:
+                return ClockOut(time=day.arrival)
+            raise HTTPException(
+                status_code=422, detail="A day's overtime is worked out, not written down."
+            )
+        return EntryIn(kind=EntryKind.META, text=parsed.text, note=parsed.note)
+
+    category = None
+    if parsed.category:
+        names = {name.lower(): name for name in session.exec(select(col(Category.name)))}
+        category = names.get(parsed.category.lower())
+        if category is None:
+            raise HTTPException(status_code=422, detail=f"There is no [{parsed.category}] category.")
+
+    project_id = None
+    if parsed.project and parsed.declares:
+        project = Project(
+            path=parsed.project, colour=importer.sample_colour(), declared_on=date.today()
+        )
+        session.add(project)
+        session.commit()
+        project_id = project.id
+    elif parsed.project:
+        # The same path declared twice is two projects; the newer one is the one
+        # still being worked on.
+        project_id = session.exec(
+            select(col(Project.id))
+            .where(Project.path == parsed.project)
+            .order_by(col(Project.declared_on).desc(), col(Project.id).desc())
+        ).first()
+        if project_id is None:
+            raise HTTPException(
+                status_code=422,
+                detail=f"{parsed.project} is not a project yet. "
+                f"Write it +{parsed.project}: to declare it.",
+            )
+
+    return EntryIn(category=category, project_id=project_id, text=parsed.text, note=parsed.note)
 
 
 # --- Projects ---------------------------------------------------------------

@@ -65,6 +65,9 @@ Entries are created by typing the raw syntax, exactly as in the spreadsheet:
 
 The text is parsed **once**, at creation, and stored as fields. The raw string is not kept.
 
+The API reads it, with the importer's grammar, so a line means what it meant in the
+spreadsheet. See `parse` in `noted-api/app.py`.
+
 ### 3.2 Editing an entry
 
 Editing is interactive and per-field: click the category to change it, click the project,

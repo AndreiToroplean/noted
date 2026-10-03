@@ -86,6 +86,23 @@ class DayOut(DayBase):
     items: list[DayItemOut] = []
 
 
+class ParseIn(BaseModel):
+    #: One line as typed into a day, with an optional second line for the note.
+    text: str
+
+
+class ClockOut(BaseModel):
+    """An arrow, `[-> 9:15]`. The same marker is an arrival or a departure
+    depending on where in the day it is written, which only the client knows."""
+
+    kind: Literal["clock"] = "clock"
+    time: dt.time
+
+
+#: What a typed line turns out to be.
+ParsedItem = Annotated[EntryIn | BreakIn | ClockOut, Field(discriminator="kind")]
+
+
 class WeekIn(BaseModel):
     days: list[DayIn] = []
 
