@@ -1256,7 +1256,7 @@ describe('Day moving between entries from the keyboard', () => {
     expect(document.activeElement).toBe(option(mon, 1));
   });
 
-  it('selects the first entry of the next day on Tab, and the last of the day before on Shift+Tab', async () => {
+  it('selects the first entry of the next day on Tab, and the row for adding of the day before on Shift+Tab', async () => {
     const [mon, tue] = await render();
     option(mon, 0).click();
     mon.detectChanges();
@@ -1273,7 +1273,8 @@ describe('Day moving between entries from the keyboard', () => {
       new KeyboardEvent('keydown', { key: 'Tab', shiftKey: true, bubbles: true, cancelable: true }),
     );
     mon.detectChanges();
-    expect(document.activeElement).toBe(option(mon, 1));
+    expect(option(tue, 0).getAttribute('aria-selected')).toBe('false');
+    expect(document.activeElement).toBe(mon.nativeElement.querySelector('[data-add]'));
   });
 
   it('comes round from the last day to the first on Tab, and back on Shift+Tab', async () => {
@@ -1290,7 +1291,7 @@ describe('Day moving between entries from the keyboard', () => {
       new KeyboardEvent('keydown', { key: 'Tab', shiftKey: true, bubbles: true, cancelable: true }),
     );
     tue.detectChanges();
-    expect(document.activeElement).toBe(option(tue, 0));
+    expect(document.activeElement).toBe(tue.nativeElement.querySelector('[data-add]'));
   });
 
   it('keeps the checkboxes out of the way of Tab', async () => {
@@ -1332,7 +1333,7 @@ describe('Day moving between entries from the keyboard', () => {
     expect(editing(mon)).toBe('One');
   });
 
-  it('goes to the next day on Tab, and back to the last entry before on Shift+Tab', async () => {
+  it('goes to the next day on Tab, and back to the row for adding of the day before on Shift+Tab', async () => {
     const [mon, tue] = await render();
     open(mon, 0);
     press(mon, 'Tab');
@@ -1343,6 +1344,6 @@ describe('Day moving between entries from the keyboard', () => {
     press(tue, 'Tab', true);
     mon.detectChanges();
     expect(editing(tue)).toBeNull();
-    expect(editing(mon)).toBe('Two');
+    expect(mon.nativeElement.querySelector('[data-adding] [data-edit-text]')).not.toBeNull();
   });
 });

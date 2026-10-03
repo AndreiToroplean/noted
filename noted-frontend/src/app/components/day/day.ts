@@ -46,8 +46,8 @@ import {
   itemKey,
 } from 'app/services/api';
 import { AppData } from 'app/services/app-data';
+import { DayHandoff, HandoffAt } from 'app/services/day-handoff';
 import { Drafts } from 'app/services/drafts';
-import { EditHandoff } from 'app/services/edit-handoff';
 import { Selection } from 'app/services/selection';
 import { clock, formatMinutes, now, shiftClock } from 'app/services/time';
 
@@ -336,17 +336,10 @@ export class Day {
     this.selection.deleteSelected();
   }
 
-  /**
-   * Tab selects the first item of the next day, Shift+Tab the last of the day
-   * before; a day with none gets its row for adding.
-   */
+  /** Tab goes to the start of the next day, Shift+Tab to the end of the day before. */
   private selectInDayBeside(forward: boolean) {
     const date = forward ? this.nextDate() : this.previousDate();
-    const day = date ? document.querySelector(`[data-date="${date}"]`) : null;
-    const options = day?.querySelectorAll<HTMLElement>('[role="option"]');
-    const option = forward ? options?.[0] : options?.[options.length - 1];
-    if (option) option.click();
-    (option ?? day?.querySelector<HTMLElement>('[data-add]'))?.focus();
+    if (date) this.handoff.hand(date, forward ? 'first' : 'last', false);
   }
 
   /** Esc leaves the item it closed on selected, so the arrows go on from it. */
@@ -406,7 +399,7 @@ export class Day {
     this.day().items.filter((item): item is Entry => !isBreak(item)),
   );
 
-  private readonly handoff = inject(EditHandoff);
+  private readonly handoff = inject(DayHandoff);
 
   /**
    * The keyboard leaving an editor: `from` is the entry it was open on, or null
@@ -433,21 +426,39 @@ export class Day {
       const date = forward ? this.nextDate() : this.previousDate();
       if (!date) return;
       leave();
-      this.handoff.hand(date, forward ? 'first' : 'last');
+      this.handoff.hand(date, forward ? 'first' : 'last', true);
     }
   }
 
-  /** Editing handed over from another day: open the entry it asks for. */
+  /**
+   * What is at one end of a day's items, or null for the row for a new entry.
+   * A day ends with that row, always; it starts with its first item, if any.
+   */
+  private endOf<T>(items: T[], at: HandoffAt): T | null {
+    return at === 'first' ? (items[0] ?? null) : null;
+  }
+
+  /** The keyboard handed over from another day: select, or edit, at the end it asks for. */
   private readonly takeHandoff = effect(() => {
     const request = this.handoff.request();
     if (request?.date !== this.day().date) return;
     untracked(() => {
       this.handoff.request.set(null);
-      const entries = this.entries();
-      const entry = request.at === 'first' ? entries[0] : entries.at(-1);
-      const enterAt = request.at === 'first' ? 'start' : 'end';
-      if (entry) this.openEntry(entry, enterAt);
-      else this.writeEntry(enterAt);
+      if (request.editing) {
+        // Editing goes by entries only, breaks having no text to edit.
+        const entry = this.endOf(this.entries(), request.at);
+        const enterAt = request.at === 'first' ? 'start' : 'end';
+        if (entry) this.openEntry(entry, enterAt);
+        else this.writeEntry(enterAt);
+        return;
+      }
+      const item = this.endOf(this.day().items, request.at);
+      if (item) {
+        this.select(itemKey(item));
+      } else {
+        this.selection.clear();
+        this.host.nativeElement.querySelector<HTMLElement>('[data-add]')?.focus();
+      }
     });
   });
 
