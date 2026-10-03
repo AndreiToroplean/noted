@@ -162,9 +162,7 @@ def replace_week(week: str, payload: WeekIn, session: Session = Depends(db.sessi
             if entry.category is not None and entry.category not in known_categories:
                 raise HTTPException(status_code=400, detail=f"Unknown category {entry.category!r}.")
 
-    session.exec(delete(Entry).where(col(Entry.date).in_(dates)))
-    session.exec(delete(Break).where(col(Break.date).in_(dates)))
-    session.exec(delete(Day).where(col(Day.date).in_(dates)))
+    clear(session, dates)
 
     for day in payload.days:
         session.add(
@@ -258,6 +256,23 @@ def parse(payload: ParseIn, session: Session = Depends(db.session)):
             )
 
     return EntryIn(category=category, project_id=project_id, text=parsed.text, note=parsed.note)
+
+
+@app.delete("/journal/{week}", status_code=204)
+def delete_week(week: str, session: Session = Depends(db.session)):
+    """Remove a week for good: its days, their entries and breaks.
+
+    Projects declared in it stay. They are referenced by id from elsewhere too,
+    and a project is not a part of the week it happened to start in.
+    """
+    clear(session, set(week_dates(monday(week))))
+    session.commit()
+
+
+def clear(session: Session, dates: set[date]):
+    session.exec(delete(Entry).where(col(Entry.date).in_(dates)))
+    session.exec(delete(Break).where(col(Break.date).in_(dates)))
+    session.exec(delete(Day).where(col(Day.date).in_(dates)))
 
 
 # --- Projects ---------------------------------------------------------------

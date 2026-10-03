@@ -189,3 +189,31 @@ def test_the_overtime_total_can_be_reset(client):
     r = client.put("/overtime", json={"minutes": 120, "since": "2026-01-05"})
     assert r.status_code == 200
     assert client.get("/overtime").json() == {"minutes": 120, "since": "2026-01-05"}
+
+
+def test_deleting_a_week_removes_its_days_entries_and_breaks(client):
+    payload = {
+        "days": [
+            {
+                "date": WEEK,
+                "items": [
+                    {"kind": "task", "text": "Wrote the importer"},
+                    {"kind": "break", "is_noon": True, "minutes": 60},
+                ],
+            }
+        ]
+    }
+    client.put(f"/journal/{WEEK}", json=payload)
+    other = "2026-02-02"
+    client.put(f"/journal/{other}", json={"days": [{"date": other, "items": [{"kind": "task", "text": "Kept"}]}]})
+
+    assert client.delete(f"/journal/{WEEK}").status_code == 204
+
+    assert all(day["items"] == [] for day in client.get(f"/journal/{WEEK}").json()["days"])
+    assert WEEK not in client.get("/weeks").json()
+    assert client.get(f"/journal/{other}").json()["days"][0]["items"][0]["text"] == "Kept"
+
+
+@pytest.mark.parametrize("path", ["not-a-date", TUESDAY])
+def test_deleting_needs_a_monday(client, path):
+    assert client.delete(f"/journal/{path}").status_code == 400
