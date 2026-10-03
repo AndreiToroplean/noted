@@ -47,7 +47,16 @@ export class AppData {
 
   readonly weeks = httpResource<IsoDate[]>(() => `${API_BASE}/weeks`, { defaultValue: [] });
 
-  readonly selectedWeek = linkedSignal<IsoDate | null>(() => this.weeks.value()[0] ?? null);
+  /**
+   * The newest week to begin with, then whichever the user picks. The list
+   * reloads after every save, and that must not move them off the week they
+   * are editing.
+   */
+  readonly selectedWeek = linkedSignal<IsoDate[], IsoDate | null>({
+    source: this.weeks.value,
+    computation: (weeks, previous) =>
+      previous?.value && weeks.includes(previous.value) ? previous.value : (weeks[0] ?? null),
+  });
 
   private readonly loaded = httpResource<Week>(() => {
     const week = this.selectedWeek();

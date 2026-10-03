@@ -58,6 +58,20 @@ describe('AppData', () => {
     expect(data.week()?.days).toHaveLength(7);
   });
 
+  it('stays on the chosen week when the list of weeks reloads', async () => {
+    // Every save reloads the list; editing an older week must not jump back to
+    // the newest one.
+    vi.useRealTimers();
+    data.weeks.set([MONDAY, '2026-02-02']);
+    data.selectedWeek.set('2026-02-02');
+    data.weeks.reload();
+    TestBed.tick();
+    http.expectOne(`${API_BASE}/weeks`).flush(['2026-02-16', MONDAY, '2026-02-02']);
+    await settle();
+    expect(data.selectedWeek()).toBe('2026-02-02');
+    http.match(`${API_BASE}/journal/2026-02-02`).forEach(request => request.flush(week()));
+  });
+
   it('leaves an untouched week alone', () => {
     vi.advanceTimersByTime(5000);
     TestBed.tick();
