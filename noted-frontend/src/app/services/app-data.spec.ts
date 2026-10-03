@@ -110,6 +110,38 @@ describe('AppData', () => {
     expect(request.request.body.days[0].items[0].text).toBe('Wrote the importer');
   });
 
+  it('keeps its own copy once saved, so the ids the page goes by hold', () => {
+    const edited = week();
+    edited.days[0].items = [
+      {
+        id: -1,
+        position: 0,
+        kind: 'task',
+        done: false,
+        category: null,
+        project_id: null,
+        text: 'Wrote the importer',
+        note: null,
+        explicit_minutes: null,
+        explicit_start: null,
+        explicit_end: null,
+        approx_weight: null,
+      },
+    ];
+    data.week.set(edited);
+    TestBed.tick();
+    vi.advanceTimersByTime(1000);
+    const saved = week();
+    saved.days[0].items = [{ ...edited.days[0].items[0], id: 41 }];
+    http.expectOne(`${API_BASE}/journal/${MONDAY}`).flush(saved);
+    TestBed.tick();
+
+    expect(data.week()).toBe(edited);
+    vi.advanceTimersByTime(1000);
+    http.expectNone(`${API_BASE}/journal/${MONDAY}`);
+    http.expectOne(`${API_BASE}/weeks`).flush([MONDAY]);
+  });
+
   it('collapses a burst of edits into one write', () => {
     for (let i = 0; i < 3; i++) {
       const draft = week();

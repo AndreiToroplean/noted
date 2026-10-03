@@ -310,15 +310,11 @@ export class AppData {
     this.saveFailed.set(false);
 
     this.http.put<Week>(`${API_BASE}/journal/${draft.week}`, toWrite(draft)).subscribe({
-      next: saved => {
-        // Adopt the server's copy only if nothing was typed while it was in
-        // flight; otherwise keep the newer draft and let the effect save again.
-        if (this.week() === draft) {
-          this.week.set(saved);
-          this.persisted.set(saved);
-        } else {
-          this.persisted.set(draft);
-        }
+      next: () => {
+        // The draft is what is on the server now. Its copy is not adopted: the
+        // server gives every item a new id on each save, and the page goes by
+        // ids — what is selected, open, or kept as a draft.
+        this.persisted.set(draft);
         this.saving.set(false);
         this.weeks.reload();
       },
