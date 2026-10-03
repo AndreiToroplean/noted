@@ -57,6 +57,18 @@ type Clock = 'arrival' | 'departure';
 /** Where an editor's caret starts — see `InlineEntryEditor.enterAt`. */
 type EnterAt = 'text' | 'start' | 'end';
 
+/** A character typed at an item rather than a key pressed on it: Space ticks. */
+function isTyped(event: KeyboardEvent): boolean {
+  return (
+    event.key.length === 1 && event.key !== ' ' && !event.ctrlKey && !event.metaKey && !event.altKey
+  );
+}
+
+/** An entry begun with what was typed. */
+function startedAs(typed: string): EntryText {
+  return { text: typed, note: null };
+}
+
 /** An entry with nothing written in it yet. */
 const BLANK: EntryText = { text: '', note: null };
 
@@ -203,6 +215,12 @@ export class Day {
       this.selectInDayBeside(!event.shiftKey);
       return;
     }
+    const item = this.day().items.find(other => itemKey(other) === key);
+    if (isTyped(event) && item && !isBreak(item)) {
+      event.preventDefault();
+      this.openEntry(item, 'end', event.key);
+      return;
+    }
     const step = { ArrowUp: -1, ArrowDown: 1 }[event.key];
     if (step === undefined) return;
     event.preventDefault();
@@ -227,6 +245,11 @@ export class Day {
 
   /** Arrows on the row for a new entry go on to the day's last item, or its first. */
   protected onAddKeydown(event: KeyboardEvent) {
+    if (isTyped(event)) {
+      event.preventDefault();
+      this.writeEntry('end', event.key);
+      return;
+    }
     const order = this.order();
     const next = { ArrowUp: order.at(-1), ArrowDown: order[0] }[event.key];
     if (!next) return;
@@ -363,16 +386,18 @@ export class Day {
    * Editing is of one item, and its own highlight says which, so the selection
    * lets go rather than wash over the text being typed.
    */
-  protected openEntry(entry: Entry, enterAt: EnterAt = 'text') {
+  protected openEntry(entry: Entry, enterAt: EnterAt = 'text', typed?: string) {
     this.selection.clear();
     this.editError.set(null);
     const saved = { text: entry.text, note: entry.note };
-    const draft = this.drafts.get<EntryText>(itemKey(entry));
+    // Typed at, it is written over, as a spreadsheet cell is; Ctrl+Z brings it back.
+    const over =
+      typed === undefined ? this.drafts.get<EntryText>(itemKey(entry)) : startedAs(typed);
     this.editing.set({
       id: entry.id,
-      from: draft ?? saved,
-      original: draft ? saved : null,
-      enterAt,
+      from: over ?? saved,
+      original: over ? saved : null,
+      enterAt: typed === undefined ? enterAt : 'end',
     });
   }
 
@@ -554,8 +579,8 @@ export class Day {
   protected readonly newEnterAt = signal<EnterAt>('text');
 
   /** Open the row for writing an entry, where the last one was left. */
-  protected writeEntry(enterAt: EnterAt = 'text') {
-    this.newFrom.set(this.newDraft() ?? BLANK);
+  protected writeEntry(enterAt: EnterAt = 'text', typed?: string) {
+    this.newFrom.set(typed === undefined ? (this.newDraft() ?? BLANK) : startedAs(typed));
     this.newEnterAt.set(enterAt);
     this.adding.set('entry');
   }

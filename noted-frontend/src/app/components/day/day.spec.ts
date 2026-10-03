@@ -745,6 +745,31 @@ describe('Day selecting items', () => {
     expect(done()).toEqual([false, true, false]);
   });
 
+  it('writes over a selected entry when typed at, Ctrl+Z bringing it back', async () => {
+    const fixture = await render();
+    click(fixture, 0);
+    key(fixture, 0, { key: 'R' });
+    const field = fixture.nativeElement.querySelector('textarea') as HTMLTextAreaElement;
+    expect(field.value).toBe('R');
+
+    field.dispatchEvent(
+      new KeyboardEvent('keydown', { key: 'z', ctrlKey: true, bubbles: true, cancelable: true }),
+    );
+    fixture.detectChanges();
+    expect(field.value).toBe('One');
+  });
+
+  it('starts a new entry when typed at on the row for one', async () => {
+    const fixture = await render();
+    const add = fixture.nativeElement.querySelector('[data-add]') as HTMLElement;
+    add.dispatchEvent(new KeyboardEvent('keydown', { key: '[', bubbles: true, cancelable: true }));
+    fixture.detectChanges();
+    const field = fixture.nativeElement.querySelector(
+      '[data-adding] textarea',
+    ) as HTMLTextAreaElement;
+    expect(field.value).toBe('[');
+  });
+
   it('opens the focused item for editing on Enter', async () => {
     const fixture = await render();
     key(fixture, 0, { key: 'Enter' });
