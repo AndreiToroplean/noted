@@ -87,11 +87,7 @@ chore: Remove stray file from repo root
 ```
 
 Use `feat`, `fix`, `refactor`, `chore`, `build`, `docs`, `test`. Omit the scope for
-repo-wide changes. End the message body with:
-
-```
-- With help from Claude.
-```
+repo-wide changes.
 
 Commit in small, reviewable steps rather than one large change at the end.
 
@@ -105,3 +101,8 @@ if you need it. It is imported by a re-runnable script, not a one-way migration.
 
 The owner also has a separate, older project that already parses those sheets; its
 `parse_work_hours.py` is normative for anything time-related.
+
+**Don't read the journal data** — the spreadsheet, `noted-api/data/`, and the importer's
+`importer-rules.toml` and `importer-decisions.toml` — unless the owner asks you to. When he
+does, take counts and shapes from it, never text: every example in this repo, in docs,
+tests, comments and commit messages alike, is invented.
