@@ -77,11 +77,15 @@ export class AppData {
 
   readonly weeks = httpResource<IsoDate[]>(() => `${API_BASE}/weeks`, { defaultValue: [] });
 
+  /** The week of today, which is where the journal opens. */
+  private readonly thisWeek = mondayOf(new Date());
+
   /**
    * Weeks opened here that have nothing saved yet. A week exists only as the
    * days stored in it, so a new one is listed from here until it is written to.
+   * This week is always among them, so it is there to open on.
    */
-  private readonly opened = signal<IsoDate[]>([]);
+  private readonly opened = signal<IsoDate[]>([this.thisWeek]);
 
   /** Every week there is to choose from, newest first. */
   readonly weekList = computed(
@@ -92,14 +96,21 @@ export class AppData {
   );
 
   /**
-   * The newest week to begin with, then whichever the user picks. The list
-   * reloads after every save, and that must not move them off the week they
-   * are editing.
+   * This week to begin with, then whichever the user picks. The list reloads
+   * after every save, and that must not move them off the week they are
+   * editing. With this week deleted, the newest one there is.
    */
-  readonly selectedWeek = linkedSignal<IsoDate[], IsoDate | null>({
-    source: this.weekList,
-    computation: (weeks, previous) =>
-      previous?.value && weeks.includes(previous.value) ? previous.value : (weeks[0] ?? null),
+  readonly selectedWeek = linkedSignal({
+    source: () => ({
+      weeks: this.weekList(),
+      // Not before the list has come, as it always has: one request at a time.
+      listed: !['idle', 'loading'].includes(this.weeks.status()),
+    }),
+    computation: ({ weeks, listed }, previous): IsoDate | null => {
+      if (previous?.value && weeks.includes(previous.value)) return previous.value;
+      if (!listed) return null;
+      return weeks.includes(this.thisWeek) ? this.thisWeek : (weeks[0] ?? null);
+    },
   });
 
   private readonly loaded = httpResource<Week>(() => {

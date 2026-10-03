@@ -386,7 +386,7 @@ describe('Day adding an entry', () => {
     await settle();
     fixture.componentRef.setInput('day', appData.week()!.days[0]);
     fixture.detectChanges();
-    await fixture.whenStable();
+    await settle();
 
     expect(appData.week()!.days[0].items).toHaveLength(1);
     expect(fixture.nativeElement.querySelector('textarea')).toBeNull();
@@ -1119,7 +1119,7 @@ describe('Day deleting items', () => {
     (await rightClick(fixture, 2)).click();
     fixture.componentRef.setInput('day', appData.week()!.days[0]);
     fixture.detectChanges();
-    await fixture.whenStable();
+    await settle();
     expect(option(fixture, 1).getAttribute('aria-selected')).toBe('true');
     expect(document.activeElement).toBe(option(fixture, 1));
 

@@ -268,6 +268,18 @@ describe('AppData and the week in the address', () => {
     return data;
   }
 
+  it('opens on this week when the address names none, rather than the newest', async () => {
+    vi.setSystemTime(new Date('2026-02-04T12:00'));
+    expect((await open('/')).selectedWeek()).toBe('2026-02-02');
+  });
+
+  it('opens on this week even before anything is written in it', async () => {
+    vi.setSystemTime(new Date('2026-02-18T12:00'));
+    const data = await open('/');
+    expect(data.selectedWeek()).toBe('2026-02-16');
+    expect(data.weekList()).toEqual(['2026-02-16', MONDAY, '2026-02-02']);
+  });
+
   it('opens the week the address names, so a week can be bookmarked', async () => {
     expect((await open('/?week=2026-02-02')).selectedWeek()).toBe('2026-02-02');
   });
