@@ -15,11 +15,11 @@ from sqlmodel import Field, SQLModel
 
 class DayStatus(StrEnum):
     WORKING = "working"
-    PAID_HOLIDAY = "paid_holiday"
+    #: Leave the calendar imposes, paid or not.
     HOLIDAY = "holiday"
-    UNPAID = "unpaid"
-    SICK = "sick"
+    #: Leave taken, paid or not.
     OFF = "off"
+    SICK = "sick"
 
 
 class EntryKind(StrEnum):

@@ -109,10 +109,11 @@ FIRST_DURATION = re.compile(rf"({DURATION})")
 #: written figures should add up to the day's `=>`.
 STATED = re.compile(rf"\(\s*([+-])\s*({DURATION})\s*(?:=>|\))")
 
-#: A day made of nothing but one of these is not a working day.
+#: A day made of nothing but one of these is not a working day. Whether it was
+#: paid is not the day's status, so an unpaid day of any kind is simply off, and
+#: a paid holiday a holiday; the first needle found wins.
 STATUSES = [
-    ("UNPAID", "unpaid"),
-    ("PAID HOLIDAY", "paid_holiday"),
+    ("UNPAID", "off"),
     ("HOLIDAY", "holiday"),
     ("SICK", "sick"),
     ("OFF", "off"),

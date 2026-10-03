@@ -7,7 +7,7 @@
     </div>
     <div class="text-xs opacity-70">{{ data.date | date }}</div>
     @if (data.status !== 'working') {
-      <div class="day-status text-xs tracking-wide">{{ data.status.replace('_', ' ') }}</div>
+      <div class="day-status text-xs tracking-wide">{{ data.status }}</div>
     }
   </header>
 

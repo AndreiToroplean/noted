@@ -85,11 +85,15 @@ def test_time_markers_are_consumed_rather_than_kept_as_entries():
 
 
 def test_a_day_of_only_a_status_marker_takes_that_status():
-    assert markers("[PAID HOLIDAY]").status == "paid_holiday"
     assert markers("[SICK DAY]").status == "sick"
     assert markers("[HOLIDAY]").status == "holiday"
-    assert markers("[UNPAID OFF]").status == "unpaid"
     assert markers("[OFF]").status == "off"
+
+
+def test_whether_a_day_was_paid_is_not_its_status():
+    assert markers("[PAID HOLIDAY]").status == "holiday"
+    assert markers("[UNPAID OFF]").status == "off"
+    assert markers("[UNPAID HOLIDAY]").status == "off"
 
 
 def test_an_ordinary_day_is_working():

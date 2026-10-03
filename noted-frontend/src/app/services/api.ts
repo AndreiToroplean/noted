@@ -8,7 +8,7 @@
 
 export const API_BASE = 'http://127.0.0.1:8000';
 
-export type DayStatus = 'working' | 'paid_holiday' | 'holiday' | 'unpaid' | 'sick' | 'off';
+export type DayStatus = 'working' | 'holiday' | 'off' | 'sick';
 export type EntryKind = 'task' | 'meta';
 
 /** `HH:mm:ss`. */

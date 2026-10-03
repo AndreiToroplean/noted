@@ -210,8 +210,8 @@ describe('Day hours', () => {
   });
 
   it('shows a non-working day by its status instead of its hours', async () => {
-    const dom = await render(withHours({ status: 'paid_holiday', arrival: '09:30:00' }));
-    expect(dom.textContent).toContain('paid holiday');
+    const dom = await render(withHours({ status: 'holiday', arrival: '09:30:00' }));
+    expect(dom.textContent).toContain('holiday');
     expect(dom.querySelector('[data-arrival]')).toBeNull();
   });
 });
