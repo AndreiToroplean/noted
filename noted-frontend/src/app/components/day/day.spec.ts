@@ -655,6 +655,28 @@ describe('Day selecting items', () => {
     expect(selected(fixture)).toEqual([2, 3]);
   });
 
+  it('comes round through the row for a new entry, but not while extending', async () => {
+    const fixture = await render();
+    const add = fixture.nativeElement.querySelector('[data-add]') as HTMLElement;
+    click(fixture, 3);
+    key(fixture, 3, { key: 'ArrowDown', shiftKey: true });
+    expect(selected(fixture)).toEqual([3]);
+
+    key(fixture, 3, { key: 'ArrowDown' });
+    expect(selected(fixture)).toEqual([]);
+    expect(document.activeElement).toBe(add);
+
+    add.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true }));
+    fixture.detectChanges();
+    expect(selected(fixture)).toEqual([0]);
+
+    key(fixture, 0, { key: 'ArrowUp' });
+    expect(document.activeElement).toBe(add);
+    add.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowUp', bubbles: true }));
+    fixture.detectChanges();
+    expect(selected(fixture)).toEqual([3]);
+  });
+
   it('moves and selects with the arrow keys, extending with Shift', async () => {
     const fixture = await render();
     click(fixture, 0);
@@ -1174,7 +1196,7 @@ describe('Day moving between entries from the keyboard', () => {
     expect(document.activeElement).toBe(option(mon, 1));
   });
 
-  it('selects an entry in the next day on Tab, and the day before on Shift+Tab', async () => {
+  it('selects the first entry of the next day on Tab, and the last of the day before on Shift+Tab', async () => {
     const [mon, tue] = await render();
     option(mon, 0).click();
     mon.detectChanges();
@@ -1191,7 +1213,7 @@ describe('Day moving between entries from the keyboard', () => {
       new KeyboardEvent('keydown', { key: 'Tab', shiftKey: true, bubbles: true, cancelable: true }),
     );
     mon.detectChanges();
-    expect(document.activeElement).toBe(option(mon, 0));
+    expect(document.activeElement).toBe(option(mon, 1));
   });
 
   it('comes round from the last day to the first on Tab, and back on Shift+Tab', async () => {
@@ -1241,10 +1263,12 @@ describe('Day moving between entries from the keyboard', () => {
     expect(mon.nativeElement.querySelector('[data-adding]')).toBeNull();
   });
 
-  it('stays put on Up from the first entry', async () => {
+  it('comes round within the day, through the row for a new entry', async () => {
     const [mon] = await render();
     open(mon, 0);
     press(mon, 'ArrowUp');
+    expect(mon.nativeElement.querySelector('[data-adding] [data-edit-text]')).not.toBeNull();
+    press(mon, 'ArrowDown');
     expect(editing(mon)).toBe('One');
   });
 

@@ -135,6 +135,7 @@
           aria-label="Add an entry"
           data-add
           (click)="writeEntry()"
+          (keydown)="onAddKeydown($event)"
           (keydown.enter)="writeEntry()"
           (keydown.space)="$event.preventDefault()"
           (keyup.space)="writeEntry()"

@@ -203,12 +203,36 @@ export class Day {
     event.preventDefault();
 
     const order = this.order();
-    const next = order[Math.min(order.length - 1, Math.max(0, order.indexOf(key) + step))];
-    const ctrl = event.ctrlKey || event.metaKey;
-    if (!ctrl) {
-      this.selection.click(this.day().date, next, order, { ctrl: false, shift: event.shiftKey });
+    const at = order.indexOf(key) + step;
+    if (event.shiftKey) {
+      // A range stops at the ends.
+      const next = order[Math.min(order.length - 1, Math.max(0, at))];
+      this.selection.click(this.day().date, next, order, { ctrl: false, shift: true });
+      this.focusOption(next);
+      return;
     }
-    this.focusOption(next);
+    // Round the day, by way of the row for a new entry below the last item.
+    if (at < 0 || at >= order.length) {
+      if (!(event.ctrlKey || event.metaKey)) this.selection.clear();
+      this.host.nativeElement.querySelector<HTMLElement>('[data-add]')?.focus();
+      return;
+    }
+    this.moveTo(order[at], event.ctrlKey || event.metaKey);
+  }
+
+  /** Arrows on the row for a new entry go on to the day's last item, or its first. */
+  protected onAddKeydown(event: KeyboardEvent) {
+    const order = this.order();
+    const next = { ArrowUp: order.at(-1), ArrowDown: order[0] }[event.key];
+    if (!next) return;
+    event.preventDefault();
+    this.moveTo(next, event.ctrlKey || event.metaKey);
+  }
+
+  /** Focus an item, selecting it unless Ctrl says only to move. */
+  private moveTo(key: string, ctrl: boolean) {
+    if (!ctrl) this.selection.only(this.day().date, key);
+    this.focusOption(key);
   }
 
   /**
@@ -285,13 +309,14 @@ export class Day {
   }
 
   /**
-   * Tab and Shift+Tab: select the entry the day either side was left on (its
-   * tab stop), or reach its row for adding when it has none.
+   * Tab selects the first item of the next day, Shift+Tab the last of the day
+   * before; a day with none gets its row for adding.
    */
   private selectInDayBeside(forward: boolean) {
     const date = forward ? this.nextDate() : this.previousDate();
     const day = date ? document.querySelector(`[data-date="${date}"]`) : null;
-    const option = day?.querySelector<HTMLElement>('[role="option"][tabindex="0"]');
+    const options = day?.querySelectorAll<HTMLElement>('[role="option"]');
+    const option = forward ? options?.[0] : options?.[options.length - 1];
     if (option) option.click();
     (option ?? day?.querySelector<HTMLElement>('[data-add]'))?.focus();
   }
@@ -353,25 +378,23 @@ export class Day {
   /**
    * The keyboard leaving an editor: `from` is the entry it was open on, or null
    * for the row for a new one. What was typed waits as a draft, as it would on
-   * Esc. Breaks are passed over, their fields having their own use for arrows.
-   * With nowhere to go, the editor stays open.
+   * Esc. Up and Down come round the day, the row for adding included; breaks
+   * are passed over, their fields having their own use for arrows.
    */
   protected onMoved(from: Entry | null, move: EditorMove) {
     const entries = this.entries();
     const index = from ? entries.findIndex(entry => entry.id === from.id) : entries.length;
     const leave = () => (from ? this.closeEdit(from, move.typed) : this.closeEditor(move.typed));
 
-    if (move.to === 'up') {
-      const above = entries[index - 1];
-      if (!above) return;
+    if (move.to === 'up' || move.to === 'down') {
+      // Round the day: its entries, the row for a new one, then the first again.
+      const enterAt = move.to === 'up' ? 'end' : 'start';
+      const stops = entries.length + 1;
+      const target = (index + (move.to === 'up' ? -1 : 1) + stops) % stops;
+      if (target === index) return;
       leave();
-      this.openEntry(above, 'end');
-    } else if (move.to === 'down') {
-      if (!from) return;
-      const below = entries[index + 1];
-      leave();
-      if (below) this.openEntry(below, 'start');
-      else this.writeEntry('start');
+      if (target < entries.length) this.openEntry(entries[target], enterAt);
+      else this.writeEntry(enterAt);
     } else {
       const forward = move.to === 'next-day';
       const date = forward ? this.nextDate() : this.previousDate();
