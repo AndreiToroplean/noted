@@ -59,6 +59,8 @@ body {
   --mat-sys-on-primary: var(--app-on-accent);
   --mat-sys-secondary: var(--app-accent);
   --mat-sys-on-secondary: var(--app-on-accent);
+  --mat-sys-secondary-container: color-mix(in srgb, var(--app-accent) 28%, var(--app-surface));
+  --mat-sys-on-secondary-container: var(--app-on-surface);
 
   --mat-sys-background: var(--app-surface);
   --mat-sys-on-background: var(--app-on-surface);
@@ -190,14 +192,43 @@ body {
   --mat-tab-divider-height: 0;
 }
 
+/*
+ * A day's items look and behave like Material list items: the whole row, swatch
+ * and all, is one box, washed with Material's state layer on hover and focus,
+ * and filled with the secondary container colour when selected.
+ */
 .day-item {
+  position: relative;
+  margin: 1px 4px;
+  border-radius: var(--mat-sys-corner-extra-small);
   outline: none;
 }
 
+.day-item::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background-color: var(--mat-sys-on-surface);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 90ms linear;
+}
+
+.day-item:hover::before {
+  opacity: var(--mat-sys-hover-state-layer-opacity);
+}
+
 .day-item:focus-visible {
-  box-shadow: inset 0 0 0 1px var(--app-accent);
+  outline: 2px solid var(--app-accent);
+  outline-offset: -2px;
+}
+
+.day-item:focus-visible::before {
+  opacity: var(--mat-sys-focus-state-layer-opacity);
 }
 
 .day-item-selected {
-  background-color: color-mix(in srgb, var(--app-accent) 18%, transparent);
+  background-color: var(--mat-sys-secondary-container);
+  color: var(--mat-sys-on-secondary-container);
 }
