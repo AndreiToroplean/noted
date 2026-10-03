@@ -1,5 +1,14 @@
 import { DatePipe, NgTemplateOutlet, UpperCasePipe } from '@angular/common';
-import { Component, ElementRef, computed, inject, input, signal, viewChild } from '@angular/core';
+import {
+  ChangeDetectorRef,
+  Component,
+  ElementRef,
+  computed,
+  inject,
+  input,
+  signal,
+  viewChild,
+} from '@angular/core';
 
 import { CdkDrag, CdkDragDrop, CdkDragPlaceholder, CdkDropList } from '@angular/cdk/drag-drop';
 import { MatIconModule } from '@angular/material/icon';
@@ -78,9 +87,60 @@ export class Day {
   }
 
   /** Shift+click would otherwise select the text between the two clicks. */
-  protected onItemMousedown(event: MouseEvent) {
-    if (event.shiftKey && !insideEditor(event.target)) event.preventDefault();
+  protected onItemMousedown(key: string, event: MouseEvent) {
+    if (insideEditor(event.target)) return;
+    if (event.shiftKey) event.preventDefault();
+    this.measureCarried(key);
   }
+
+  /**
+   * Measured on press rather than once the drag starts: the drag makes its gap
+   * before it says it has started. It is one measurement per click, and it
+   * hides nothing, so a plain click is unaffected.
+   */
+  private measureCarried(key: string) {
+    const keys = this.selection.carriedBy(this.day().date, key);
+    const rows = this.order()
+      .filter(other => keys.has(other))
+      .map(other => this.host.nativeElement.querySelector<HTMLElement>(`[data-key="${other}"]`))
+      .filter(row => row !== null);
+    if (rows.length === 0) return;
+    // Adjacent items' margins collapse into one, so each join adds one margin.
+    const join = parseFloat(getComputedStyle(rows[0]).marginBottom) || 0;
+    const height = rows.reduce((total, row) => total + row.getBoundingClientRect().height, 0);
+    this.selection.carriedHeight.set(height + join * (rows.length - 1));
+    this.pressed.set({ key, count: rows.length });
+  }
+
+  /** The item last pressed, and how many it would carry: the preview shows the count. */
+  protected readonly pressed = signal<{ key: string; count: number } | null>(null);
+
+  /** Whether one of this day's items is being dragged right now. */
+  private readonly dragging = signal(false);
+  private readonly changes = inject(ChangeDetectorRef);
+
+  /**
+   * The other items a drag carries fold away while it is on, so the day shows
+   * the shape it will have. Applied at once: the drag measures the list straight
+   * after this, and must measure it folded.
+   */
+  protected onDragStarted() {
+    this.dragging.set(true);
+    this.changes.detectChanges();
+  }
+
+  protected onDragEnded() {
+    this.dragging.set(false);
+  }
+
+  /** Folded away for the drag: carried along, but not the item in hand. */
+  protected isFolded(key: string): boolean {
+    const pressed = this.pressed();
+    if (!this.dragging() || !pressed || key === pressed.key) return false;
+    return this.selection.carriedBy(this.day().date, pressed.key).has(key);
+  }
+
+  protected readonly carriedHeight = this.selection.carriedHeight;
 
   /**
    * A listbox's arrow keys: move and select, Shift to extend from where the
@@ -139,14 +199,25 @@ export class Day {
     return isBreak(item) ? this.editingBreakId() === item.id : this.editingId() === item.id;
   }
 
-  /** A drop from this day or from another; every day's list is in one group. */
-  protected onDrop(event: CdkDragDrop<IsoDate>) {
-    this.appData.moveItem(
-      event.previousContainer.data,
-      event.previousIndex,
-      event.container.data,
-      event.currentIndex,
-    );
+  /**
+   * A drop from this day or from another; every day's list is in one group.
+   *
+   * The drag reports where the item in hand landed among the list it was
+   * dropped in, folded items included. The block goes in before the first of
+   * the day's other items to follow that point.
+   */
+  protected onDrop(event: CdkDragDrop<IsoDate, IsoDate, string>) {
+    const from = event.previousContainer.data;
+    const to = event.container.data;
+    const inHand = event.item.data;
+    const keys = this.selection.carriedBy(from, inHand);
+
+    const target = to === this.day().date ? this.order() : [];
+    const before = target
+      .filter(key => key !== inHand)
+      .slice(0, event.currentIndex)
+      .filter(key => !keys.has(key)).length;
+    this.appData.moveItems(from, keys, to, from === to ? before : event.currentIndex);
   }
 
   /** How many items the context menu's Delete acts on. */

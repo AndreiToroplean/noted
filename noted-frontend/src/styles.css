@@ -295,6 +295,31 @@ body {
   box-shadow: var(--mat-sys-level3);
 }
 
+/*
+ * The rest of a selection being dragged folds away into the item in hand: no
+ * height, but still in the list, so the drag's count of positions holds.
+ */
+.day-item-folded {
+  height: 0;
+  margin-block: 0;
+  overflow: hidden;
+}
+
+/* The preview of a dragged selection says how many it carries. */
+.day-item.cdk-drag-preview[data-carrying]::after {
+  content: attr(data-carrying);
+  position: absolute;
+  inset-block-start: calc(--spacing(2) * -1);
+  inset-inline-end: calc(--spacing(2) * -1);
+  min-width: --spacing(5);
+  padding-inline: --spacing(1);
+  border-radius: var(--mat-sys-corner-full);
+  background-color: var(--mat-sys-primary);
+  color: var(--mat-sys-on-primary);
+  font: var(--mat-sys-label-medium);
+  text-align: center;
+}
+
 .day-item-drop-gap {
   min-height: --spacing(7);
   margin: --spacing(0.25) --spacing(1);

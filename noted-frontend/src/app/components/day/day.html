@@ -44,14 +44,21 @@
           [class.day-item-failed]="failed"
           [attr.data-failed]="failed ? '' : null"
           cdkDrag
+          [cdkDragData]="key"
           [cdkDragDisabled]="isEditing(item)"
+          (cdkDragStarted)="onDragStarted()"
+          (cdkDragEnded)="onDragEnded()"
+          [class.day-item-folded]="isFolded(key)"
+          [attr.data-carrying]="
+            pressed()?.key === key && pressed()!.count > 1 ? pressed()!.count : null
+          "
           role="option"
           [attr.aria-selected]="isSelected(key)"
           [class.day-item-selected]="isSelected(key)"
           [attr.tabindex]="tabStop() === key ? 0 : -1"
           [attr.data-key]="key"
           (click)="onItemClick(key, $event)"
-          (mousedown)="onItemMousedown($event)"
+          (mousedown)="onItemMousedown(key, $event)"
           (keydown)="onItemKeydown(key, $event)"
           (keyup)="onItemKeyup(key, $event)"
           (focus)="focused.set(key)"
@@ -133,7 +140,9 @@
             </div>
           }
           <!-- The gap the item will drop into, so the day shows its new shape while dragging. -->
-          <ng-template cdkDragPlaceholder><div class="day-item-drop-gap"></div></ng-template>
+          <ng-template cdkDragPlaceholder
+            ><div class="day-item-drop-gap" [style.height.px]="carriedHeight()"></div
+          ></ng-template>
         </li>
       }
     </ul>

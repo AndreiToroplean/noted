@@ -1,4 +1,4 @@
-import { Injectable, computed, inject, linkedSignal } from '@angular/core';
+import { Injectable, computed, inject, linkedSignal, signal } from '@angular/core';
 
 import { IsoDate } from 'app/services/api';
 import { AppData } from 'app/services/app-data';
@@ -67,6 +67,20 @@ export class Selection {
   only(date: IsoDate, key: string) {
     this.state.set({ date, keys: new Set([key]), anchor: key });
   }
+
+  /**
+   * What dragging an item picks up: the whole selection when the item is part
+   * of it, otherwise just the item.
+   */
+  carriedBy(date: IsoDate, key: string): ReadonlySet<string> {
+    return this.has(date, key) ? this.keys() : new Set([key]);
+  }
+
+  /**
+   * The height of what is being dragged, measured as it is picked up, so the
+   * gap it leaves — in its own day or another — is the size of what will land.
+   */
+  readonly carriedHeight = signal<number | null>(null);
 
   /** Delete what is selected. No confirmation: Ctrl+Z brings it back. */
   deleteSelected() {

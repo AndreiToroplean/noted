@@ -228,20 +228,25 @@ export class AppData {
   }
 
   /**
-   * Move an item, within its day or into another, to where it was dropped. One
-   * edit, so one undo puts it back even across days.
+   * Move items, named by `itemKey`, within their day or into another, as one
+   * block in the order they had. `toIndex` counts among the day's other items:
+   * the block goes in before whichever of them is at that index. One edit, so
+   * one undo puts it all back, across days included.
    */
-  moveItem(fromDate: IsoDate, fromIndex: number, toDate: IsoDate, toIndex: number) {
+  moveItems(fromDate: IsoDate, keys: ReadonlySet<string>, toDate: IsoDate, toIndex: number) {
     this.change(week => {
-      const item = week.days.find(day => day.date === fromDate)?.items[fromIndex];
-      if (!item) return week;
+      const moving = week.days
+        .find(day => day.date === fromDate)
+        ?.items.filter(item => keys.has(itemKey(item)));
+      if (!moving?.length) return week;
       return {
         ...week,
         days: week.days.map(day => {
           let items = day.items;
-          if (day.date === fromDate) items = items.filter((_, index) => index !== fromIndex);
-          if (day.date === toDate)
-            items = [...items.slice(0, toIndex), item, ...items.slice(toIndex)];
+          if (day.date === fromDate) items = items.filter(item => !keys.has(itemKey(item)));
+          if (day.date === toDate) {
+            items = [...items.slice(0, toIndex), ...moving, ...items.slice(toIndex)];
+          }
           return items === day.items ? day : { ...day, items };
         }),
       };

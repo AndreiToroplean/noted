@@ -706,6 +706,7 @@ describe('Day dragging items', () => {
       container: here,
       previousIndex: 0,
       currentIndex: 1,
+      item: fixture.debugElement.queryAll(By.directive(CdkDrag))[0].injector.get(CdkDrag),
     });
     expect(appData.week()!.days[0].items.map(item => item.id)).toEqual([2, 1]);
   });
@@ -755,5 +756,72 @@ describe('Day failed entries', () => {
     expect(await failed('2026-02-10', { kind: 'meta', category: null, text: '[On site]' })).toBe(
       false,
     );
+  });
+});
+
+describe('Day dragging a selection', () => {
+  let appData: AppData;
+
+  async function render() {
+    TestBed.configureTestingModule({
+      providers: [provideHttpClient(), provideHttpClientTesting()],
+    });
+    const http = TestBed.inject(HttpTestingController);
+    appData = TestBed.inject(AppData);
+    appData.week.set({
+      week: '2026-02-09',
+      days: [
+        day([
+          entry(null, { id: 1, text: 'One' }),
+          entry(null, { id: 2, text: 'Two' }),
+          entry(null, { id: 3, text: 'Three' }),
+          entry(null, { id: 4, text: 'Four' }),
+        ]),
+      ],
+    });
+    const fixture = TestBed.createComponent(Day);
+    fixture.componentRef.setInput('day', appData.week()!.days[0]);
+    fixture.detectChanges();
+    http.match(() => true).forEach(request => request.flush([]));
+    await settle();
+    fixture.detectChanges();
+    return fixture;
+  }
+
+  function texts() {
+    return appData.week()!.days[0].items.map(item => (item as Entry).text);
+  }
+
+  function drop(fixture: Awaited<ReturnType<typeof render>>, from: number, to: number) {
+    const list = fixture.debugElement.query(By.directive(CdkDropList));
+    const here = list.injector.get(CdkDropList);
+    const drags = fixture.debugElement.queryAll(By.directive(CdkDrag));
+    list.triggerEventHandler('cdkDropListDropped', {
+      previousContainer: here,
+      container: here,
+      previousIndex: from,
+      currentIndex: to,
+      item: drags[from].injector.get(CdkDrag),
+    });
+  }
+
+  it('moves the whole selection when a selected item is dragged', async () => {
+    const fixture = await render();
+    const options = fixture.nativeElement.querySelectorAll('[role="option"]');
+    options[0].click();
+    options[2].dispatchEvent(new MouseEvent('click', { bubbles: true, ctrlKey: true }));
+    fixture.detectChanges();
+
+    // "One" dragged to the end, carrying "Three" with it.
+    drop(fixture, 0, 3);
+    expect(texts()).toEqual(['Two', 'Four', 'One', 'Three']);
+  });
+
+  it('moves only the dragged item when it is outside the selection', async () => {
+    const fixture = await render();
+    fixture.nativeElement.querySelectorAll('[role="option"]')[0].click();
+    fixture.detectChanges();
+    drop(fixture, 1, 3);
+    expect(texts()).toEqual(['One', 'Three', 'Four', 'Two']);
   });
 });

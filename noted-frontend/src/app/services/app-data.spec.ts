@@ -263,19 +263,42 @@ describe('AppData editing an item', () => {
   });
 
   it('moves an item to another place in its day', () => {
-    data.moveItem(MONDAY, 0, MONDAY, 1);
+    data.moveItems(MONDAY, new Set(['entry-1']), MONDAY, 1);
     expect(data.week()!.days[0].items.map(item => item.id)).toEqual([2, 1]);
   });
 
   it('moves an item into another day, where it is put', () => {
-    data.moveItem(MONDAY, 1, '2026-02-10', 0);
+    data.moveItems(MONDAY, new Set(['entry-2']), '2026-02-10', 0);
     const [monday, tuesday] = data.week()!.days;
     expect(monday.items.map(item => item.id)).toEqual([1]);
     expect(tuesday.items).toMatchObject([{ id: 2, text: 'Second' }]);
   });
 
+  it('moves several items as one block, in their order, to where they are put', () => {
+    data.addBreak(MONDAY, {
+      kind: 'break',
+      is_noon: false,
+      description: null,
+      start: null,
+      end: null,
+      minutes: 15,
+    });
+    // Monday is now: entry-1, entry-2, break. Move entry-1 and the break to the end.
+    const pause = itemKey(data.week()!.days[0].items[2]);
+    data.moveItems(MONDAY, new Set(['entry-1', pause]), MONDAY, 1);
+    expect(data.week()!.days[0].items.map(itemKey)).toEqual(['entry-2', 'entry-1', pause]);
+  });
+
+  it('moves several items into another day as one edit', () => {
+    data.moveItems(MONDAY, new Set(['entry-1', 'entry-2']), '2026-02-10', 0);
+    expect(data.week()!.days[0].items).toEqual([]);
+    expect(data.week()!.days[1].items.map(itemKey)).toEqual(['entry-1', 'entry-2']);
+    data.undo();
+    expect(data.week()!.days[0].items.map(itemKey)).toEqual(['entry-1', 'entry-2']);
+  });
+
   it('takes a move back in one undo, across days too', () => {
-    data.moveItem(MONDAY, 1, '2026-02-10', 0);
+    data.moveItems(MONDAY, new Set(['entry-2']), '2026-02-10', 0);
     data.undo();
     const [monday, tuesday] = data.week()!.days;
     expect(monday.items.map(item => item.id)).toEqual([1, 2]);
