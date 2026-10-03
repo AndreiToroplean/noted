@@ -128,6 +128,25 @@ describe('AppData', () => {
   });
 });
 
+describe('AppData showing the weekend', () => {
+  it('forgets that the weekend was shown once another week is chosen', async () => {
+    TestBed.configureTestingModule({
+      providers: [provideHttpClient(), provideHttpClientTesting()],
+    });
+    const data = TestBed.inject(AppData);
+    const http = TestBed.inject(HttpTestingController);
+    TestBed.tick();
+    http.expectOne(`${API_BASE}/categories`).flush([]);
+    http.expectOne(`${API_BASE}/weeks`).flush([MONDAY, '2026-02-02']);
+    await settle();
+
+    data.weekendShown.set(true);
+    data.selectedWeek.set('2026-02-02');
+    expect(data.weekendShown()).toBe(false);
+    http.match(() => true);
+  });
+});
+
 describe('AppData typing into a day', () => {
   let data: AppData;
   let http: HttpTestingController;

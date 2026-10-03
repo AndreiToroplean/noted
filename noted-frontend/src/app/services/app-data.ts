@@ -91,6 +91,17 @@ export class AppData {
   /** The week being edited. Every change to it is eventually written back whole. */
   readonly week = linkedSignal<Week | undefined>(() => this.loaded.value());
 
+  /** The open week's weekend asked for while empty. Forgotten on leaving the week. */
+  readonly weekendShown = linkedSignal({ source: this.selectedWeek, computation: () => false });
+
+  /** Something written on the weekend, which keeps it shown. */
+  readonly weekendInUse = computed(
+    () =>
+      this.week()
+        ?.days.slice(5)
+        .some(day => day.items.length > 0) ?? false,
+  );
+
   /** The last version known to be on the server, so edits can be told from reloads. */
   private readonly persisted = linkedSignal<Week | undefined>(() => this.loaded.value());
 

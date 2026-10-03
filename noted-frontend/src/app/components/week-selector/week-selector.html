@@ -27,6 +27,20 @@
   #weekMenuTrigger="matMenuTrigger"
 ></div>
 <mat-menu #weekMenu="matMenu">
+  @if (menuWeek() === appData.selectedWeek()) {
+    @let inUse = appData.weekendInUse();
+    @let shown = inUse || appData.weekendShown();
+    <!-- A weekend with something in it stays: empty it first to hide it. -->
+    <button
+      mat-menu-item
+      data-toggle-weekend
+      [disabled]="inUse"
+      (click)="appData.weekendShown.set(!shown)"
+    >
+      <mat-icon>{{ shown ? 'visibility_off' : 'visibility' }}</mat-icon>
+      {{ shown ? 'Hide weekend' : 'Show weekend' }}
+    </button>
+  }
   <button mat-menu-item data-delete-week (click)="confirmDelete(menuWeek())">
     <mat-icon>delete_forever</mat-icon>
     Delete week…

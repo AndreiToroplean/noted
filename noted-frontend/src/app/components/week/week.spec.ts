@@ -4,6 +4,7 @@ import { By } from '@angular/platform-browser';
 import { Day as DayColumn } from 'app/components/day/day';
 import { Week } from 'app/components/week/week';
 import { Day, Week as WeekData } from 'app/services/api';
+import { AppData } from 'app/services/app-data';
 
 function day(date: string, entries = 0): Day {
   return {
@@ -62,6 +63,11 @@ describe('Week', () => {
 
   it('shows the whole weekend when both days have content', () => {
     expect(columnsFor(week(1, 2))).toBe(7);
+  });
+
+  it('shows the whole weekend, empty, when asked to', () => {
+    TestBed.inject(AppData).weekendShown.set(true);
+    expect(columnsFor(week())).toBe(7);
   });
 
   it('hands each day its neighbours for Tab, coming round at either end', () => {

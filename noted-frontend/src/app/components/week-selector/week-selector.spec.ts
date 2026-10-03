@@ -35,4 +35,64 @@ describe('WeekSelector', () => {
     expect(active?.textContent?.trim()).toBe(started.split('-').reverse().join('/'));
     expect(appData.selectedWeek()).toBe(started);
   });
+
+  describe('the weekend', () => {
+    async function render(sundayItems = 0) {
+      TestBed.configureTestingModule({
+        providers: [provideHttpClient(), provideHttpClientTesting(), provideDateFormat()],
+      });
+      const appData = TestBed.inject(AppData);
+      const http = TestBed.inject(HttpTestingController);
+      const fixture = TestBed.createComponent(WeekSelector);
+      document.body.append(fixture.nativeElement);
+      fixture.detectChanges();
+      http.expectOne(`${API_BASE}/weeks`).flush(['2026-02-09', '2026-02-02']);
+      await settle();
+      fixture.detectChanges();
+      const days = ['09', '10', '11', '12', '13', '14', '15'].map(day => ({
+        date: `2026-02-${day}`,
+        status: 'working',
+        arrival: null,
+        departure: null,
+        expected_minutes: 480,
+        items: [],
+      }));
+      days[6].items = Array.from({ length: sundayItems }) as never[];
+      appData.week.set({ week: '2026-02-09', days } as never);
+      return { appData, fixture };
+    }
+
+    async function openMenu(fixture: Awaited<ReturnType<typeof render>>['fixture'], tab = 0) {
+      const tabs = fixture.nativeElement.querySelectorAll('[role="tab"]');
+      tabs[tab].dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, cancelable: true }));
+      fixture.detectChanges();
+      await settle();
+      return document.querySelector('[data-toggle-weekend]') as HTMLButtonElement | null;
+    }
+
+    it('is shown from the menu of the current week, and hidden again while empty', async () => {
+      const { appData, fixture } = await render();
+      const toggle = await openMenu(fixture);
+      expect(toggle?.textContent).toContain('Show weekend');
+      toggle!.click();
+      expect(appData.weekendShown()).toBe(true);
+
+      const again = await openMenu(fixture);
+      expect(again?.textContent).toContain('Hide weekend');
+      again!.click();
+      expect(appData.weekendShown()).toBe(false);
+    });
+
+    it('cannot be hidden while it has something in it', async () => {
+      const { fixture } = await render(1);
+      const toggle = await openMenu(fixture);
+      expect(toggle?.textContent).toContain('Hide weekend');
+      expect(toggle?.disabled).toBe(true);
+    });
+
+    it('is not offered for a week other than the one open', async () => {
+      const { fixture } = await render();
+      expect(await openMenu(fixture, 1)).toBeNull();
+    });
+  });
 });
