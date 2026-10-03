@@ -243,6 +243,39 @@ body {
   min-height: --spacing(9);
 }
 
+/*
+ * A menu choosing one value: each row the name, a dimmed short form at the far
+ * end as a shortcut would be, and a column for the check that every row keeps,
+ * so the rows line up whichever one is current.
+ */
+.choice .mat-mdc-menu-item-text {
+  flex: 1;
+}
+
+.choice-row {
+  display: flex;
+  align-items: center;
+  gap: --spacing(4);
+}
+
+.choice-hint {
+  font-family: var(--font-mono);
+  opacity: 0.6;
+}
+
+.choice-name {
+  flex: 1;
+}
+
+.choice-current {
+  display: inline-flex;
+  width: --spacing(6);
+}
+
+.choice-current .mat-icon {
+  margin: 0;
+}
+
 /* A leading icon drawn solid, as the colour samples in the category menu are. */
 .mat-icon.filled {
   font-variation-settings: 'FILL' 1;

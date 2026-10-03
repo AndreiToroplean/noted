@@ -353,7 +353,7 @@ describe('Day editing an entry', () => {
     fixture.detectChanges();
     http.match(`${API_BASE}/categories`).forEach(request =>
       request.flush([
-        { name: 'T', meaning: '', colour: '#7f6000' },
+        { name: 'T', meaning: 'Ticket', colour: '#7f6000' },
         { name: 'M', meaning: '', colour: '#351c75' },
       ]),
     );
@@ -448,10 +448,29 @@ describe('Day editing an entry', () => {
     fixture.detectChanges();
     await settle();
 
-    const current = document.querySelector('[data-choose-category="T"]') as HTMLElement;
+    const current = document.querySelector('[data-choice="T"]') as HTMLElement;
     expect(current.querySelector('[data-current]')).not.toBeNull();
-    (document.querySelector('[data-choose-category="M"]') as HTMLElement).click();
+    (document.querySelector('[data-choice="M"]') as HTMLElement).click();
     expect(stored().category).toBe('M');
+  });
+
+  it('names each category in its menu, with the letters as its short form', async () => {
+    const fixture = await render();
+    fixture.nativeElement
+      .querySelector('.entry-tag')
+      .dispatchEvent(new MouseEvent('dblclick', { bubbles: true }));
+    fixture.detectChanges();
+    await settle();
+
+    const named = document.querySelector('[data-choice="T"]') as HTMLElement;
+    expect(named.querySelector('.choice-name')?.textContent?.trim()).toBe('Ticket');
+    expect(named.querySelector('.choice-hint')?.textContent?.trim()).toBe('T');
+    // Without a meaning, the letters are all there is to show.
+    const bare = document.querySelector('[data-choice="M"]') as HTMLElement;
+    expect(bare.querySelector('.choice-name')?.textContent?.trim()).toBe('M');
+    // Every row keeps room for the check, so nothing moves when it moves.
+    expect(bare.querySelector('.choice-current')).not.toBeNull();
+    expect(bare.querySelector('[data-current]')).toBeNull();
   });
 
   it('offers no category in the right-click menu', async () => {

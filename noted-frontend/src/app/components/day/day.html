@@ -203,29 +203,42 @@
     </button>
   </mat-menu>
 
+  <!--
+    The check goes inside a span: a menu item takes any mat-icon of its own as
+    the leading one, and would set the check before the name.
+  -->
   <mat-menu #categoryMenu="matMenu">
     @for (category of categories(); track category.name) {
       <button
         mat-menu-item
-        [attr.data-choose-category]="category.name"
+        class="choice"
+        [attr.data-choice]="category.name"
         (click)="setCategory(category.name)"
       >
         <mat-icon class="filled" [style.color]="category.colour">square</mat-icon>
-        <span>{{ category.name }}</span>
-        @if (category.meaning) {
-          <span class="opacity-60">{{ category.meaning }}</span>
-        }
-        @if (categoryFor()?.category === category.name) {
-          <mat-icon class="ml-auto" data-current>check</mat-icon>
-        }
+        <span class="choice-row">
+          <span class="choice-name">{{ category.meaning || category.name }}</span>
+          @if (category.meaning) {
+            <span class="choice-hint">{{ category.name }}</span>
+          }
+          <span class="choice-current">
+            @if (categoryFor()?.category === category.name) {
+              <mat-icon data-current>check</mat-icon>
+            }
+          </span>
+        </span>
       </button>
     }
-    <button mat-menu-item data-choose-category="" (click)="setCategory(null)">
+    <button mat-menu-item class="choice" data-choice="" (click)="setCategory(null)">
       <mat-icon>label_off</mat-icon>
-      <span>None</span>
-      @if (categoryFor()?.category === null) {
-        <mat-icon data-current>check</mat-icon>
-      }
+      <span class="choice-row">
+        <span class="choice-name">None</span>
+        <span class="choice-current">
+          @if (categoryFor()?.category === null) {
+            <mat-icon data-current>check</mat-icon>
+          }
+        </span>
+      </span>
     </button>
   </mat-menu>
 
