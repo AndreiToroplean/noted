@@ -2,6 +2,22 @@
 /* The app's one icon set, served from node_modules so it works offline. */
 @import 'material-symbols/rounded.css';
 
+/*
+ * Shape and spacing come from one scale each, as colour comes from the theme.
+ *
+ * Corners are Material's shape scale, and Tailwind's `rounded-*` classes are
+ * pointed at it here, so a template and this file round the same way.
+ * Spacing is Tailwind's one scale (a quarter rem a step): `p-2` in a template,
+ * `--spacing(2)` in this file.
+ */
+@theme inline {
+  --radius-xs: var(--mat-sys-corner-extra-small);
+  --radius-sm: var(--mat-sys-corner-small);
+  --radius-md: var(--mat-sys-corner-medium);
+  --radius-lg: var(--mat-sys-corner-large);
+  --radius-xl: var(--mat-sys-corner-extra-large);
+}
+
 html,
 body {
   width: 100%;
@@ -99,11 +115,11 @@ body {
 .entry-editor-field {
   /* Grows with what is typed, so a note never hides behind a scrollbar. */
   field-sizing: content;
-  min-height: 1.5rem;
+  min-height: --spacing(6);
   color: var(--app-on-surface);
   background-color: var(--app-field);
   border: 1px solid var(--app-accent);
-  border-radius: 2px;
+  border-radius: var(--mat-sys-corner-extra-small);
   outline: none;
 }
 
@@ -120,10 +136,10 @@ body {
   --cell: var(--category, var(--app-frame));
   background-color: var(--cell);
   color: contrast-color(var(--cell));
-  border-radius: var(--mat-sys-corner-extra-small) 0 0 var(--mat-sys-corner-extra-small);
-  font-size: 0.75rem;
+  border-start-start-radius: var(--mat-sys-corner-extra-small);
+  border-end-start-radius: var(--mat-sys-corner-extra-small);
+  font: var(--mat-sys-label-medium);
   font-weight: 600;
-  line-height: 1.25rem;
 }
 
 /*
@@ -161,7 +177,7 @@ body {
   color: var(--app-on-surface);
   background-color: var(--app-field);
   border: 1px solid var(--checkbox-free-time);
-  border-radius: 2px;
+  border-radius: var(--mat-sys-corner-extra-small);
   outline: none;
 }
 
@@ -171,9 +187,9 @@ body {
 }
 
 .break-editor-step .mat-icon {
-  font-size: 18px;
-  width: 18px;
-  height: 18px;
+  font-size: --spacing(4.5);
+  width: --spacing(4.5);
+  height: --spacing(4.5);
 }
 
 .break-editor-mode {
@@ -190,7 +206,7 @@ body {
   color: var(--app-on-surface);
   background-color: var(--app-field);
   border: 1px solid var(--checkbox-free-time);
-  border-radius: 2px;
+  border-radius: var(--mat-sys-corner-extra-small);
   outline: none;
 }
 
@@ -209,7 +225,7 @@ body {
 .day-item {
   position: relative;
   background-color: var(--app-entry);
-  margin: 1px 4px;
+  margin: --spacing(0.25) --spacing(1);
   border-radius: var(--mat-sys-corner-extra-small);
   outline: none;
 }
@@ -280,8 +296,8 @@ body {
 }
 
 .day-item-drop-gap {
-  min-height: 1.75rem;
-  margin: 1px 4px;
+  min-height: --spacing(7);
+  margin: --spacing(0.25) --spacing(1);
   border: 1px dashed var(--app-outline);
   border-radius: var(--mat-sys-corner-extra-small);
 }

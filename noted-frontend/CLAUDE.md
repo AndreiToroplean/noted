@@ -42,11 +42,20 @@ paths; `tsconfig.json` maps `app/*` for it. Prettier sorts imports into groups �
 grouping is configured in `.prettierrc.json` and is enforced, so let `npm run format`
 arrange them.
 
-**Styling.** Layout and spacing in Tailwind utility classes in the template. Colours come
-from the CSS custom properties in `src/styles.css` — those are lifted from the original
-spreadsheet and are the app's identity, so pull from them rather than inventing new
-values or hardcoding hex. The `--app-*` aliases in that file are the single place that
-decides which palette colour plays which UI role; change the mapping there.
+**Styling.** Every value comes from a scale, never written inline:
+
+- **Colour** from Material's theme, `theme.scss`, generated from the spreadsheet's
+  colours (regenerate it rather than overriding its tokens). The `--app-*` aliases in
+  `styles.css` are the one place that decides which tone plays which part. Only the
+  colours that *mean* something keep literal values there: time in magenta, failure
+  in red.
+- **Corners** from Material's shape scale, `--mat-sys-corner-*`; Tailwind's
+  `rounded-*` classes are mapped onto it.
+- **Spacing** from Tailwind's scale: `p-2` in a template, `--spacing(2)` in CSS.
+- **Text** from Material's type scale, `--mat-sys-label-medium` and the like.
+
+Layout and spacing go in Tailwind classes in the template; anything else in
+`styles.css`.
 
 Only chrome lives in CSS. Category and project colours come from the API, because they are
 the user's data and he edits them — read them off `AppData`, never off a stylesheet.
