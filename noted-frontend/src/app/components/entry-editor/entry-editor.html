@@ -5,14 +5,12 @@
     rows="1"
     [value]="text()"
     placeholder="[T] project: what was done"
-    [disabled]="busy()"
+    [readOnly]="busy()"
     (input)="text.set(field.value)"
     (keydown)="onKeydown($event)"
   ></textarea>
   @if (error(); as message) {
     <div class="entry-editor-error text-xs" role="alert">{{ message }}</div>
   }
-  <div class="text-xs opacity-50">
-    Ctrl+Enter to {{ initial() ? 'save' : 'add' }} · Esc to cancel
-  </div>
+  <div class="text-xs opacity-50">Ctrl+Enter to add · Ctrl+B for a break · Esc to close</div>
 </div>

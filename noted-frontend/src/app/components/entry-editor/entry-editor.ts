@@ -9,44 +9,43 @@ import {
   viewChild,
 } from '@angular/core';
 
-import { MatDialog } from '@angular/material/dialog';
-
-import { firstValueFrom } from 'rxjs';
-
-import { ConfirmDiscard } from 'app/components/confirm-discard/confirm-discard';
-
 /**
- * A line being typed into a day, in the spreadsheet's syntax. The first line
- * is the entry and anything under it the note, so Enter is a new line and
+ * A new line being typed into a day, in the spreadsheet's syntax. The first
+ * line is the entry and anything under it the note, so Enter is a new line and
  * Ctrl+Enter is what finishes.
+ *
+ * Esc, or focus going anywhere else, closes it without asking and hands back
+ * what was typed, for the day to keep as a draft.
  */
 @Component({
   selector: 'app-entry-editor',
   templateUrl: './entry-editor.html',
+  host: { '(focusout)': 'onFocusOut($event)' },
 })
 export class EntryEditor {
-  /** What the field opens on: empty for a new line, the entry's own text when editing one. */
+  /** What the field opens on: a draft left earlier, or nothing. */
   readonly initial = input('');
   /** Why the last attempt was refused, shown under the field. */
   readonly error = input<string | null>(null);
   readonly busy = input(false);
 
   readonly submitted = output<string>();
-  readonly cancelled = output<void>();
-  /** Ctrl+B on a new line: the user means a break, which is not typed. */
-  readonly switchToBreak = output<void>();
+  readonly closed = output<string>();
+  /** Ctrl+B: the user means a break, which is not typed. */
+  readonly switchToBreak = output<string>();
 
   protected readonly text = linkedSignal(() => this.initial());
 
-  private readonly dialog = inject(MatDialog);
+  private readonly host = inject<ElementRef<HTMLElement>>(ElementRef).nativeElement;
   private readonly field = viewChild.required<ElementRef<HTMLTextAreaElement>>('field');
 
   constructor() {
-    const host = inject<ElementRef<HTMLElement>>(ElementRef).nativeElement;
     afterNextRender(() => {
-      this.focus();
+      const field = this.field().nativeElement;
+      field.focus();
+      field.setSelectionRange(field.value.length, field.value.length);
       // Focus only brings the field into view; the hint under it should come too.
-      host.scrollIntoView?.({ block: 'nearest' });
+      this.host.scrollIntoView?.({ block: 'nearest' });
     });
   }
 
@@ -54,45 +53,36 @@ export class EntryEditor {
   reset() {
     this.text.set('');
     this.field().nativeElement.value = '';
-    this.focus();
+    this.field().nativeElement.focus();
   }
 
   protected onKeydown(event: KeyboardEvent) {
-    if (event.key === 'Enter' && (event.ctrlKey || event.metaKey)) {
+    const ctrl = event.ctrlKey || event.metaKey;
+    if (event.key === 'Enter' && ctrl) {
       event.preventDefault();
       this.submit();
-    } else if (event.key.toLowerCase() === 'b' && (event.ctrlKey || event.metaKey)) {
-      // Only a new line can become a break; an entry being edited stays one.
-      if (this.initial()) return;
+    } else if (event.key.toLowerCase() === 'b' && ctrl) {
       event.preventDefault();
-      void this.leaveFor(() => this.switchToBreak.emit());
+      this.switchToBreak.emit(this.text());
     } else if (event.key === 'Escape') {
       event.preventDefault();
-      void this.leaveFor(() => this.cancelled.emit());
+      this.closed.emit(this.text());
     }
+  }
+
+  /** Focus leaving for anything outside the editor is the same as Esc. */
+  protected onFocusOut(event: FocusEvent) {
+    const next = event.relatedTarget;
+    if (next instanceof Node && this.host.contains(next)) return;
+    this.closed.emit(this.text());
   }
 
   private submit() {
     if (this.busy()) return;
     if (!this.text().trim()) {
-      this.cancelled.emit();
+      this.closed.emit('');
       return;
     }
     this.submitted.emit(this.text());
-  }
-
-  /** Go, asking first if that would lose something typed. */
-  private async leaveFor(go: () => void) {
-    if (this.text().trim() === this.initial().trim()) {
-      go();
-      return;
-    }
-    const discard = await firstValueFrom(this.dialog.open(ConfirmDiscard).afterClosed());
-    if (discard) go();
-    else this.focus();
-  }
-
-  private focus() {
-    this.field().nativeElement.focus();
   }
 }

@@ -41,6 +41,7 @@ import {
   itemKey,
 } from 'app/services/api';
 import { AppData } from 'app/services/app-data';
+import { Drafts } from 'app/services/drafts';
 import { Selection } from 'app/services/selection';
 import { clock, formatMinutes } from 'app/services/time';
 
@@ -213,12 +214,12 @@ export class Day {
     const item = this.day().items.find(other => itemKey(other) === key);
     if (!item) return;
     if (isBreak(item)) this.editingBreakId.set(item.id);
-    else this.editingId.set(item.id);
+    else this.openEntry(item);
   }
 
   /** An item open in an editor stays put: dragging would take the text field with it. */
   protected isEditing(item: DayItem): boolean {
-    return isBreak(item) ? this.editingBreakId() === item.id : this.editingId() === item.id;
+    return isBreak(item) ? this.editingBreakId() === item.id : this.editing()?.id === item.id;
   }
 
   /**
@@ -273,13 +274,36 @@ export class Day {
 
   protected readonly categories = this.appData.categories.value;
 
-  /** The entry open for editing, if any. */
-  protected readonly editingId = signal<number | null>(null);
+  /**
+   * The entry open for editing, if any, and what its editor opened on: the
+   * draft left last time, or the entry as it is. Taken once, at opening, so a
+   * redraw while typing cannot reset the editor to it.
+   */
+  protected readonly editing = signal<{ id: number; from: EntryText } | null>(null);
+
+  private readonly drafts = inject(Drafts);
+
+  protected openEntry(entry: Entry) {
+    const from = this.drafts.get<EntryText>(itemKey(entry)) ?? {
+      text: entry.text,
+      note: entry.note,
+    };
+    this.editing.set({ id: entry.id, from });
+  }
 
   /** An edit is plain text, never the syntax again — see specification §3.2. */
   protected saveText(entry: Entry, edited: EntryText) {
     this.appData.updateEntry(this.day().date, entry.id, edited);
-    this.editingId.set(null);
+    this.drafts.drop(itemKey(entry));
+    this.editing.set(null);
+  }
+
+  /** Closed unsaved: anything that differs from the entry waits as a draft. */
+  protected closeEdit(entry: Entry, edited: EntryText) {
+    const unchanged = edited.text === entry.text && edited.note === entry.note;
+    if (unchanged) this.drafts.drop(itemKey(entry));
+    else this.drafts.keep(itemKey(entry), edited);
+    this.editing.set(null);
   }
 
   /** Which of the day's frame times is open for editing, if either. */
@@ -354,6 +378,7 @@ export class Day {
     this.addBusy.set(true);
     try {
       await this.appData.addTyped(this.day().date, text);
+      this.drafts.drop(this.newDraftKey());
       this.addError.set(null);
       this.addBusy.set(false);
       // Straight on to the next line: a day is usually typed in one go.
@@ -364,13 +389,33 @@ export class Day {
     }
   }
 
+  /** A new line left half-typed in this day, if any. */
+  private readonly newDraftKey = computed(() => `new-${this.day().date}`);
+  protected readonly newDraft = computed(() => this.drafts.get<string>(this.newDraftKey()));
+
+  protected firstLine(text: string): string {
+    return text.split('\n')[0];
+  }
+
+  private keepNewDraft(text: string) {
+    if (text.trim()) this.drafts.keep(this.newDraftKey(), text);
+    else this.drafts.drop(this.newDraftKey());
+  }
+
+  /** Ctrl+B: the line typed so far waits as a draft while the break is made. */
+  protected switchToBreak(text: string) {
+    this.keepNewDraft(text);
+    this.adding.set('break');
+  }
+
   protected addBreak(draft: BreakDraft) {
     this.appData.addBreak(this.day().date, draft);
     // Back to entries, which is what follows a break far more often than another.
     this.adding.set('entry');
   }
 
-  protected closeEditor() {
+  protected closeEditor(text = '') {
+    this.keepNewDraft(text);
     this.adding.set(null);
     this.addError.set(null);
   }

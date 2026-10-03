@@ -96,11 +96,12 @@
     <div>
       @if (adding() === 'entry') {
         <app-entry-editor
+          [initial]="newDraft() ?? ''"
           [error]="addError()"
           [busy]="addBusy()"
           (submitted)="add($event)"
-          (cancelled)="closeEditor()"
-          (switchToBreak)="adding.set('break')"
+          (closed)="closeEditor($event)"
+          (switchToBreak)="switchToBreak($event)"
         />
       } @else if (adding() === 'break') {
         <app-break-editor
@@ -124,16 +125,23 @@
           (keydown.space)="$event.preventDefault()"
           (keyup.space)="adding.set('entry')"
         >
-          <div class="flex items-stretch gap-2 pr-2 text-sm" aria-hidden="true">
+          <div class="flex items-stretch gap-2 pr-2 text-sm">
             <span
+              aria-hidden="true"
               class="entry-cell flex shrink-0 flex-col items-center justify-between gap-0.5 px-1 py-1"
             >
               <input type="checkbox" class="entry-done" disabled tabindex="-1" />
               <span class="entry-tag"></span>
             </span>
+            @if (newDraft(); as draft) {
+              <!-- A line left half-typed, shown where it will go until it is finished. -->
+              <span class="day-add-draft min-w-0 flex-1 py-1">{{ firstLine(draft) }}</span>
+            }
           </div>
-          <!-- Centred on the whole row, cell and all, so it sits in the middle of the day. -->
-          <span class="day-add-plus" aria-hidden="true"><mat-icon>add</mat-icon></span>
+          @if (!newDraft()) {
+            <!-- Centred on the whole row, cell and all, so it sits in the middle of the day. -->
+            <span class="day-add-plus" aria-hidden="true"><mat-icon>add</mat-icon></span>
+          }
         </div>
       }
     </div>
@@ -275,15 +283,16 @@
       } @else {
         <span class="w-1 shrink-0"></span>
       }
-      @if (editingId() === entry.id) {
+      @let open = editing();
+      @if (open && open.id === entry.id) {
         <app-inline-entry-editor
           class="min-w-0 flex-1 py-1"
-          [value]="{ text: entry.text, note: entry.note }"
+          [value]="open.from"
           (saved)="saveText(entry, $event)"
-          (closed)="editingId.set(null)"
+          (closed)="closeEdit(entry, $event)"
         />
       } @else {
-        <div class="min-w-0 flex-1 py-1" data-entry-text (dblclick)="editingId.set(entry.id)">
+        <div class="min-w-0 flex-1 py-1" data-entry-text (dblclick)="openEntry(entry)">
           <div>{{ entry.text }}</div>
           @if (entry.note) {
             <div class="text-xs opacity-60">{{ entry.note }}</div>

@@ -828,3 +828,113 @@ describe('Day dragging a selection', () => {
     expect(texts()).toEqual(['One', 'Three', 'Four', 'Two']);
   });
 });
+
+describe('Day drafts', () => {
+  let http: HttpTestingController;
+  let appData: AppData;
+
+  beforeEach(() => {
+    TestBed.configureTestingModule({
+      providers: [provideHttpClient(), provideHttpClientTesting()],
+    });
+    http = TestBed.inject(HttpTestingController);
+    appData = TestBed.inject(AppData);
+  });
+
+  async function render() {
+    appData.week.set({
+      week: '2026-02-09',
+      days: [day([entry('T', { id: 7, text: 'Fixed it', note: null })])],
+    });
+    const fixture = TestBed.createComponent(Day);
+    fixture.componentRef.setInput('day', appData.week()!.days[0]);
+    document.body.append(fixture.nativeElement);
+    fixture.detectChanges();
+    http.match(() => true).forEach(request => request.flush([]));
+    await settle();
+    fixture.detectChanges();
+    return fixture;
+  }
+
+  function field(fixture: Awaited<ReturnType<typeof render>>, selector: string) {
+    return fixture.nativeElement.querySelector(selector) as HTMLTextAreaElement;
+  }
+
+  function type(input: HTMLTextAreaElement, value: string) {
+    input.value = value;
+    input.dispatchEvent(new Event('input'));
+  }
+
+  function press(input: HTMLTextAreaElement, key: string, ctrlKey = false) {
+    input.dispatchEvent(new KeyboardEvent('keydown', { key, ctrlKey, bubbles: true }));
+  }
+
+  function openEntry(fixture: Awaited<ReturnType<typeof render>>) {
+    fixture.nativeElement
+      .querySelector('[data-entry-text]')
+      .dispatchEvent(new MouseEvent('dblclick'));
+    fixture.detectChanges();
+    return field(fixture, '[data-edit-text]');
+  }
+
+  it('keeps an entry being edited as a draft when it is closed, unsaved', async () => {
+    const fixture = await render();
+    const text = openEntry(fixture);
+    type(text, 'Fixed it, nearly');
+    press(text, 'Escape');
+    fixture.detectChanges();
+
+    expect((appData.week()!.days[0].items[0] as Entry).text).toBe('Fixed it');
+    expect(openEntry(fixture).value).toBe('Fixed it, nearly');
+  });
+
+  it('keeps what was typed through a redraw, and resumes it', async () => {
+    const fixture = await render();
+    const text = openEntry(fixture);
+    type(text, 'Fixed it, nearly');
+    fixture.detectChanges();
+    press(text, 'Enter');
+    fixture.detectChanges();
+    const note = field(fixture, '[data-edit-note]');
+    expect(note).not.toBeNull();
+    type(note, 'Needs a test');
+    fixture.detectChanges();
+    press(note, 'Escape');
+    fixture.detectChanges();
+
+    const reopened = openEntry(fixture);
+    expect(reopened.value).toBe('Fixed it, nearly');
+    expect(field(fixture, '[data-edit-note]').value).toBe('Needs a test');
+  });
+
+  it('forgets the draft once the entry is saved', async () => {
+    const fixture = await render();
+    let text = openEntry(fixture);
+    type(text, 'Fixed it, nearly');
+    press(text, 'Escape');
+    fixture.detectChanges();
+    text = openEntry(fixture);
+    press(text, 'Enter', true);
+    fixture.componentRef.setInput('day', appData.week()!.days[0]);
+    fixture.detectChanges();
+
+    expect((appData.week()!.days[0].items[0] as Entry).text).toBe('Fixed it, nearly');
+    expect(openEntry(fixture).value).toBe('Fixed it, nearly');
+  });
+
+  it('keeps a new line as a draft, and shows it in the row for adding', async () => {
+    const fixture = await render();
+    (fixture.nativeElement.querySelector('[data-add]') as HTMLElement).click();
+    fixture.detectChanges();
+    const line = field(fixture, 'app-entry-editor textarea');
+    type(line, '[T] Half a thought');
+    line.dispatchEvent(new FocusEvent('focusout', { bubbles: true, relatedTarget: null }));
+    fixture.detectChanges();
+
+    const add = fixture.nativeElement.querySelector('[data-add]') as HTMLElement;
+    expect(add.textContent).toContain('[T] Half a thought');
+    add.click();
+    fixture.detectChanges();
+    expect(field(fixture, 'app-entry-editor textarea').value).toBe('[T] Half a thought');
+  });
+});

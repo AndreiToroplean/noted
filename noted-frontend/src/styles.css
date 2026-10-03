@@ -119,6 +119,13 @@ body {
   pointer-events: none;
 }
 
+.day-add-draft {
+  overflow: hidden;
+  font-style: italic;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 /* Nothing to tick yet: the checkbox is there for the shape, not the pointer. */
 .day-add .entry-done {
   pointer-events: none;

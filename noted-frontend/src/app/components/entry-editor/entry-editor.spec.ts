@@ -3,15 +3,19 @@ import { TestBed } from '@angular/core/testing';
 import { EntryEditor } from 'app/components/entry-editor/entry-editor';
 
 describe('EntryEditor', () => {
-  function render() {
+  function render(initial = '') {
     const fixture = TestBed.createComponent(EntryEditor);
+    fixture.componentRef.setInput('initial', initial);
     const submitted: string[] = [];
-    let cancelled = 0;
+    const closed: string[] = [];
+    let switched = 0;
     fixture.componentInstance.submitted.subscribe(text => submitted.push(text));
-    fixture.componentInstance.cancelled.subscribe(() => cancelled++);
+    fixture.componentInstance.closed.subscribe(text => closed.push(text));
+    fixture.componentInstance.switchToBreak.subscribe(() => switched++);
+    document.body.append(fixture.nativeElement);
     fixture.detectChanges();
     const field = fixture.nativeElement.querySelector('textarea') as HTMLTextAreaElement;
-    return { fixture, field, submitted, cancelled: () => cancelled };
+    return { fixture, field, submitted, closed, switched: () => switched };
   }
 
   function type(field: HTMLTextAreaElement, text: string) {
@@ -31,6 +35,10 @@ describe('EntryEditor', () => {
     expect(document.activeElement).toBe(field);
   });
 
+  it('opens on a draft left earlier', () => {
+    expect(render('[T] Half a thought').field.value).toBe('[T] Half a thought');
+  });
+
   it('starts a new line on Enter rather than finishing', () => {
     const { field, submitted } = render();
     type(field, '[T] Something');
@@ -45,53 +53,34 @@ describe('EntryEditor', () => {
     expect(submitted).toEqual(['[T] Something\nwith a note']);
   });
 
-  it('closes without asking when nothing was typed', () => {
-    const { field, cancelled } = render();
-    press(field, 'Escape');
-    expect(cancelled()).toBe(1);
-  });
-
-  it('asks before throwing away what was typed', async () => {
-    const { fixture, field, cancelled } = render();
+  it('closes on Esc without asking, handing back what was typed', () => {
+    const { field, closed } = render();
     type(field, '[T] Something');
     press(field, 'Escape');
-    await fixture.whenStable();
-    expect(cancelled()).toBe(0);
-
-    const discard = document.querySelector('[data-discard]') as HTMLButtonElement;
-    expect(discard).not.toBeNull();
-    discard.click();
-    // The dialog reports its answer once it has finished closing.
-    await vi.waitFor(() => expect(cancelled()).toBe(1));
+    expect(closed).toEqual(['[T] Something']);
+    expect(document.querySelector('mat-dialog-container')).toBeNull();
   });
 
-  it('opens on what is already there when editing', () => {
-    const fixture = TestBed.createComponent(EntryEditor);
-    fixture.componentRef.setInput('initial', 'Fixed it\nwith a note');
-    fixture.detectChanges();
-    const field = fixture.nativeElement.querySelector('textarea') as HTMLTextAreaElement;
-    expect(field.value).toBe('Fixed it\nwith a note');
+  it('closes the same way when focus goes elsewhere', () => {
+    const { field, closed } = render();
+    type(field, '[T] Something');
+    field.dispatchEvent(new FocusEvent('focusout', { bubbles: true, relatedTarget: null }));
+    expect(closed).toEqual(['[T] Something']);
   });
 
-  it('closes without asking when nothing was changed', () => {
-    const fixture = TestBed.createComponent(EntryEditor);
-    let cancelled = 0;
-    fixture.componentInstance.cancelled.subscribe(() => cancelled++);
-    fixture.componentRef.setInput('initial', 'Fixed it');
-    fixture.detectChanges();
-    const field = fixture.nativeElement.querySelector('textarea') as HTMLTextAreaElement;
-    press(field, 'Escape');
-    expect(cancelled).toBe(1);
-  });
-
-  it('turns into a break on Ctrl+B', () => {
-    const fixture = TestBed.createComponent(EntryEditor);
-    let switched = 0;
-    fixture.componentInstance.switchToBreak.subscribe(() => switched++);
-    fixture.detectChanges();
-    const field = fixture.nativeElement.querySelector('textarea') as HTMLTextAreaElement;
+  it('turns into a break on Ctrl+B without asking', () => {
+    const { field, switched } = render();
+    type(field, '[T] Something');
     expect(press(field, 'b', true).defaultPrevented).toBe(true);
-    expect(switched).toBe(1);
+    expect(switched()).toBe(1);
+  });
+
+  it('keeps its focus while a line is being read', () => {
+    const { fixture, field } = render();
+    fixture.componentRef.setInput('busy', true);
+    fixture.detectChanges();
+    expect(field.disabled).toBe(false);
+    expect(field.readOnly).toBe(true);
   });
 
   it('shows why the last attempt was refused', () => {
