@@ -254,12 +254,12 @@ body {
   outline: none;
 }
 
-.break-editor-step {
+.stepper-step {
   display: inline-flex;
   cursor: pointer;
 }
 
-.break-editor-step .mat-icon {
+.stepper-step .mat-icon {
   font-size: --spacing(4.5);
   width: --spacing(4.5);
   height: --spacing(4.5);

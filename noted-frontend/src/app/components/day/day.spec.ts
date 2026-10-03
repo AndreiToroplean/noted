@@ -568,6 +568,19 @@ describe('Day editing its hours', () => {
     expect(appData.week()!.days[0].arrival).toBe('09:30:00');
   });
 
+  it('steps a time by quarter hours with the same control as a break', async () => {
+    const fixture = await render({ arrival: '09:30:00', departure: '18:00:00' });
+    fixture.nativeElement.querySelector('[data-arrival]').dispatchEvent(new MouseEvent('dblclick'));
+    fixture.detectChanges();
+    const field = fixture.nativeElement.querySelector('input[type="time"]') as HTMLInputElement;
+    expect(field.closest('app-stepper')).not.toBeNull();
+    (fixture.nativeElement.querySelector('[data-less]') as HTMLElement).click();
+    (fixture.nativeElement.querySelector('[data-less]') as HTMLElement).click();
+    field.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter' }));
+    fixture.detectChanges();
+    expect(appData.week()!.days[0].arrival).toBe('09:00:00');
+  });
+
   it('offers a working day with no hours somewhere to write them', async () => {
     const fixture = await render({ arrival: null, departure: null });
     edit(fixture, 'departure', '18:00', 'Enter');

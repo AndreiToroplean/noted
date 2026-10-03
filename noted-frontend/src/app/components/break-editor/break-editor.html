@@ -35,36 +35,20 @@
 
   @if (mode() === 'duration') {
     <div class="flex items-center gap-1">
-      <button
-        type="button"
-        class="break-editor-step"
-        aria-label="15 minutes less"
-        (click)="step(-15)"
-        data-less
-      >
-        <mat-icon>remove</mat-icon>
-      </button>
-      <input
-        #first
-        #minutesField
-        type="number"
-        min="15"
-        step="15"
-        class="break-editor-field w-14 px-1 text-center"
-        aria-label="Minutes"
-        [value]="minutes()"
-        (input)="setMinutes(minutesField.value)"
-        data-minutes
-      />
-      <button
-        type="button"
-        class="break-editor-step"
-        aria-label="15 minutes more"
-        (click)="step(15)"
-        data-more
-      >
-        <mat-icon>add</mat-icon>
-      </button>
+      <app-stepper (stepped)="step($event)">
+        <input
+          #first
+          #minutesField
+          type="number"
+          min="15"
+          step="15"
+          class="break-editor-field w-14 px-1 text-center"
+          aria-label="Minutes"
+          [value]="minutes()"
+          (input)="setMinutes(minutesField.value)"
+          data-minutes
+        />
+      </app-stepper>
       <span class="opacity-70">{{ length() }}</span>
     </div>
   } @else {

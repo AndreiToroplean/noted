@@ -1,0 +1,23 @@
+<button
+  type="button"
+  class="stepper-step"
+  tabindex="-1"
+  [attr.aria-label]="by() + ' minutes back'"
+  (mousedown)="$event.preventDefault()"
+  (click)="stepped.emit(-by())"
+  data-less
+>
+  <mat-icon>remove</mat-icon>
+</button>
+<ng-content />
+<button
+  type="button"
+  class="stepper-step"
+  tabindex="-1"
+  [attr.aria-label]="by() + ' minutes on'"
+  (mousedown)="$event.preventDefault()"
+  (click)="stepped.emit(by())"
+  data-more
+>
+  <mat-icon>add</mat-icon>
+</button>

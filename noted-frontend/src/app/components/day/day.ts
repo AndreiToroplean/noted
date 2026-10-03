@@ -29,6 +29,7 @@ import {
   EntryText,
   InlineEntryEditor,
 } from 'app/components/inline-entry-editor/inline-entry-editor';
+import { Stepper } from 'app/components/stepper/stepper';
 import { Autofocus } from 'app/directives/autofocus';
 import {
   Break,
@@ -46,7 +47,7 @@ import { AppData } from 'app/services/app-data';
 import { Drafts } from 'app/services/drafts';
 import { EditHandoff } from 'app/services/edit-handoff';
 import { Selection } from 'app/services/selection';
-import { clock, formatMinutes } from 'app/services/time';
+import { clock, formatMinutes, now, shiftClock } from 'app/services/time';
 
 /** A day's two frame times. */
 type Clock = 'arrival' | 'departure';
@@ -66,6 +67,7 @@ const BLANK: EntryText = { text: '', note: null };
     Autofocus,
     InlineEntryEditor,
     BreakEditor,
+    Stepper,
     MatMenuModule,
     MatIconModule,
     MatTooltipModule,
@@ -454,6 +456,8 @@ export class Day {
   /** Which of the day's frame times is open for editing, if either. */
   protected readonly editingClock = signal<Clock | null>(null);
   protected readonly clock = clock;
+  protected readonly shiftClock = shiftClock;
+  protected readonly now = now;
 
   protected onClockKey(event: KeyboardEvent, which: Clock, value: string) {
     if (event.key === 'Enter') {

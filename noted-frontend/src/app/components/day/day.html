@@ -225,16 +225,19 @@
   <!-- One of the day's two frame times, shown or open for editing. -->
   <ng-template #hours let-which let-time="time">
     @if (editingClock() === which) {
-      <input
-        #field
-        appAutofocus
-        type="time"
-        class="day-time-field px-1 text-center"
-        [attr.aria-label]="which"
-        [value]="time ? clock(time) : ''"
-        (keydown)="onClockKey($event, which, field.value)"
-        (blur)="saveClock(which, field.value)"
-      />
+      <app-stepper (stepped)="field.value = shiftClock(field.value || now(), $event)">
+        <input
+          #field
+          appAutofocus
+          type="time"
+          step="900"
+          class="day-time-field px-1 text-center"
+          [attr.aria-label]="which"
+          [value]="time ? clock(time) : ''"
+          (keydown)="onClockKey($event, which, field.value)"
+          (blur)="saveClock(which, field.value)"
+        />
+      </app-stepper>
     } @else {
       {{ time ? clock(time) : '--:--' }}
     }

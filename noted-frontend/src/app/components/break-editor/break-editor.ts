@@ -13,10 +13,9 @@ import {
   viewChild,
 } from '@angular/core';
 
-import { MatIconModule } from '@angular/material/icon';
-
+import { Stepper } from 'app/components/stepper/stepper';
 import { BreakDraft } from 'app/services/api';
-import { clock, formatMinutes } from 'app/services/time';
+import { clock, formatMinutes, now } from 'app/services/time';
 
 /** Breaks are counted in quarter hours, so that is what one click moves by. */
 const STEP = 15;
@@ -29,7 +28,7 @@ const STEP = 15;
  */
 @Component({
   selector: 'app-break-editor',
-  imports: [MatIconModule],
+  imports: [Stepper],
   templateUrl: './break-editor.html',
   host: { '(focusout)': 'onFocusOut($event)' },
 })
@@ -144,10 +143,4 @@ export class BreakEditor {
     this.error.set(null);
     this.submitted.emit(this.draft());
   }
-}
-
-/** The time now, plus some minutes, as `HH:mm`. */
-function now(plus: number): string {
-  const at = new Date(Date.now() + plus * 60_000);
-  return `${`${at.getHours()}`.padStart(2, '0')}:${`${at.getMinutes()}`.padStart(2, '0')}`;
 }
