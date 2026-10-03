@@ -23,7 +23,7 @@ const STEP = 15;
 
 /**
  * A break, said one of the two ways a break can be: how long it was, or when
- * it started and ended. Ctrl+Enter keeps it, and Ctrl+B goes back to typing an
+ * it started and ended. Enter keeps it, and Ctrl+B goes back to typing an
  * entry. Esc, or focus going anywhere else, closes it without asking and hands
  * back any change, for the day to keep as a draft.
  */
@@ -93,7 +93,7 @@ export class BreakEditor {
 
   protected onKeydown(event: KeyboardEvent) {
     const ctrl = event.ctrlKey || event.metaKey;
-    if (event.key === 'Enter' && ctrl) {
+    if (event.key === 'Enter') {
       event.preventDefault();
       this.submit();
     } else if (event.key.toLowerCase() === 'b' && ctrl) {

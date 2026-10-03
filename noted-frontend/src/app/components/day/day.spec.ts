@@ -247,7 +247,7 @@ describe('Day adding an entry', () => {
   function finish(field: HTMLTextAreaElement, text: string) {
     field.value = text;
     field.dispatchEvent(new Event('input'));
-    field.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', ctrlKey: true }));
+    field.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter' }));
   }
 
   it('ends each day with a row to add to it', async () => {
@@ -270,7 +270,7 @@ describe('Day adding an entry', () => {
     const field = open(fixture);
     field.value = '[T] Fixed it\nthe header';
     field.dispatchEvent(new Event('input'));
-    field.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', ctrlKey: true }));
+    field.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter' }));
     const request = http.expectOne(`${API_BASE}/parse`);
     expect(request.request.body).toEqual({ text: '[T] Fixed it\nthe header' });
     request.flush(entry('T', { text: 'Fixed it', note: 'the header' }));
@@ -298,7 +298,7 @@ describe('Day adding an entry', () => {
 
     const editor = fixture.nativeElement.querySelector('[data-break-editor]') as HTMLElement;
     expect(editor).not.toBeNull();
-    editor.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', ctrlKey: true }));
+    editor.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter' }));
     fixture.detectChanges();
 
     http.expectNone(`${API_BASE}/parse`);
@@ -374,7 +374,7 @@ describe('Day editing an entry', () => {
 
     text.value = 'Fixed the header\nit was the z-index';
     text.dispatchEvent(new Event('input'));
-    text.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', ctrlKey: true }));
+    text.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter' }));
     fixture.detectChanges();
 
     // Read as a new line would be, and laid over the entry.
@@ -400,7 +400,7 @@ describe('Day editing an entry', () => {
     const text = fixture.nativeElement.querySelector('[data-edit-text]') as HTMLTextAreaElement;
     text.value = '[M] Fixed it';
     text.dispatchEvent(new Event('input'));
-    text.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', ctrlKey: true }));
+    text.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter' }));
     http.expectOne(`${API_BASE}/parse`).flush({ ...parsedTask, category: 'M', note: 'the header' });
     await settle();
     fixture.detectChanges();
@@ -416,7 +416,7 @@ describe('Day editing an entry', () => {
     const text = fixture.nativeElement.querySelector('[data-edit-text]') as HTMLTextAreaElement;
     text.value = '[Zz] Fixed it';
     text.dispatchEvent(new Event('input'));
-    text.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', ctrlKey: true }));
+    text.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter' }));
     http
       .expectOne(`${API_BASE}/parse`)
       .flush(
@@ -499,7 +499,7 @@ describe('Day editing a break', () => {
 
     (editor.querySelector('[data-more]') as HTMLElement).click();
     fixture.detectChanges();
-    editor.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', ctrlKey: true }));
+    editor.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter' }));
     fixture.detectChanges();
 
     const [morning, lunch] = appData.week()!.days[0].items;
@@ -1060,7 +1060,7 @@ describe('Day drafts', () => {
     press(text, 'Escape');
     fixture.detectChanges();
     text = openEntry(fixture);
-    press(text, 'Enter', true);
+    press(text, 'Enter');
     http.expectOne(`${API_BASE}/parse`).flush({ ...parsedTask, text: 'Fixed it, nearly' });
     await settle();
     fixture.componentRef.setInput('day', appData.week()!.days[0]);

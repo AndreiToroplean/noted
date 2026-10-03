@@ -31,7 +31,7 @@ export interface EditorMove {
  * field takes the entry's type and grows with what is in it, so nothing moves
  * when editing starts.
  *
- * Enter is a new line; Ctrl+Enter saves. What is saved is read as a new line
+ * Enter saves; Ctrl+Enter is a new line. What is saved is read as a new line
  * would be, so syntax typed here — a category, a project, a break — applies to
  * the entry. Esc, or focus going anywhere else, closes without asking and
  * hands back what was typed, for the day to keep as a draft.
@@ -142,6 +142,10 @@ export class InlineEntryEditor {
       event.preventDefault();
       this.switchToBreak.emit(this.current());
     } else if (event.key === 'Enter' && ctrl) {
+      // A textarea makes no new line with Ctrl held; typed this way, it undoes.
+      event.preventDefault();
+      document.execCommand('insertText', false, '\n');
+    } else if (event.key === 'Enter' && !event.shiftKey) {
       event.preventDefault();
       this.saved.emit(this.current());
     } else if (event.key === 'Escape') {

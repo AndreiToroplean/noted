@@ -54,17 +54,18 @@ describe('InlineEntryEditor', () => {
     expect(field.selectionStart).toBe('Fixed it'.length);
   });
 
-  it('leaves Enter to the field, as a new line', () => {
-    const { field } = render({ text: 'Fixed it', note: null });
-    expect(press(field, 'Enter').defaultPrevented).toBe(false);
+  it('adds a new line on Ctrl+Enter, rather than saving', () => {
+    const { field, saved } = render({ text: 'Fixed it', note: null });
+    expect(press(field, 'Enter', true).defaultPrevented).toBe(true);
+    expect(saved).toEqual([]);
   });
 
-  it('saves on Ctrl+Enter, the first line as the entry and the rest as the note', () => {
+  it('saves on Enter, the first line as the entry and the rest as the note', () => {
     const { field, saved } = render({ text: 'Fixed it', note: null });
     type(field, 'Fixed the header \nit was\nthe z-index');
-    press(field, 'Enter', true);
+    press(field, 'Enter');
     type(field, 'Fixed the header\n  ');
-    press(field, 'Enter', true);
+    press(field, 'Enter');
     expect(saved).toEqual([
       { text: 'Fixed the header', note: 'it was\nthe z-index' },
       { text: 'Fixed the header', note: null },
