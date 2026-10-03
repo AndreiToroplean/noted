@@ -42,6 +42,7 @@
           class="day-item"
           [class.day-item-break]="item.kind === 'break'"
           [class.day-item-failed]="failed"
+          [class.day-item-editing]="isEditing(item)"
           [attr.data-failed]="failed ? '' : null"
           cdkDrag
           [cdkDragData]="key"
@@ -243,7 +244,7 @@
       <div
         class="day-break flex items-center gap-2 px-2 py-1 text-xs"
         data-break
-        (dblclick)="editingBreakId.set(pause.id)"
+        (dblclick)="openBreak(pause)"
       >
         <span class="day-break-rule flex-1"></span>
         <span

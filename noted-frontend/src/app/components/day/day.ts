@@ -213,7 +213,7 @@ export class Day {
   private edit(key: string) {
     const item = this.day().items.find(other => itemKey(other) === key);
     if (!item) return;
-    if (isBreak(item)) this.editingBreakId.set(item.id);
+    if (isBreak(item)) this.openBreak(item);
     else this.openEntry(item);
   }
 
@@ -283,7 +283,12 @@ export class Day {
 
   private readonly drafts = inject(Drafts);
 
+  /**
+   * Editing is of one item, and its own highlight says which, so the selection
+   * lets go rather than wash over the text being typed.
+   */
   protected openEntry(entry: Entry) {
+    this.selection.clear();
     const from = this.drafts.get<EntryText>(itemKey(entry)) ?? {
       text: entry.text,
       note: entry.note,
@@ -329,6 +334,11 @@ export class Day {
 
   /** The break open for editing, if any. */
   protected readonly editingBreakId = signal<number | null>(null);
+
+  protected openBreak(pause: Break) {
+    this.selection.clear();
+    this.editingBreakId.set(pause.id);
+  }
 
   /** What a break's editor opens on: the draft left last time, or the break as it is. */
   protected breakDraftOf(pause: Break): BreakDraft {

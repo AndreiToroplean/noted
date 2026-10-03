@@ -333,6 +333,11 @@ body {
   opacity: var(--mat-sys-focus-state-layer-opacity);
 }
 
+/* Nothing washes over text being typed: the ring alone says it is open. */
+.day-item.day-item-editing::before {
+  opacity: 0;
+}
+
 /*
  * Failed: a past day's unfinished work, in the spreadsheet's red. On the item
  * itself, so it takes the item's rounded corners. It outranks the category's

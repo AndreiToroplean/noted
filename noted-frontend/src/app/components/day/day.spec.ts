@@ -611,6 +611,23 @@ describe('Day selecting items', () => {
     expect(fixture.nativeElement.querySelector('textarea')?.value).toBe('One');
   });
 
+  it('lets go of the selection once an item is open for editing', async () => {
+    const fixture = await render();
+    click(fixture, 0);
+    click(fixture, 2, { shiftKey: true });
+    key(fixture, 0, { key: 'Enter' });
+    fixture.detectChanges();
+    expect(selected(fixture)).toEqual([]);
+  });
+
+  it('lets go of the selection once a break is open for editing', async () => {
+    const fixture = await render();
+    click(fixture, 1);
+    key(fixture, 1, { key: 'Enter' });
+    fixture.detectChanges();
+    expect(selected(fixture)).toEqual([]);
+  });
+
   it('opens a focused break for editing on Enter', async () => {
     const fixture = await render();
     key(fixture, 1, { key: 'Enter' });
