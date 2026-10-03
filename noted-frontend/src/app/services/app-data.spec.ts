@@ -4,7 +4,7 @@ import { TestBed } from '@angular/core/testing';
 
 import { settle } from 'testing/settle';
 
-import { API_BASE, Day, Week } from 'app/services/api';
+import { API_BASE, Day, Entry, Week } from 'app/services/api';
 import { AppData } from 'app/services/app-data';
 
 const MONDAY = '2026-02-09';
@@ -190,5 +190,54 @@ describe('AppData typing into a day', () => {
       );
     await expect(done).rejects.toThrow('There is no [Zz] category.');
     expect(data.week()!.days[0].items).toHaveLength(0);
+  });
+});
+
+describe('AppData editing an item', () => {
+  let data: AppData;
+  let http: HttpTestingController;
+
+  beforeEach(async () => {
+    TestBed.configureTestingModule({
+      providers: [provideHttpClient(), provideHttpClientTesting()],
+    });
+    data = TestBed.inject(AppData);
+    http = TestBed.inject(HttpTestingController);
+
+    TestBed.tick();
+    http.expectOne(`${API_BASE}/categories`).flush([]);
+    http.expectOne(`${API_BASE}/weeks`).flush([MONDAY]);
+    await settle();
+    const loaded = week();
+    loaded.days[0].items = [
+      { ...task(1), text: 'First' },
+      { ...task(2), text: 'Second' },
+    ];
+    http.expectOne(`${API_BASE}/journal/${MONDAY}`).flush(loaded);
+    await settle();
+  });
+
+  function task(id: number): Entry {
+    return {
+      id,
+      position: id - 1,
+      kind: 'task',
+      done: false,
+      category: null,
+      project_id: null,
+      text: '',
+      note: null,
+      explicit_minutes: null,
+      explicit_start: null,
+      explicit_end: null,
+      approx_weight: null,
+    };
+  }
+
+  it('changes only the item it names', () => {
+    data.updateEntry(MONDAY, 2, { category: 'M', note: 'and a note' });
+    const [first, second] = data.week()!.days[0].items;
+    expect(first).toMatchObject({ text: 'First', category: null, note: null });
+    expect(second).toMatchObject({ text: 'Second', category: 'M', note: 'and a note' });
   });
 });

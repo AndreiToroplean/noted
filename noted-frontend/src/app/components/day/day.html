@@ -28,20 +28,34 @@
         </li>
       } @else if (asEntry(item); as entry) {
         <li class="flex gap-2 px-2 py-1 text-sm" [class.opacity-60]="entry.done">
-          @let colour = colourOf(entry.category);
-          @if (colour) {
-            <span
-              class="mt-1 h-3 w-3 shrink-0 rounded-sm"
-              [attr.data-category]="entry.category"
+          @if (entry.kind === 'task') {
+            @let colour = colourOf(entry.category);
+            <button
+              type="button"
+              class="entry-swatch mt-1 h-3 w-3 shrink-0 cursor-pointer rounded-sm"
+              [class.entry-swatch-empty]="!colour"
+              [attr.data-category]="colour ? entry.category : null"
+              [attr.aria-label]="'Category: ' + (entry.category ?? 'none')"
               [style.background-color]="colour"
-            ></span>
+              [matMenuTriggerFor]="categoryMenu"
+              [matMenuTriggerData]="{ entry }"
+            ></button>
           }
-          <div>
-            <div>{{ entry.text }}</div>
-            @if (entry.note) {
-              <div class="text-xs opacity-60">{{ entry.note }}</div>
-            }
-          </div>
+          @if (editingId() === entry.id) {
+            <app-entry-editor
+              class="min-w-0 flex-1"
+              [initial]="draftOf(entry)"
+              (submitted)="saveText(entry, $event)"
+              (cancelled)="editingId.set(null)"
+            />
+          } @else {
+            <div class="min-w-0 flex-1" data-entry-text (dblclick)="editingId.set(entry.id)">
+              <div>{{ entry.text }}</div>
+              @if (entry.note) {
+                <div class="text-xs opacity-60">{{ entry.note }}</div>
+              }
+            </div>
+          }
         </li>
       }
     }
@@ -66,6 +80,28 @@
       }
     </li>
   </ul>
+
+  <mat-menu #categoryMenu="matMenu">
+    <ng-template matMenuContent let-entry="entry">
+      @for (category of categories(); track category.name) {
+        <button
+          mat-menu-item
+          [attr.data-choose-category]="category.name"
+          (click)="setCategory(entry, category.name)"
+        >
+          <span
+            class="mr-2 inline-block h-3 w-3 rounded-sm align-middle"
+            [style.background-color]="category.colour"
+          ></span>
+          {{ category.name }}
+          @if (category.meaning) {
+            <span class="opacity-60">— {{ category.meaning }}</span>
+          }
+        </button>
+      }
+      <button mat-menu-item data-choose-category="" (click)="setCategory(entry, null)">None</button>
+    </ng-template>
+  </mat-menu>
 
   @if (data.status === 'working' && data.departure) {
     <footer class="day-time day-frame px-2 py-1 text-center text-xs" data-departure>

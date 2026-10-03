@@ -4,8 +4,8 @@ import {
   afterNextRender,
   inject,
   input,
+  linkedSignal,
   output,
-  signal,
   viewChild,
 } from '@angular/core';
 
@@ -25,6 +25,8 @@ import { ConfirmDiscard } from 'app/components/confirm-discard/confirm-discard';
   templateUrl: './entry-editor.html',
 })
 export class EntryEditor {
+  /** What the field opens on: empty for a new line, the entry's own text when editing one. */
+  readonly initial = input('');
   /** Why the last attempt was refused, shown under the field. */
   readonly error = input<string | null>(null);
   readonly busy = input(false);
@@ -32,7 +34,7 @@ export class EntryEditor {
   readonly submitted = output<string>();
   readonly cancelled = output<void>();
 
-  protected readonly text = signal('');
+  protected readonly text = linkedSignal(() => this.initial());
 
   private readonly dialog = inject(MatDialog);
   private readonly field = viewChild.required<ElementRef<HTMLTextAreaElement>>('field');
@@ -73,7 +75,7 @@ export class EntryEditor {
   }
 
   private async cancel() {
-    if (!this.text().trim()) {
+    if (this.text().trim() === this.initial().trim()) {
       this.cancelled.emit();
       return;
     }

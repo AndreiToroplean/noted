@@ -65,6 +65,25 @@ describe('EntryEditor', () => {
     await vi.waitFor(() => expect(cancelled()).toBe(1));
   });
 
+  it('opens on what is already there when editing', () => {
+    const fixture = TestBed.createComponent(EntryEditor);
+    fixture.componentRef.setInput('initial', 'Fixed it\nwith a note');
+    fixture.detectChanges();
+    const field = fixture.nativeElement.querySelector('textarea') as HTMLTextAreaElement;
+    expect(field.value).toBe('Fixed it\nwith a note');
+  });
+
+  it('closes without asking when nothing was changed', () => {
+    const fixture = TestBed.createComponent(EntryEditor);
+    let cancelled = 0;
+    fixture.componentInstance.cancelled.subscribe(() => cancelled++);
+    fixture.componentRef.setInput('initial', 'Fixed it');
+    fixture.detectChanges();
+    const field = fixture.nativeElement.querySelector('textarea') as HTMLTextAreaElement;
+    press(field, 'Escape');
+    expect(cancelled).toBe(1);
+  });
+
   it('shows why the last attempt was refused', () => {
     const { fixture } = render();
     fixture.componentRef.setInput('error', 'There is no [Zz] category.');

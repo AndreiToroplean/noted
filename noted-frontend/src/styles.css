@@ -136,3 +136,7 @@ body {
 .entry-editor-error {
   color: var(--checkbox-not-done);
 }
+
+.entry-swatch-empty {
+  border: 1px dashed var(--app-outline);
+}

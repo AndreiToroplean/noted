@@ -1,19 +1,45 @@
 import { DatePipe, SlicePipe, UpperCasePipe } from '@angular/common';
 import { Component, inject, input, signal, viewChild } from '@angular/core';
 
+import { MatMenuModule } from '@angular/material/menu';
+
 import { EntryEditor } from 'app/components/entry-editor/entry-editor';
 import { Break, Day as DayData, DayItem, Entry, isBreak } from 'app/services/api';
 import { AppData } from 'app/services/app-data';
 
 @Component({
   selector: 'app-day',
-  imports: [UpperCasePipe, DatePipe, SlicePipe, EntryEditor],
+  imports: [UpperCasePipe, DatePipe, SlicePipe, EntryEditor, MatMenuModule],
   templateUrl: './day.html',
 })
 export class Day {
   readonly day = input.required<DayData>();
 
   private readonly appData = inject(AppData);
+
+  protected readonly categories = this.appData.categories.value;
+
+  /** The entry open for editing, if any. */
+  protected readonly editingId = signal<number | null>(null);
+
+  /**
+   * An edit is plain text, never the syntax again — see specification §3.2. The
+   * first line is the entry and the rest its note, as when it was typed.
+   */
+  protected saveText(entry: Entry, typed: string) {
+    const [first, ...rest] = typed.split('\n');
+    const note = rest.join('\n').trim();
+    this.appData.updateEntry(this.day().date, entry.id, { text: first.trim(), note: note || null });
+    this.editingId.set(null);
+  }
+
+  protected draftOf(entry: Entry): string {
+    return entry.note ? `${entry.text}\n${entry.note}` : entry.text;
+  }
+
+  protected setCategory(entry: Entry, category: string | null) {
+    this.appData.updateEntry(this.day().date, entry.id, { category });
+  }
 
   /** Whether the row at the foot of the day is open for typing. */
   protected readonly adding = signal(false);

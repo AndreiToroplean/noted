@@ -236,3 +236,72 @@ describe('Day adding an entry', () => {
     );
   });
 });
+
+describe('Day editing an entry', () => {
+  let http: HttpTestingController;
+  let appData: AppData;
+
+  beforeEach(() => {
+    TestBed.configureTestingModule({
+      providers: [provideHttpClient(), provideHttpClientTesting()],
+    });
+    http = TestBed.inject(HttpTestingController);
+    appData = TestBed.inject(AppData);
+  });
+
+  async function render() {
+    appData.week.set({
+      week: '2026-02-09',
+      days: [day([entry('T', { id: 7, text: 'Fixed it', note: 'the header' })])],
+    });
+    const fixture = TestBed.createComponent(Day);
+    fixture.componentRef.setInput('day', appData.week()!.days[0]);
+    fixture.detectChanges();
+    http.match(`${API_BASE}/categories`).forEach(request =>
+      request.flush([
+        { name: 'T', meaning: '', colour: '#7f6000' },
+        { name: 'M', meaning: '', colour: '#351c75' },
+      ]),
+    );
+    http.match(() => true).forEach(request => request.flush([]));
+    await settle();
+    fixture.detectChanges();
+    return fixture;
+  }
+
+  function stored(): Entry {
+    return appData.week()!.days[0].items[0] as Entry;
+  }
+
+  it('opens the text and note for editing on a double-click', async () => {
+    const fixture = await render();
+    fixture.nativeElement
+      .querySelector('[data-entry-text]')
+      .dispatchEvent(new MouseEvent('dblclick'));
+    fixture.detectChanges();
+    const field = fixture.nativeElement.querySelector('textarea') as HTMLTextAreaElement;
+    expect(field.value).toBe('Fixed it\nthe header');
+
+    field.value = 'Fixed the header\nit was the z-index';
+    field.dispatchEvent(new Event('input'));
+    field.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', ctrlKey: true }));
+    fixture.detectChanges();
+
+    // Edited as plain text: nothing goes back through the syntax.
+    http.expectNone(`${API_BASE}/parse`);
+    expect(stored()).toMatchObject({ text: 'Fixed the header', note: 'it was the z-index' });
+    expect(fixture.nativeElement.querySelector('textarea')).toBeNull();
+  });
+
+  it('changes the category from the swatch', async () => {
+    const fixture = await render();
+    (fixture.nativeElement.querySelector('[data-category]') as HTMLElement).click();
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    const choice = document.querySelector('[data-choose-category="M"]') as HTMLElement;
+    expect(choice).not.toBeNull();
+    choice.click();
+    expect(stored().category).toBe('M');
+  });
+});

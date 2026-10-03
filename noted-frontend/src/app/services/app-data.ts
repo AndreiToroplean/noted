@@ -3,7 +3,16 @@ import { Injectable, computed, effect, inject, linkedSignal, signal } from '@ang
 
 import { firstValueFrom } from 'rxjs';
 
-import { API_BASE, Category, Day, IsoDate, ParsedItem, Week, toWrite } from 'app/services/api';
+import {
+  API_BASE,
+  Category,
+  Day,
+  Entry,
+  IsoDate,
+  ParsedItem,
+  Week,
+  toWrite,
+} from 'app/services/api';
 
 /**
  * How long the week sits still before it is written back. Long enough that
@@ -77,6 +86,16 @@ export class AppData {
       throw new Error(explain(error));
     }
     this.updateDay(date, day => place(day, parsed));
+  }
+
+  /** Change some of an entry's fields. Breaks have ids of their own, so only entries match. */
+  updateEntry(date: IsoDate, id: number, change: Partial<Entry>) {
+    this.updateDay(date, day => ({
+      ...day,
+      items: day.items.map(item =>
+        item.kind !== 'break' && item.id === id ? { ...item, ...change } : item,
+      ),
+    }));
   }
 
   private updateDay(date: IsoDate, change: (day: Day) => Day) {
