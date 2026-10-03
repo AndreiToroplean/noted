@@ -1125,10 +1125,13 @@ describe('Day moving between entries from the keyboard', () => {
       fixture.componentRef.setInput('day', data);
       fixture.componentRef.setInput('previousDate', days[index - 1]?.date ?? null);
       fixture.componentRef.setInput('nextDate', days[index + 1]?.date ?? null);
-      document.body.append(fixture.nativeElement);
-      fixture.detectChanges();
       return fixture;
     });
+    // Side by side, as in a week; TestBed takes each root out as it makes the next.
+    for (const fixture of fixtures) {
+      document.body.append(fixture.nativeElement);
+      fixture.detectChanges();
+    }
     http.match(() => true).forEach(request => request.flush([]));
     await settle();
     fixtures.forEach(fixture => fixture.detectChanges());
@@ -1156,6 +1159,44 @@ describe('Day moving between entries from the keyboard', () => {
       [index].dispatchEvent(new MouseEvent('dblclick'));
     fixture.detectChanges();
   }
+
+  function option(fixture: Fixture, index: number): HTMLElement {
+    return fixture.nativeElement.querySelectorAll('[role="option"]')[index];
+  }
+
+  it('leaves the entry selected and focused on Esc, for the arrows to go on from', async () => {
+    const [mon] = await render();
+    open(mon, 1);
+    press(mon, 'Escape');
+    expect(option(mon, 1).getAttribute('aria-selected')).toBe('true');
+    expect(document.activeElement).toBe(option(mon, 1));
+  });
+
+  it('selects an entry in the next day on Tab, and the day before on Shift+Tab', async () => {
+    const [mon, tue] = await render();
+    option(mon, 0).click();
+    mon.detectChanges();
+    option(mon, 0).dispatchEvent(
+      new KeyboardEvent('keydown', { key: 'Tab', bubbles: true, cancelable: true }),
+    );
+    mon.detectChanges();
+    tue.detectChanges();
+    expect(option(tue, 0).getAttribute('aria-selected')).toBe('true');
+    expect(option(mon, 0).getAttribute('aria-selected')).toBe('false');
+    expect(document.activeElement).toBe(option(tue, 0));
+
+    option(tue, 0).dispatchEvent(
+      new KeyboardEvent('keydown', { key: 'Tab', shiftKey: true, bubbles: true, cancelable: true }),
+    );
+    mon.detectChanges();
+    expect(document.activeElement).toBe(option(mon, 0));
+  });
+
+  it('keeps the checkboxes out of the way of Tab', async () => {
+    const [mon] = await render();
+    const boxes = [...mon.nativeElement.querySelectorAll('.entry-done')] as HTMLElement[];
+    expect(boxes.map(box => box.tabIndex)).toEqual([-1, -1, -1]);
+  });
 
   it('goes down to the next entry, keeping what was typed as a draft', async () => {
     const [mon] = await render();

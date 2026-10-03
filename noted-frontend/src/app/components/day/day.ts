@@ -192,6 +192,11 @@ export class Day {
       this.edit(key);
       return;
     }
+    if (event.key === 'Tab') {
+      event.preventDefault();
+      this.selectInDayBeside(!event.shiftKey);
+      return;
+    }
     const step = { ArrowUp: -1, ArrowDown: 1 }[event.key];
     if (step === undefined) return;
     event.preventDefault();
@@ -276,6 +281,26 @@ export class Day {
 
   protected deleteSelected() {
     this.selection.deleteSelected();
+  }
+
+  /**
+   * Tab and Shift+Tab: select the entry the day either side was left on (its
+   * tab stop), or reach its row for adding when it has none.
+   */
+  private selectInDayBeside(forward: boolean) {
+    const host = this.host.nativeElement;
+    const day = forward ? host.nextElementSibling : host.previousElementSibling;
+    const option = day?.querySelector<HTMLElement>('[role="option"][tabindex="0"]');
+    if (option) option.click();
+    (option ?? day?.querySelector<HTMLElement>('[data-add]'))?.focus();
+  }
+
+  /** Esc leaves the item it closed on selected, so the arrows go on from it. */
+  protected selectAfterEdit(item: DayItem) {
+    const key = itemKey(item);
+    this.selection.only(this.day().date, key);
+    this.focusOption(key);
+    const el = this.host.nativeElement.querySelector(`[data-key="${key}"]`);
   }
 
   private focusOption(key: string) {
