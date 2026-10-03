@@ -106,8 +106,18 @@ export class AppData {
   /** The week being edited. Every change to it is eventually written back whole. */
   readonly week = linkedSignal<Week | undefined>(() => this.loaded.value());
 
-  /** The open week's weekend asked for while empty. Forgotten on leaving the week. */
-  readonly weekendShown = linkedSignal({ source: this.selectedWeek, computation: () => false });
+  /**
+   * The open week's weekend shown: asked for from the week's menu, or loaded
+   * with something on it, which counts as asking. Either way it stays until
+   * hidden from the menu, however empty it gets. Forgotten on leaving the week.
+   */
+  readonly weekendShown = linkedSignal({
+    source: () => ({ chosen: this.selectedWeek(), loaded: this.loaded.value() }),
+    computation: ({ chosen, loaded }, previous) => {
+      const asked = previous?.source.chosen === chosen && previous.value;
+      return asked || (loaded?.week === chosen && weekendInUse(loaded));
+    },
+  });
 
   /** Anything on the weekend, written or hours, which keeps it shown. */
   readonly weekendInUse = computed(() => {

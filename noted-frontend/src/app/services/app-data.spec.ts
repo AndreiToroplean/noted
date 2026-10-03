@@ -269,6 +269,28 @@ describe('AppData showing the weekend', () => {
     expect(data.weekendShown()).toBe(false);
     http.match(() => true);
   });
+
+  it('shows a weekend the week loads with as if asked to, so emptying it keeps it', async () => {
+    TestBed.configureTestingModule({
+      providers: [provideHttpClient(), provideHttpClientTesting()],
+    });
+    const data = TestBed.inject(AppData);
+    const http = TestBed.inject(HttpTestingController);
+    TestBed.tick();
+    http.expectOne(`${API_BASE}/categories`).flush([]);
+    http.expectOne(`${API_BASE}/weeks`).flush([MONDAY]);
+    await settle();
+    const loaded = week();
+    loaded.days[5].arrival = '10:00:00';
+    http.expectOne(`${API_BASE}/journal/${MONDAY}`).flush(loaded);
+    await settle();
+
+    expect(data.weekendShown()).toBe(true);
+    data.setHours('2026-02-14', { arrival: null });
+    expect(data.weekendInUse()).toBe(false);
+    expect(data.weekendShown()).toBe(true);
+    http.match(() => true);
+  });
 });
 
 describe('AppData typing into a day', () => {
