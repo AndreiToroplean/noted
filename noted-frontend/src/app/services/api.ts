@@ -85,6 +85,11 @@ export interface Day {
   items: DayItem[];
 }
 
+/** Anything in a day: something written, or hours. What keeps a weekend day shown. */
+export function hasContent(day: Day): boolean {
+  return day.items.length > 0 || day.arrival !== null || day.departure !== null;
+}
+
 export interface Week {
   week: IsoDate;
   days: Day[];

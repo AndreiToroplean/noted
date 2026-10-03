@@ -3,7 +3,7 @@ import { Component, computed, inject, input } from '@angular/core';
 import { CdkDropListGroup } from '@angular/cdk/drag-drop';
 
 import { Day } from 'app/components/day/day';
-import { Day as DayData, IsoDate, Week as WeekData } from 'app/services/api';
+import { Day as DayData, IsoDate, Week as WeekData, hasContent } from 'app/services/api';
 import { AppData } from 'app/services/app-data';
 
 @Component({
@@ -32,8 +32,4 @@ export class Week {
     const days = this.visibleDays();
     return days[(index + days.length) % days.length].date;
   }
-}
-
-function hasContent(day: DayData): boolean {
-  return day.items.length > 0;
 }

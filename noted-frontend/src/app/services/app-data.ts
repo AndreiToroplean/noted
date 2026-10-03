@@ -15,6 +15,7 @@ import {
   Settings,
   Time,
   Week,
+  hasContent,
   itemKey,
   toWrite,
 } from 'app/services/api';
@@ -107,13 +108,8 @@ export class AppData {
   /** The open week's weekend asked for while empty. Forgotten on leaving the week. */
   readonly weekendShown = linkedSignal({ source: this.selectedWeek, computation: () => false });
 
-  /** Something written on the weekend, which keeps it shown. */
-  readonly weekendInUse = computed(
-    () =>
-      this.week()
-        ?.days.slice(5)
-        .some(day => day.items.length > 0) ?? false,
-  );
+  /** Anything on the weekend, written or hours, which keeps it shown. */
+  readonly weekendInUse = computed(() => this.week()?.days.slice(5).some(hasContent) ?? false);
 
   /** The last version known to be on the server, so edits can be told from reloads. */
   private readonly persisted = linkedSignal<Week | undefined>(() => this.loaded.value());

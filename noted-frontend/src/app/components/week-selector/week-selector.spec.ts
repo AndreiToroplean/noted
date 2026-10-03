@@ -37,7 +37,7 @@ describe('WeekSelector', () => {
   });
 
   describe('the weekend', () => {
-    async function render(sundayItems = 0) {
+    async function render(sundayItems = 0, sundayArrival: string | null = null) {
       TestBed.configureTestingModule({
         providers: [provideHttpClient(), provideHttpClientTesting(), provideDateFormat()],
       });
@@ -52,12 +52,13 @@ describe('WeekSelector', () => {
       const days = ['09', '10', '11', '12', '13', '14', '15'].map(day => ({
         date: `2026-02-${day}`,
         status: 'working',
-        arrival: null,
+        arrival: null as string | null,
         departure: null,
         expected_minutes: 480,
         items: [],
       }));
       days[6].items = Array.from({ length: sundayItems }) as never[];
+      days[6].arrival = sundayArrival;
       appData.week.set({ week: '2026-02-09', days } as never);
       return { appData, fixture };
     }
@@ -88,6 +89,11 @@ describe('WeekSelector', () => {
       const toggle = await openMenu(fixture);
       expect(toggle?.textContent).toContain('Hide weekend');
       expect(toggle?.disabled).toBe(true);
+    });
+
+    it('cannot be hidden while it has hours in it', async () => {
+      const { fixture } = await render(0, '10:00:00');
+      expect((await openMenu(fixture))?.disabled).toBe(true);
     });
 
     it('is not offered for a week other than the one open', async () => {
