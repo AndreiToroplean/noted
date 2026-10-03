@@ -225,9 +225,17 @@ body {
 .day-item {
   position: relative;
   background-color: var(--app-entry);
-  margin: --spacing(0.25) --spacing(1);
+  /*
+   * One step of space around every item, the same on all four sides: the list
+   * pads the top, and each item keeps the step below it and either side.
+   */
+  margin: 0 --spacing(1) --spacing(1);
   border-radius: var(--mat-sys-corner-extra-small);
   outline: none;
+}
+
+.day-items {
+  padding-block-start: --spacing(1);
 }
 
 .day-item-break {
@@ -322,7 +330,7 @@ body {
 
 .day-item-drop-gap {
   min-height: --spacing(7);
-  margin: --spacing(0.25) --spacing(1);
+  margin: 0 --spacing(1) --spacing(1);
   border: 1px dashed var(--app-outline);
   border-radius: var(--mat-sys-corner-extra-small);
 }

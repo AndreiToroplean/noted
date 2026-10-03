@@ -105,7 +105,7 @@ export class Day {
       .map(other => this.host.nativeElement.querySelector<HTMLElement>(`[data-key="${other}"]`))
       .filter(row => row !== null);
     if (rows.length === 0) return;
-    // Adjacent items' margins collapse into one, so each join adds one margin.
+    // Each item keeps one step of space below it, so each join adds one of those.
     const join = parseFloat(getComputedStyle(rows[0]).marginBottom) || 0;
     const height = rows.reduce((total, row) => total + row.getBoundingClientRect().height, 0);
     this.selection.carriedHeight.set(height + join * (rows.length - 1));
