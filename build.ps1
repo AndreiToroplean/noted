@@ -19,6 +19,7 @@ pyinstaller noted-api/noted.py `
   --onefile `
   --noconfirm `
   --paths noted-api `
+  --icon "$(Resolve-Path noted-api/noted.ico)" `
   --add-data "${frontend};frontend" `
   --distpath dist `
   --workpath build `
