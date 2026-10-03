@@ -6,13 +6,14 @@ import { Title } from '@angular/platform-browser';
 import { settle } from 'testing/settle';
 
 import { API_BASE } from 'app/services/api';
+import { provideDateFormat } from 'app/services/dates';
 import { App } from './app';
 
 describe('App', () => {
   beforeEach(async () => {
     await TestBed.configureTestingModule({
       imports: [App],
-      providers: [provideHttpClient(), provideHttpClientTesting()],
+      providers: [provideHttpClient(), provideHttpClientTesting(), provideDateFormat()],
     }).compileComponents();
   });
 
@@ -30,6 +31,6 @@ describe('App', () => {
       .forEach(request => request.flush(['2026-02-09']));
     await settle();
 
-    expect(TestBed.inject(Title).getTitle()).toBe('Noted – week of 9 Feb 2026');
+    expect(TestBed.inject(Title).getTitle()).toBe('Noted – 09/02/2026');
   });
 });

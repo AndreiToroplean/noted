@@ -4,6 +4,6 @@
   headerPosition="below"
 >
   @for (week of appData.weeks.value(); track week) {
-    <mat-tab [label]="(week | date: 'dd/MM/yyyy') || ''" />
+    <mat-tab [label]="(week | date) || ''" />
   }
 </mat-tab-group>

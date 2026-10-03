@@ -57,6 +57,9 @@ they describe. Vitest with `TestBed`; components get their inputs through
 rather than a live server. A flushed response needs a turn of the event loop before it
 reaches the resource that asked for it; `await settle()` from `testing/settle` covers that.
 
+**Dates** are shown with `| date` and no format argument (or an injected `DatePipe`); the
+format is set once in `services/dates.ts`.
+
 **Strictness.** TypeScript `strict` plus `strictTemplates`, `noImplicitReturns`, and
 `noPropertyAccessFromIndexSignature` are on. Keep them on; don't reach for `any` (it lints
 as a warning, which is not an invitation).
