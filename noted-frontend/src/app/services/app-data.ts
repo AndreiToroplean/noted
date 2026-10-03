@@ -239,11 +239,12 @@ export class AppData {
 
   /** Replace a break with what the editor made of it. */
   updateBreak(date: IsoDate, id: number, draft: BreakDraft) {
+    const edited = (item: DayItem) => item.kind === 'break' && item.id === id;
     this.updateDay(date, day => ({
       ...day,
-      items: day.items.map(item =>
-        item.kind === 'break' && item.id === id ? { ...draft, id, position: item.position } : item,
-      ),
+      items: isEmptyBreak(draft)
+        ? day.items.filter(item => !edited(item))
+        : day.items.map(item => (edited(item) ? { ...draft, id, position: item.position } : item)),
     }));
   }
 
@@ -366,8 +367,14 @@ function place(day: Day, parsed: ParsedItem): Day {
     const started = day.items.some(item => item.kind === 'task');
     return started ? { ...day, departure: parsed.time } : { ...day, arrival: parsed.time };
   }
+  if (parsed.kind === 'break' && isEmptyBreak(parsed)) return day;
   const item = { ...parsed, id: nextLocalId--, position: day.items.length };
   return { ...day, items: [...day.items, item] };
+}
+
+/** A break that ends the minute it starts: leaving and coming straight back, so none at all. */
+function isEmptyBreak(pause: BreakDraft): boolean {
+  return pause.start !== null && pause.start === pause.end;
 }
 
 function overlay(day: Day, id: number, parsed: ParsedItem): Day {

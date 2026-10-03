@@ -191,6 +191,49 @@ describe('AppData coming back', () => {
     ]);
   });
 
+  it('takes coming back in the minute of leaving as not having left', async () => {
+    TestBed.configureTestingModule({
+      providers: [provideHttpClient(), provideHttpClientTesting()],
+    });
+    const data = TestBed.inject(AppData);
+    const http = TestBed.inject(HttpTestingController);
+    TestBed.tick();
+    http
+      .expectOne(`${API_BASE}/settings`)
+      .flush([{ weekday: 0, arrival: '09:30:00', departure: '18:30:00' }]);
+    await settle();
+    const left = week();
+    left.days[0] = { ...left.days[0], arrival: '09:30:00', departure: '12:30:00' };
+    data.week.set(left);
+
+    data.cameBack(MONDAY, '12:30:00');
+    expect(data.week()!.days[0]).toMatchObject({ departure: '18:30:00', items: [] });
+  });
+
+  it('keeps no break that ends when it starts, however it is made', () => {
+    TestBed.configureTestingModule({
+      providers: [provideHttpClient(), provideHttpClientTesting()],
+    });
+    const data = TestBed.inject(AppData);
+    data.week.set(week());
+    const pause = {
+      kind: 'break',
+      is_noon: false,
+      description: null,
+      start: '12:30:00',
+      end: '12:30:00',
+      minutes: null,
+    } as const;
+
+    data.addBreak(MONDAY, pause);
+    expect(data.week()!.days[0].items).toEqual([]);
+
+    data.addBreak(MONDAY, { ...pause, end: '13:00:00' });
+    const kept = data.week()!.days[0].items[0];
+    data.updateBreak(MONDAY, kept.id, pause);
+    expect(data.week()!.days[0].items).toEqual([]);
+  });
+
   it("knows a date's default hours by its weekday", async () => {
     TestBed.configureTestingModule({
       providers: [provideHttpClient(), provideHttpClientTesting()],
