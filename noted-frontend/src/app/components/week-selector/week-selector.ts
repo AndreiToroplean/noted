@@ -27,6 +27,16 @@ export class WeekSelector {
     if (week) this.appData.selectedWeek.set(week);
   }
 
+  /**
+   * A tab clicked, the open one too, is a week chosen, which the address then
+   * names. The tab group's own change event cannot tell: it says nothing for the
+   * open tab, and speaks for selections the user never made.
+   */
+  protected onClick(event: MouseEvent) {
+    const week = this.weekOfTab(event.target);
+    if (week) this.appData.openWeek(week);
+  }
+
   private readonly dialog = inject(MatDialog);
 
   /** The week a right-click landed on, and where, for the menu to open there. */
@@ -43,13 +53,19 @@ export class WeekSelector {
     this.weekMenu().openMenu();
   }
 
-  /** Delete on a focused tab, which the arrow keys move between. */
+  /**
+   * On a focused tab, which the arrow keys move between: Delete deletes its
+   * week, and Enter or Space chooses it, as a click does.
+   */
   protected onKeydown(event: KeyboardEvent) {
-    if (event.key !== 'Delete') return;
     const week = this.weekOfTab(event.target);
     if (!week) return;
-    event.preventDefault();
-    this.confirmDelete(week);
+    if (event.key === 'Delete') {
+      event.preventDefault();
+      this.confirmDelete(week);
+    } else if (event.key === 'Enter' || event.key === ' ') {
+      this.appData.openWeek(week);
+    }
   }
 
   /** Always asks: unlike everything inside a week, deleting one can't be undone. */

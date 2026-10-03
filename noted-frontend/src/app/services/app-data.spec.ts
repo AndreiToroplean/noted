@@ -1,6 +1,7 @@
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
+import { Router } from '@angular/router';
 
 import { settle } from 'testing/settle';
 
@@ -249,6 +250,39 @@ describe('AppData coming back', () => {
     expect(data.defaultsFor(MONDAY)?.departure).toBe('18:30:00');
     expect(data.defaultsFor('2026-02-13')?.departure).toBe('16:00:00');
     expect(data.defaultsFor('2026-02-14')).toBeUndefined();
+  });
+});
+
+describe('AppData and the week in the address', () => {
+  async function open(url: string) {
+    TestBed.configureTestingModule({
+      providers: [provideHttpClient(), provideHttpClientTesting()],
+    });
+    await TestBed.inject(Router).navigateByUrl(url);
+    const data = TestBed.inject(AppData);
+    TestBed.tick();
+    const http = TestBed.inject(HttpTestingController);
+    http.match(`${API_BASE}/weeks`).forEach(request => request.flush([MONDAY, '2026-02-02']));
+    await settle();
+    http.match(() => true);
+    return data;
+  }
+
+  it('opens the week the address names, so a week can be bookmarked', async () => {
+    expect((await open('/?week=2026-02-02')).selectedWeek()).toBe('2026-02-02');
+  });
+
+  it('opens the week of any day in it, and the newest for nonsense', async () => {
+    expect((await open('/?week=2026-02-04')).selectedWeek()).toBe('2026-02-02');
+    TestBed.resetTestingModule();
+    expect((await open('/?week=soon')).selectedWeek()).toBe(MONDAY);
+  });
+
+  it('follows the address to another week, as Back does', async () => {
+    const data = await open('/?week=2026-02-02');
+    await TestBed.inject(Router).navigateByUrl(`/?week=${MONDAY}`);
+    expect(data.selectedWeek()).toBe(MONDAY);
+    TestBed.inject(HttpTestingController).match(() => true);
   });
 });
 

@@ -6,6 +6,7 @@
 @for (weeks of [appData.weekList()]; track weeks) {
   <!-- Right-click a tab, or focus it and press Delete, to delete that week. -->
   <mat-tab-group
+    (click)="onClick($event)"
     (contextmenu)="onContextMenu($event)"
     (keydown)="onKeydown($event)"
     [selectedIndex]="selectedIndex()"

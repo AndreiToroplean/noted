@@ -1,5 +1,7 @@
 import { HttpClient, HttpErrorResponse, httpResource } from '@angular/common/http';
 import { Injectable, computed, effect, inject, linkedSignal, signal } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { Router } from '@angular/router';
 
 import { firstValueFrom } from 'rxjs';
 
@@ -17,6 +19,7 @@ import {
   Time,
   Week,
   itemKey,
+  mondayOf,
   toWrite,
   weekendInUse,
 } from 'app/services/api';
@@ -46,6 +49,7 @@ let nextLocalId = -1;
 @Injectable({ providedIn: 'root' })
 export class AppData {
   private readonly http = inject(HttpClient);
+  private readonly router = inject(Router);
 
   /**
    * The category vocabulary, colours included. They live in the database rather
@@ -150,6 +154,12 @@ export class AppData {
   readonly saveFailed = signal(false);
 
   constructor() {
+    // A week named in the address, by a bookmark or by Back, is the one to open.
+    this.router.routerState.root.queryParamMap.pipe(takeUntilDestroyed()).subscribe(params => {
+      const week = weekIn(params.get('week'));
+      if (week) this.goTo(week);
+    });
+
     effect(onCleanup => {
       const draft = this.week();
       if (!draft || draft === this.persisted()) return;
@@ -159,8 +169,17 @@ export class AppData {
     });
   }
 
-  /** Go to a week, listing it first if it is new. */
+  /**
+   * Go to a week the user chose, and name it in the address so it can be
+   * bookmarked. Only a choice does: the default week leaves a bare address bare.
+   */
   openWeek(week: IsoDate) {
+    this.goTo(week);
+    void this.router.navigate([], { queryParams: { week } });
+  }
+
+  /** Go to a week, listing it first if it is new. */
+  private goTo(week: IsoDate) {
     if (!this.weekList().includes(week)) this.opened.update(opened => [...opened, week]);
     this.selectedWeek.set(week);
   }
@@ -180,6 +199,10 @@ export class AppData {
       this.selectedWeek.set(list[index + 1] ?? list[index - 1] ?? null);
     }
     this.opened.update(opened => opened.filter(other => other !== week));
+    // A bookmark of a week gone would only start it again, empty.
+    if (weekIn(this.router.routerState.snapshot.root.queryParamMap.get('week')) === week) {
+      void this.router.navigate([], { queryParams: { week: null }, replaceUrl: true });
+    }
     if (!saved) return;
 
     await firstValueFrom(this.http.delete(`${API_BASE}/journal/${week}`));
@@ -440,6 +463,13 @@ function timingOf({
 
 function statesTiming(timing: Timing): boolean {
   return Object.values(timingOf(timing)).some(value => value !== null);
+}
+
+/** The week an address names, by its Monday or any day in it; nothing for nonsense. */
+function weekIn(param: string | null): IsoDate | null {
+  if (!param || !/^\d{4}-\d{2}-\d{2}$/.test(param)) return null;
+  const date = new Date(`${param}T00:00`);
+  return isNaN(date.getTime()) ? null : mondayOf(date);
 }
 
 function explain(error: unknown): string {

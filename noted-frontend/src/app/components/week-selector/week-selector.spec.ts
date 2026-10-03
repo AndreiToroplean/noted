@@ -1,6 +1,7 @@
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
+import { Router } from '@angular/router';
 
 import { settle } from 'testing/settle';
 
@@ -34,6 +35,47 @@ describe('WeekSelector', () => {
     const active = fixture.nativeElement.querySelector('[role="tab"][aria-selected="true"]');
     expect(active?.textContent?.trim()).toBe(started.split('-').reverse().join('/'));
     expect(appData.selectedWeek()).toBe(started);
+  });
+
+  describe('the week in the address', () => {
+    async function render() {
+      TestBed.configureTestingModule({
+        providers: [provideHttpClient(), provideHttpClientTesting(), provideDateFormat()],
+      });
+      const fixture = TestBed.createComponent(WeekSelector);
+      fixture.detectChanges();
+      const http = TestBed.inject(HttpTestingController);
+      http.expectOne(`${API_BASE}/weeks`).flush(['2026-02-09', '2026-02-02']);
+      await settle();
+      fixture.detectChanges();
+      const tab = (index: number) =>
+        fixture.nativeElement.querySelectorAll('[role="tab"]')[index] as HTMLElement;
+      return { fixture, tab };
+    }
+
+    it('is left alone while the week is only the default', async () => {
+      await render();
+      expect(TestBed.inject(Router).url).toBe('/');
+    });
+
+    it('names a week once it is clicked, the open one too', async () => {
+      const { tab } = await render();
+      tab(0).click();
+      await settle();
+      expect(TestBed.inject(Router).url).toBe('/?week=2026-02-09');
+
+      tab(1).click();
+      await settle();
+      expect(TestBed.inject(Router).url).toBe('/?week=2026-02-02');
+      expect(TestBed.inject(AppData).selectedWeek()).toBe('2026-02-02');
+    });
+
+    it('names a week chosen from the keyboard', async () => {
+      const { tab } = await render();
+      tab(1).dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+      await settle();
+      expect(TestBed.inject(Router).url).toBe('/?week=2026-02-02');
+    });
   });
 
   describe('the weekend', () => {
