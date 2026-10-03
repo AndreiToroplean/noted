@@ -1,6 +1,6 @@
 @let data = day();
 
-<section class="day flex h-full flex-col">
+<section class="day flex h-full flex-col overflow-clip rounded-md">
   <header class="day-header px-2 py-1 text-center">
     <div class="text-sm font-semibold tracking-wide">
       {{ data.date | date: 'EEEE' | uppercase }}
