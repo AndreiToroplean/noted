@@ -5,8 +5,13 @@
  * day's items carry no id on the way out — their order in the list is their
  * position.
  */
+import { isDevMode } from '@angular/core';
 
-export const API_BASE = 'http://127.0.0.1:8000';
+/**
+ * A production build is served by the API itself, so it asks its own origin;
+ * `ng serve` runs beside the API on another port.
+ */
+export const API_BASE = isDevMode() ? 'http://127.0.0.1:8000' : '';
 
 export type DayStatus = 'working' | 'holiday' | 'off' | 'sick';
 export type EntryKind = 'task' | 'meta';
