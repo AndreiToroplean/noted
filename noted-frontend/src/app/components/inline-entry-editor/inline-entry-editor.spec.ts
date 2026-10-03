@@ -55,9 +55,18 @@ describe('InlineEntryEditor', () => {
   });
 
   it('adds a new line on Ctrl+Enter, rather than saving', () => {
-    const { field, saved } = render({ text: 'Fixed it', note: null });
-    expect(press(field, 'Enter', true).defaultPrevented).toBe(true);
-    expect(saved).toEqual([]);
+    // Typed through the browser's own editing, so Ctrl+Z takes it back; the
+    // test browser has none of that to call.
+    const insert = vi.fn();
+    Object.defineProperty(document, 'execCommand', { value: insert, configurable: true });
+    try {
+      const { field, saved } = render({ text: 'Fixed it', note: null });
+      expect(press(field, 'Enter', true).defaultPrevented).toBe(true);
+      expect(insert).toHaveBeenCalledWith('insertText', false, '\n');
+      expect(saved).toEqual([]);
+    } finally {
+      delete (document as { execCommand?: unknown }).execCommand;
+    }
   });
 
   it('saves on Enter, the first line as the entry and the rest as the note', () => {
