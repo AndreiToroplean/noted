@@ -1,0 +1,15 @@
+<div class="entry-editor px-2 py-1">
+  <textarea
+    #field
+    class="entry-editor-field w-full resize-none px-1 text-sm"
+    rows="1"
+    placeholder="[T] project: what was done"
+    [disabled]="busy()"
+    (input)="text.set(field.value)"
+    (keydown)="onKeydown($event)"
+  ></textarea>
+  @if (error(); as message) {
+    <div class="entry-editor-error text-xs" role="alert">{{ message }}</div>
+  }
+  <div class="text-xs opacity-50">Ctrl+Enter to add · Esc to cancel</div>
+</div>

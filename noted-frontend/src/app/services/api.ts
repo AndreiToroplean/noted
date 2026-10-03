@@ -53,6 +53,18 @@ export function isBreak(item: DayItem): item is Break {
   return item.kind === 'break';
 }
 
+/**
+ * An arrow, `[-> 9:15]`, as the API reads it. Whether it is the arrival or the
+ * departure depends on where in the day it was written, so the client decides.
+ */
+export interface Clock {
+  kind: 'clock';
+  time: Time;
+}
+
+/** What `POST /parse` makes of a typed line. */
+export type ParsedItem = Omit<Entry, 'id' | 'position'> | Omit<Break, 'id' | 'position'> | Clock;
+
 export interface Day {
   date: IsoDate;
   status: DayStatus;

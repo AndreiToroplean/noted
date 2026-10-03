@@ -113,3 +113,82 @@ describe('AppData', () => {
     http.verify();
   });
 });
+
+describe('AppData typing into a day', () => {
+  let data: AppData;
+  let http: HttpTestingController;
+
+  beforeEach(async () => {
+    TestBed.configureTestingModule({
+      providers: [provideHttpClient(), provideHttpClientTesting()],
+    });
+    data = TestBed.inject(AppData);
+    http = TestBed.inject(HttpTestingController);
+
+    TestBed.tick();
+    http.expectOne(`${API_BASE}/categories`).flush([]);
+    http.expectOne(`${API_BASE}/weeks`).flush([MONDAY]);
+    await settle();
+    http.expectOne(`${API_BASE}/journal/${MONDAY}`).flush(week());
+    await settle();
+  });
+
+  async function type(text: string, reply: object) {
+    const done = data.addTyped(MONDAY, text);
+    const request = http.expectOne(`${API_BASE}/parse`);
+    expect(request.request.body).toEqual({ text });
+    request.flush(reply);
+    await done;
+    return data.week()!.days[0];
+  }
+
+  const task = {
+    kind: 'task',
+    done: false,
+    category: 'T',
+    project_id: null,
+    text: 'Fixed it',
+    note: null,
+    explicit_minutes: null,
+    explicit_start: null,
+    explicit_end: null,
+    approx_weight: null,
+  };
+
+  it('adds what the line was read as to the end of the day', async () => {
+    const monday = await type('[T] Fixed it', task);
+    expect(monday.items).toHaveLength(1);
+    expect(monday.items[0]).toMatchObject({ kind: 'task', text: 'Fixed it' });
+  });
+
+  it('gives each new item an id of its own until the server assigns one', async () => {
+    await type('[T] Fixed it', task);
+    const monday = await type('[T] Fixed it', task);
+    const [first, second] = monday.items;
+    expect(first.id).not.toBe(second.id);
+  });
+
+  it('reads an arrow before any work as the arrival', async () => {
+    const monday = await type('[-> 9:15]', { kind: 'clock', time: '09:15:00' });
+    expect(monday.arrival).toBe('09:15:00');
+    expect(monday.items).toHaveLength(0);
+  });
+
+  it('reads an arrow after some work as the departure', async () => {
+    await type('[T] Fixed it', task);
+    const monday = await type('[-> 18:30]', { kind: 'clock', time: '18:30:00' });
+    expect(monday.departure).toBe('18:30:00');
+  });
+
+  it('says why a line was refused', async () => {
+    const done = data.addTyped(MONDAY, '[Zz] Something');
+    http
+      .expectOne(`${API_BASE}/parse`)
+      .flush(
+        { detail: 'There is no [Zz] category.' },
+        { status: 422, statusText: 'Unprocessable' },
+      );
+    await expect(done).rejects.toThrow('There is no [Zz] category.');
+    expect(data.week()!.days[0].items).toHaveLength(0);
+  });
+});

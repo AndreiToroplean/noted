@@ -45,6 +45,26 @@
         </li>
       }
     }
+    <li>
+      @if (adding()) {
+        <app-entry-editor
+          [error]="addError()"
+          [busy]="addBusy()"
+          (submitted)="add($event)"
+          (cancelled)="closeEditor()"
+        />
+      } @else {
+        <button
+          type="button"
+          class="day-add w-full px-2 py-1 text-left text-sm"
+          aria-label="Add an entry"
+          data-add
+          (click)="adding.set(true)"
+        >
+          +
+        </button>
+      }
+    </li>
   </ul>
 
   @if (data.status === 'working' && data.departure) {

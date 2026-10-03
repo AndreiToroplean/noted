@@ -6,6 +6,7 @@ import { settle } from 'testing/settle';
 
 import { Day } from 'app/components/day/day';
 import { API_BASE, Break, Day as DayData, DayItem, Entry } from 'app/services/api';
+import { AppData } from 'app/services/app-data';
 
 function entry(category: string | null, over: Partial<Entry> = {}): Entry {
   return {
@@ -149,9 +150,9 @@ describe('Day hours', () => {
         ],
       }),
     );
-    const rows = [...dom.querySelectorAll('li')].map(row =>
-      row.hasAttribute('data-break') ? 'break' : row.textContent?.trim(),
-    );
+    const rows = [...dom.querySelectorAll('li')]
+      .filter(row => !row.querySelector('[data-add]'))
+      .map(row => (row.hasAttribute('data-break') ? 'break' : row.textContent?.trim()));
     expect(rows).toEqual(['Morning', 'break', 'Afternoon']);
   });
 
@@ -159,5 +160,79 @@ describe('Day hours', () => {
     const dom = await render(withHours({ status: 'paid_holiday', arrival: '09:30:00' }));
     expect(dom.textContent).toContain('paid holiday');
     expect(dom.querySelector('[data-arrival]')).toBeNull();
+  });
+});
+
+describe('Day adding an entry', () => {
+  let http: HttpTestingController;
+  let appData: AppData;
+
+  beforeEach(() => {
+    TestBed.configureTestingModule({
+      providers: [provideHttpClient(), provideHttpClientTesting()],
+    });
+    http = TestBed.inject(HttpTestingController);
+    appData = TestBed.inject(AppData);
+  });
+
+  async function render() {
+    appData.week.set({ week: '2026-02-09', days: [day([])] });
+    const fixture = TestBed.createComponent(Day);
+    fixture.componentRef.setInput('day', appData.week()!.days[0]);
+    fixture.detectChanges();
+    http.match(() => true).forEach(request => request.flush([]));
+    await settle();
+    fixture.detectChanges();
+    return fixture;
+  }
+
+  function open(fixture: Awaited<ReturnType<typeof render>>) {
+    (fixture.nativeElement.querySelector('[data-add]') as HTMLElement).click();
+    fixture.detectChanges();
+    return fixture.nativeElement.querySelector('textarea') as HTMLTextAreaElement;
+  }
+
+  function finish(field: HTMLTextAreaElement, text: string) {
+    field.value = text;
+    field.dispatchEvent(new Event('input'));
+    field.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', ctrlKey: true }));
+  }
+
+  it('ends each day with a row to add to it', async () => {
+    const fixture = await render();
+    expect(fixture.nativeElement.querySelector('textarea')).toBeNull();
+    expect(open(fixture)).not.toBeNull();
+  });
+
+  it('adds the line to the day and stays open for the next one', async () => {
+    const fixture = await render();
+    const field = open(fixture);
+    finish(field, '[T] Fixed it');
+    http.expectOne(`${API_BASE}/parse`).flush(entry('T', { text: 'Fixed it' }));
+    await settle();
+    fixture.detectChanges();
+
+    expect(appData.week()!.days[0].items).toHaveLength(1);
+    const reopened = fixture.nativeElement.querySelector('textarea') as HTMLTextAreaElement;
+    expect(reopened.value).toBe('');
+  });
+
+  it('keeps the line and says why when it cannot be read', async () => {
+    const fixture = await render();
+    const field = open(fixture);
+    finish(field, '[Zz] Something');
+    http
+      .expectOne(`${API_BASE}/parse`)
+      .flush(
+        { detail: 'There is no [Zz] category.' },
+        { status: 422, statusText: 'Unprocessable' },
+      );
+    await settle();
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.textContent).toContain('There is no [Zz] category.');
+    expect((fixture.nativeElement.querySelector('textarea') as HTMLTextAreaElement).value).toBe(
+      '[Zz] Something',
+    );
   });
 });

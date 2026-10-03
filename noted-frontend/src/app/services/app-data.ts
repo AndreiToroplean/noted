@@ -1,7 +1,9 @@
-import { HttpClient, httpResource } from '@angular/common/http';
+import { HttpClient, HttpErrorResponse, httpResource } from '@angular/common/http';
 import { Injectable, computed, effect, inject, linkedSignal, signal } from '@angular/core';
 
-import { API_BASE, Category, IsoDate, Week, toWrite } from 'app/services/api';
+import { firstValueFrom } from 'rxjs';
+
+import { API_BASE, Category, Day, IsoDate, ParsedItem, Week, toWrite } from 'app/services/api';
 
 /**
  * How long the week sits still before it is written back. Long enough that
@@ -9,6 +11,12 @@ import { API_BASE, Category, IsoDate, Week, toWrite } from 'app/services/api';
  * closing the tab mid-thought loses nothing worth mourning.
  */
 const SAVE_DEBOUNCE_MS = 800;
+
+/**
+ * Ids for items made here and not yet saved. Negative so they can never meet
+ * one the server assigned; they are dropped on the way out, like every id.
+ */
+let nextLocalId = -1;
 
 @Injectable({ providedIn: 'root' })
 export class AppData {
@@ -56,6 +64,28 @@ export class AppData {
     });
   }
 
+  /**
+   * Read a typed line and add what it turned out to be to the end of a day.
+   * Rejects with the API's own explanation when the line cannot be read, so
+   * the editor can show it where it was typed.
+   */
+  async addTyped(date: IsoDate, text: string): Promise<void> {
+    let parsed: ParsedItem;
+    try {
+      parsed = await firstValueFrom(this.http.post<ParsedItem>(`${API_BASE}/parse`, { text }));
+    } catch (error) {
+      throw new Error(explain(error));
+    }
+    this.updateDay(date, day => place(day, parsed));
+  }
+
+  private updateDay(date: IsoDate, change: (day: Day) => Day) {
+    this.week.update(
+      week =>
+        week && { ...week, days: week.days.map(day => (day.date === date ? change(day) : day)) },
+    );
+  }
+
   private save(draft: Week) {
     this.saving.set(true);
     this.saveFailed.set(false);
@@ -79,4 +109,20 @@ export class AppData {
       },
     });
   }
+}
+
+function place(day: Day, parsed: ParsedItem): Day {
+  if (parsed.kind === 'clock') {
+    // The importer's rule: an arrow before any work is the arrival, and one
+    // after it is the departure.
+    const started = day.items.some(item => item.kind === 'task');
+    return started ? { ...day, departure: parsed.time } : { ...day, arrival: parsed.time };
+  }
+  const item = { ...parsed, id: nextLocalId--, position: day.items.length };
+  return { ...day, items: [...day.items, item] };
+}
+
+function explain(error: unknown): string {
+  const detail: unknown = error instanceof HttpErrorResponse ? error.error?.detail : undefined;
+  return typeof detail === 'string' ? detail : 'That line could not be read.';
 }

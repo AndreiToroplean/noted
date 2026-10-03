@@ -109,3 +109,30 @@ body {
   background-color: var(--app-surface-raised);
   border-bottom: 1px solid var(--app-outline);
 }
+
+.day-add {
+  color: var(--app-on-surface);
+  opacity: 0.35;
+  cursor: pointer;
+}
+
+.day-add:hover,
+.day-add:focus-visible {
+  opacity: 0.8;
+  background-color: var(--app-surface-raised);
+}
+
+.entry-editor-field {
+  /* Grows with what is typed, so a note never hides behind a scrollbar. */
+  field-sizing: content;
+  min-height: 1.5rem;
+  color: var(--app-on-surface);
+  background-color: var(--app-surface-raised);
+  border: 1px solid var(--app-accent);
+  border-radius: 2px;
+  outline: none;
+}
+
+.entry-editor-error {
+  color: var(--checkbox-not-done);
+}
