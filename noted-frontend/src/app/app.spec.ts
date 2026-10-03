@@ -125,7 +125,7 @@ describe('App', () => {
 
       press(document.body, 'Delete', { ctrlKey: false });
       expect(appData.week()!.days[0].items).toMatchObject([{ text: 'Two' }]);
-      expect(TestBed.inject(Selection).size()).toBe(0);
+      expect(TestBed.inject(Selection).has('2026-02-09', 'entry-1')).toBe(false);
 
       press(document.body, 'z');
       expect(appData.week()!.days[0].items).toHaveLength(2);

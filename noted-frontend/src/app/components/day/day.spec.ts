@@ -863,6 +863,21 @@ describe('Day deleting items', () => {
     remove.click();
     expect(appData.week()!.days[0].items).toMatchObject([{ text: 'Two' }]);
   });
+
+  it('selects the item before what was deleted, or the first when the top went', async () => {
+    const fixture = await render();
+    (await rightClick(fixture, 2)).click();
+    fixture.componentRef.setInput('day', appData.week()!.days[0]);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    expect(option(fixture, 1).getAttribute('aria-selected')).toBe('true');
+    expect(document.activeElement).toBe(option(fixture, 1));
+
+    (await rightClick(fixture, 0)).click();
+    fixture.componentRef.setInput('day', appData.week()!.days[0]);
+    fixture.detectChanges();
+    expect(option(fixture, 0).getAttribute('aria-selected')).toBe('true');
+  });
 });
 
 describe('Day dragging items', () => {

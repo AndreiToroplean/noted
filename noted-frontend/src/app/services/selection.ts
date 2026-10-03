@@ -1,6 +1,14 @@
-import { Injectable, computed, inject, linkedSignal, signal } from '@angular/core';
+import {
+  Injectable,
+  Injector,
+  afterNextRender,
+  computed,
+  inject,
+  linkedSignal,
+  signal,
+} from '@angular/core';
 
-import { IsoDate } from 'app/services/api';
+import { IsoDate, itemKey } from 'app/services/api';
 import { AppData } from 'app/services/app-data';
 
 interface Selected {
@@ -82,12 +90,30 @@ export class Selection {
    */
   readonly carriedHeight = signal<number | null>(null);
 
-  /** Delete what is selected. No confirmation: Ctrl+Z brings it back. */
+  private readonly injector = inject(Injector);
+
+  /**
+   * Delete what is selected. No confirmation: Ctrl+Z brings it back. What was
+   * just before it is selected and focused instead, or the first item left when
+   * the top went, so the keyboard carries on from there.
+   */
   deleteSelected() {
     const { date, keys } = this.state();
     if (date === null || keys.size === 0) return;
+    const order = this.appData
+      .week()
+      ?.days.find(day => day.date === date)
+      ?.items.map(itemKey);
+    const first = order?.findIndex(key => keys.has(key)) ?? -1;
+    const next = order?.[first - 1] ?? order?.find(key => !keys.has(key));
     this.appData.removeItems(date, keys);
-    this.clear();
+    if (!next) return this.clear();
+    this.only(date, next);
+    afterNextRender(
+      () =>
+        document.querySelector<HTMLElement>(`[data-date="${date}"] [data-key="${next}"]`)?.focus(),
+      { injector: this.injector },
+    );
   }
 
   clear() {
