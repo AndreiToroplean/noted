@@ -1,0 +1,27 @@
+// Material's theme for Noted, generated from the spreadsheet's own colours: the
+// warm grey of its cells seeds the neutral palettes, so every surface tone is a
+// shade of it, and its green seeds the accent. The palettes themselves are in
+// `_theme-colors.scss`, from `ng generate @angular/material:theme-color`; to
+// re-theme, regenerate them rather than overriding the tokens they produce.
+//
+// Kept apart from `styles.css` because it needs Sass, and Tailwind v4 does not
+// go through Sass.
+
+@use '@angular/material' as mat;
+@use './theme-colors' as noted;
+
+html {
+  color-scheme: dark;
+
+  @include mat.theme(
+    (
+      color: (
+        primary: noted.$primary-palette,
+        tertiary: noted.$tertiary-palette,
+        theme-type: dark,
+      ),
+      typography: Roboto,
+      density: 0,
+    )
+  );
+}

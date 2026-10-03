@@ -1,5 +1,4 @@
 @import 'tailwindcss';
-@import '@angular/material/prebuilt-themes/azure-blue.css';
 /* The app's one icon set, served from node_modules so it works offline. */
 @import 'material-symbols/rounded.css';
 
@@ -11,22 +10,22 @@ body {
 
 body {
   color: var(--app-on-surface);
-  background-color: var(--app-surface);
+  background-color: var(--app-page);
 }
 
 /*
- * The app's own colours, lifted from the spreadsheet this replaces.
+ * Colours.
  *
- * Only the chrome lives here — the surfaces, and the two states the journal
- * signals by colour. Category and project colours are deliberately absent: they
- * are the user's data, they are edited in the app, and they come from the
- * database. See `noted-api/seed.py` for the ones a new database starts with.
+ * Material's theme (`theme.scss`) supplies the palette: a ladder of surface
+ * tones from the spreadsheet's warm grey, text and outline colours that go with
+ * them, and the green accent. Everything here is drawn from those tokens.
+ *
+ * The exceptions are the colours that mean something, which keep the
+ * spreadsheet's exact values: time in magenta, failure in red. Category and
+ * project colours are absent altogether: they are the user's data, edited in the
+ * app, and come from the database. See `noted-api/seed.py` for the defaults.
  */
 :root {
-  /* Surfaces */
-  --cell-base: #312e2a;
-  --checkbox-base: #2c2115;
-
   /* Time — arrival, breaks, departure */
   --cell-free-time: #662344;
   --checkbox-free-time: #9b0c56;
@@ -36,54 +35,25 @@ body {
   --checkbox-not-done: #980000;
 
   /*
-   * Which colour plays which UI role. This is the only place that decides, so a
-   * re-theme happens here and nowhere else.
+   * Which tone plays which part. This is the only place that decides, so a
+   * change of layout's look happens here and nowhere else. Each layer sits one
+   * step up the ladder from what it sits on.
    */
-  --app-surface: var(--cell-base);
-  --app-surface-raised: var(--checkbox-base);
-  --app-accent: #6fb373;
-  --app-on-surface: #ffffff;
-  --app-on-accent: #04220a;
-  --app-outline: color-mix(in srgb, var(--app-on-surface) 25%, transparent);
-}
+  --app-page: var(--mat-sys-surface);
+  --app-day: var(--mat-sys-surface-container-low);
+  --app-entry: var(--mat-sys-surface-container-high);
+  --app-frame: var(--mat-sys-surface-container-highest);
+  --app-field: var(--mat-sys-surface-container-highest);
+  --app-on-surface: var(--mat-sys-on-surface);
+  --app-accent: var(--mat-sys-primary);
+  --app-outline: var(--mat-sys-outline-variant);
 
-/*
- * Seed Material's M3 system tokens from the palette above so Material
- * components and journal content read as one app. The prebuilt theme imported
- * at the top supplies every token we don't name here.
- */
-:root {
-  color-scheme: dark;
-
-  --mat-sys-primary: var(--app-accent);
-  --mat-sys-on-primary: var(--app-on-accent);
-  --mat-sys-secondary: var(--app-accent);
-  --mat-sys-on-secondary: var(--app-on-accent);
-  --mat-sys-secondary-container: color-mix(in srgb, var(--app-accent) 28%, var(--app-surface));
-  --mat-sys-on-secondary-container: var(--app-on-surface);
-
-  --mat-sys-background: var(--app-surface);
-  --mat-sys-on-background: var(--app-on-surface);
-  --mat-sys-surface: var(--app-surface);
-  --mat-sys-surface-dim: var(--app-surface);
-  --mat-sys-surface-bright: var(--app-surface-raised);
-  --mat-sys-surface-container-lowest: var(--app-surface);
-  --mat-sys-surface-container-low: var(--app-surface);
-  --mat-sys-surface-container: var(--app-surface-raised);
-  --mat-sys-surface-container-high: var(--app-surface-raised);
-  --mat-sys-surface-container-highest: var(--app-surface-raised);
-  --mat-sys-on-surface: var(--app-on-surface);
-  --mat-sys-on-surface-variant: var(--app-on-surface);
-
-  --mat-sys-outline: var(--app-outline);
-  --mat-sys-outline-variant: var(--app-outline);
-
-  --mat-sys-error: var(--checkbox-not-done);
-  --mat-sys-on-error: var(--app-on-surface);
+  /* The page's own scrollbars, in the theme's tones rather than the browser's. */
+  scrollbar-color: var(--mat-sys-outline) transparent;
 }
 
 .day {
-  background-color: var(--app-surface);
+  background-color: var(--app-day);
 }
 
 .day-time {
@@ -92,7 +62,7 @@ body {
 }
 
 .day-frame {
-  background-color: var(--app-surface-raised);
+  background-color: var(--app-frame);
 }
 
 .day-break {
@@ -110,7 +80,7 @@ body {
 }
 
 .day-header {
-  background-color: var(--app-surface-raised);
+  background-color: var(--app-frame);
   border-bottom: 1px solid var(--app-outline);
 }
 
@@ -123,7 +93,7 @@ body {
 .day-add:hover,
 .day-add:focus-visible {
   opacity: 0.8;
-  background-color: var(--app-surface-raised);
+  background-color: var(--app-entry);
 }
 
 .entry-editor-field {
@@ -131,23 +101,23 @@ body {
   field-sizing: content;
   min-height: 1.5rem;
   color: var(--app-on-surface);
-  background-color: var(--app-surface-raised);
+  background-color: var(--app-field);
   border: 1px solid var(--app-accent);
   border-radius: 2px;
   outline: none;
 }
 
 .entry-editor-error {
-  color: var(--checkbox-not-done);
+  color: var(--mat-sys-error);
 }
 
 /*
  * The cell at the head of a task: the category's colour, with the done checkbox
  * and the category's letters drawn in whichever of black or white reads on it.
- * Uncategorised, it takes the raised surface.
+ * Uncategorised, it takes the frame's tone.
  */
 .entry-cell {
-  --cell: var(--category, var(--app-surface-raised));
+  --cell: var(--category, var(--app-frame));
   background-color: var(--cell);
   color: contrast-color(var(--cell));
   border-radius: var(--mat-sys-corner-extra-small) 0 0 var(--mat-sys-corner-extra-small);
@@ -189,7 +159,7 @@ body {
 
 .break-editor-field {
   color: var(--app-on-surface);
-  background-color: var(--app-surface-raised);
+  background-color: var(--app-field);
   border: 1px solid var(--checkbox-free-time);
   border-radius: 2px;
   outline: none;
@@ -218,7 +188,7 @@ body {
 
 .day-time-field {
   color: var(--app-on-surface);
-  background-color: var(--app-surface);
+  background-color: var(--app-field);
   border: 1px solid var(--checkbox-free-time);
   border-radius: 2px;
   outline: none;
@@ -231,15 +201,21 @@ body {
 }
 
 /*
- * A day's items look and behave like Material list items: the whole row, swatch
- * and all, is one box, washed with Material's state layer on hover and focus,
- * and filled with the secondary container colour when selected.
+ * A day's items look and behave like Material list items: the whole row, cell
+ * and all, is one box on the entry tone, washed with Material's state layer on
+ * hover and focus, and filled with the secondary container colour when
+ * selected. A break has no box: it is a divider between entries, not one.
  */
 .day-item {
   position: relative;
+  background-color: var(--app-entry);
   margin: 1px 4px;
   border-radius: var(--mat-sys-corner-extra-small);
   outline: none;
+}
+
+.day-item-break {
+  background-color: transparent;
 }
 
 .day-item::before {
@@ -298,9 +274,9 @@ body {
 }
 
 .day-item.cdk-drag-preview {
-  background-color: var(--app-surface-raised);
+  background-color: var(--app-frame);
   color: var(--app-on-surface);
-  box-shadow: 0 4px 12px rgb(0 0 0 / 50%);
+  box-shadow: var(--mat-sys-level3);
 }
 
 .day-item-drop-gap {
@@ -310,8 +286,8 @@ body {
   border-radius: var(--mat-sys-corner-extra-small);
 }
 
-/* A button for something that can't be taken back. */
+/* A button for something that can't be taken back, in the theme's error role. */
 .mat-mdc-unelevated-button.danger {
-  --mat-button-filled-container-color: var(--checkbox-not-done);
-  --mat-button-filled-label-text-color: var(--app-on-surface);
+  --mat-button-filled-container-color: var(--mat-sys-error);
+  --mat-button-filled-label-text-color: var(--mat-sys-on-error);
 }
