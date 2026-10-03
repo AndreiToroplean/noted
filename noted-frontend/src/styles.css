@@ -142,3 +142,36 @@ body {
 .entry-swatch-empty {
   border: 1px dashed var(--app-outline);
 }
+
+.break-editor {
+  color: var(--checkbox-free-time);
+}
+
+.break-editor-field {
+  color: var(--app-on-surface);
+  background-color: var(--app-surface-raised);
+  border: 1px solid var(--checkbox-free-time);
+  border-radius: 2px;
+  outline: none;
+}
+
+.break-editor-step {
+  display: inline-flex;
+  cursor: pointer;
+}
+
+.break-editor-step .mat-icon {
+  font-size: 18px;
+  width: 18px;
+  height: 18px;
+}
+
+.break-editor-mode {
+  cursor: pointer;
+  opacity: 0.5;
+}
+
+.break-editor-mode-on {
+  opacity: 1;
+  text-decoration: underline;
+}

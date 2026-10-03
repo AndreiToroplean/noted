@@ -217,6 +217,23 @@ describe('Day adding an entry', () => {
     expect(reopened.value).toBe('');
   });
 
+  it('adds a break instead after Ctrl+B, then goes back to entries', async () => {
+    const fixture = await render();
+    const field = open(fixture);
+    field.dispatchEvent(new KeyboardEvent('keydown', { key: 'b', ctrlKey: true }));
+    fixture.detectChanges();
+
+    const editor = fixture.nativeElement.querySelector('[data-break-editor]') as HTMLElement;
+    expect(editor).not.toBeNull();
+    editor.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', ctrlKey: true }));
+    fixture.detectChanges();
+
+    http.expectNone(`${API_BASE}/parse`);
+    expect(appData.week()!.days[0].items).toMatchObject([{ kind: 'break', minutes: 15 }]);
+    expect(fixture.nativeElement.querySelector('[data-break-editor]')).toBeNull();
+    expect(fixture.nativeElement.querySelector('textarea')).not.toBeNull();
+  });
+
   it('keeps the line and says why when it cannot be read', async () => {
     const fixture = await render();
     const field = open(fixture);

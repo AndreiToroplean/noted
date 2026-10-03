@@ -33,6 +33,8 @@ export class EntryEditor {
 
   readonly submitted = output<string>();
   readonly cancelled = output<void>();
+  /** Ctrl+B on a new line: the user means a break, which is not typed. */
+  readonly switchToBreak = output<void>();
 
   protected readonly text = linkedSignal(() => this.initial());
 
@@ -59,9 +61,14 @@ export class EntryEditor {
     if (event.key === 'Enter' && (event.ctrlKey || event.metaKey)) {
       event.preventDefault();
       this.submit();
+    } else if (event.key.toLowerCase() === 'b' && (event.ctrlKey || event.metaKey)) {
+      // Only a new line can become a break; an entry being edited stays one.
+      if (this.initial()) return;
+      event.preventDefault();
+      void this.leaveFor(() => this.switchToBreak.emit());
     } else if (event.key === 'Escape') {
       event.preventDefault();
-      void this.cancel();
+      void this.leaveFor(() => this.cancelled.emit());
     }
   }
 
@@ -74,13 +81,14 @@ export class EntryEditor {
     this.submitted.emit(this.text());
   }
 
-  private async cancel() {
+  /** Go, asking first if that would lose something typed. */
+  private async leaveFor(go: () => void) {
     if (this.text().trim() === this.initial().trim()) {
-      this.cancelled.emit();
+      go();
       return;
     }
     const discard = await firstValueFrom(this.dialog.open(ConfirmDiscard).afterClosed());
-    if (discard) this.cancelled.emit();
+    if (discard) go();
     else this.focus();
   }
 

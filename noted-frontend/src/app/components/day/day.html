@@ -60,12 +60,19 @@
       }
     }
     <li>
-      @if (adding()) {
+      @if (adding() === 'entry') {
         <app-entry-editor
           [error]="addError()"
           [busy]="addBusy()"
           (submitted)="add($event)"
           (cancelled)="closeEditor()"
+          (switchToBreak)="adding.set('break')"
+        />
+      } @else if (adding() === 'break') {
+        <app-break-editor
+          (submitted)="addBreak($event)"
+          (cancelled)="closeEditor()"
+          (switchToEntry)="adding.set('entry')"
         />
       } @else {
         <button
@@ -73,7 +80,7 @@
           class="day-add w-full px-2 py-1 text-left text-sm"
           aria-label="Add an entry"
           data-add
-          (click)="adding.set(true)"
+          (click)="adding.set('entry')"
         >
           +
         </button>

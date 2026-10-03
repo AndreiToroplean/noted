@@ -84,6 +84,16 @@ describe('EntryEditor', () => {
     expect(cancelled).toBe(1);
   });
 
+  it('turns into a break on Ctrl+B', () => {
+    const fixture = TestBed.createComponent(EntryEditor);
+    let switched = 0;
+    fixture.componentInstance.switchToBreak.subscribe(() => switched++);
+    fixture.detectChanges();
+    const field = fixture.nativeElement.querySelector('textarea') as HTMLTextAreaElement;
+    expect(press(field, 'b', true).defaultPrevented).toBe(true);
+    expect(switched).toBe(1);
+  });
+
   it('shows why the last attempt was refused', () => {
     const { fixture } = render();
     fixture.componentRef.setInput('error', 'There is no [Zz] category.');

@@ -1,0 +1,109 @@
+<div
+  class="break-editor flex flex-col gap-1 px-2 py-1 text-xs"
+  role="group"
+  aria-label="Break"
+  tabindex="-1"
+  data-break-editor
+  (keydown)="onKeydown($event)"
+>
+  <div class="flex items-center gap-2">
+    <label class="flex items-center gap-1">
+      <input type="checkbox" [checked]="isNoon()" (change)="isNoon.set(!isNoon())" data-noon />
+      Lunch
+    </label>
+    <span class="ml-auto flex">
+      <button
+        type="button"
+        class="break-editor-mode px-1"
+        [class.break-editor-mode-on]="mode() === 'duration'"
+        (click)="mode.set('duration')"
+        data-mode-duration
+      >
+        Length
+      </button>
+      <button
+        type="button"
+        class="break-editor-mode px-1"
+        [class.break-editor-mode-on]="mode() === 'range'"
+        (click)="mode.set('range')"
+        data-mode-range
+      >
+        From–to
+      </button>
+    </span>
+  </div>
+
+  @if (mode() === 'duration') {
+    <div class="flex items-center gap-1">
+      <button
+        type="button"
+        class="break-editor-step"
+        aria-label="15 minutes less"
+        (click)="step(-15)"
+        data-less
+      >
+        <mat-icon>remove</mat-icon>
+      </button>
+      <input
+        #first
+        #minutesField
+        type="number"
+        min="15"
+        step="15"
+        class="break-editor-field w-14 px-1 text-center"
+        aria-label="Minutes"
+        [value]="minutes()"
+        (input)="setMinutes(minutesField.value)"
+        data-minutes
+      />
+      <button
+        type="button"
+        class="break-editor-step"
+        aria-label="15 minutes more"
+        (click)="step(15)"
+        data-more
+      >
+        <mat-icon>add</mat-icon>
+      </button>
+      <span class="opacity-70">{{ length() }}</span>
+    </div>
+  } @else {
+    <div class="flex items-center gap-1">
+      <input
+        #first
+        #startField
+        type="time"
+        class="break-editor-field px-1"
+        aria-label="Start"
+        [value]="start()"
+        (input)="start.set(startField.value)"
+        data-start
+      />
+      –
+      <input
+        #endField
+        type="time"
+        class="break-editor-field px-1"
+        aria-label="End"
+        [value]="end()"
+        (input)="end.set(endField.value)"
+        data-end
+      />
+    </div>
+  }
+
+  <input
+    #descriptionField
+    type="text"
+    class="break-editor-field px-1"
+    placeholder="What for, if worth saying"
+    [value]="description()"
+    (input)="description.set(descriptionField.value)"
+    data-description
+  />
+
+  @if (error(); as message) {
+    <div class="entry-editor-error" role="alert">{{ message }}</div>
+  }
+  <div class="opacity-50">Ctrl+Enter to keep · Ctrl+B for an entry · Esc to cancel</div>
+</div>

@@ -5,6 +5,7 @@ import { firstValueFrom } from 'rxjs';
 
 import {
   API_BASE,
+  BreakDraft,
   Category,
   Day,
   Entry,
@@ -86,6 +87,11 @@ export class AppData {
       throw new Error(explain(error));
     }
     this.updateDay(date, day => place(day, parsed));
+  }
+
+  /** Add a break made in the editor, already in fields, to the end of a day. */
+  addBreak(date: IsoDate, draft: BreakDraft) {
+    this.updateDay(date, day => place(day, draft));
   }
 
   /** Change some of an entry's fields. Breaks have ids of their own, so only entries match. */

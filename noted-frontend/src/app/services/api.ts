@@ -43,6 +43,9 @@ export interface Break {
   minutes: number | null;
 }
 
+/** A break as an editor hands it over: everything but the ids the server assigns. */
+export type BreakDraft = Omit<Break, 'id' | 'position'>;
+
 /**
  * One thing in a day, in the order it happened. Lunch sits between the
  * morning's work and the afternoon's, so entries and breaks share one list.

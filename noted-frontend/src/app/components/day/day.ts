@@ -3,13 +3,15 @@ import { Component, inject, input, signal, viewChild } from '@angular/core';
 
 import { MatMenuModule } from '@angular/material/menu';
 
+import { BreakEditor } from 'app/components/break-editor/break-editor';
 import { EntryEditor } from 'app/components/entry-editor/entry-editor';
-import { Break, Day as DayData, DayItem, Entry, isBreak } from 'app/services/api';
+import { Break, BreakDraft, Day as DayData, DayItem, Entry, isBreak } from 'app/services/api';
 import { AppData } from 'app/services/app-data';
+import { clock, formatMinutes } from 'app/services/time';
 
 @Component({
   selector: 'app-day',
-  imports: [UpperCasePipe, DatePipe, SlicePipe, EntryEditor, MatMenuModule],
+  imports: [UpperCasePipe, DatePipe, SlicePipe, EntryEditor, BreakEditor, MatMenuModule],
   templateUrl: './day.html',
 })
 export class Day {
@@ -41,8 +43,8 @@ export class Day {
     this.appData.updateEntry(this.day().date, entry.id, { category });
   }
 
-  /** Whether the row at the foot of the day is open for typing. */
-  protected readonly adding = signal(false);
+  /** What the row at the foot of the day is open for, if anything. */
+  protected readonly adding = signal<'entry' | 'break' | null>(null);
   protected readonly addError = signal<string | null>(null);
   protected readonly addBusy = signal(false);
   private readonly editor = viewChild(EntryEditor);
@@ -61,8 +63,14 @@ export class Day {
     }
   }
 
+  protected addBreak(draft: BreakDraft) {
+    this.appData.addBreak(this.day().date, draft);
+    // Back to entries, which is what follows a break far more often than another.
+    this.adding.set('entry');
+  }
+
   protected closeEditor() {
-    this.adding.set(false);
+    this.adding.set(null);
     this.addError.set(null);
   }
 
@@ -89,15 +97,4 @@ export class Day {
     if (pause.start) return `from ${clock(pause.start)}`;
     return pause.minutes === null ? '' : formatMinutes(pause.minutes);
   }
-}
-
-function clock(time: string): string {
-  return time.slice(0, 5);
-}
-
-function formatMinutes(minutes: number): string {
-  const hours = Math.floor(minutes / 60);
-  const rest = minutes % 60;
-  if (!hours) return `${rest}m`;
-  return rest ? `${hours}h${`${rest}`.padStart(2, '0')}` : `${hours}h`;
 }
