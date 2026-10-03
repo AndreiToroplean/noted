@@ -255,7 +255,16 @@ def parse(payload: ParseIn, session: Session = Depends(db.session)):
                 f"Write it +{parsed.project}: to declare it.",
             )
 
-    return EntryIn(category=category, project_id=project_id, text=parsed.text, note=parsed.note)
+    return EntryIn(
+        category=category,
+        project_id=project_id,
+        text=parsed.text,
+        note=parsed.note,
+        explicit_minutes=parsed.minutes,
+        explicit_start=parsed.start,
+        explicit_end=parsed.end,
+        approx_weight=parsed.weight,
+    )
 
 
 @app.delete("/journal/{week}", status_code=204)

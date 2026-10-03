@@ -148,3 +148,43 @@ def test_the_empty_rows_around_a_day_are_not_gaps():
 def test_several_blank_rows_in_a_row_are_one_gap():
     entries, _, _ = column_of("[T] Morning.", "", "", "[T] Afternoon.")
     assert [entry.kind for entry in entries] == ["task", importer.GAP, "task"]
+
+
+def test_a_duration_on_its_own_line_is_how_long_the_entry_took():
+    entry = parse("[T] Write the report.\n[1h30]")
+    assert entry.minutes == 90
+    assert entry.note is None
+
+
+def test_an_arrow_on_its_own_line_is_when_the_entry_finished():
+    entry = parse("[T] Write the report.\n[-> 17:30]")
+    assert entry.end == dt.time(17, 30)
+    assert entry.start is None
+
+
+def test_a_range_on_its_own_line_is_when_the_entry_ran():
+    entry = parse("[T] Write the report.\n[9:00 -> 11:00]")
+    assert (entry.start, entry.end) == (dt.time(9), dt.time(11))
+    assert entry.minutes is None
+
+
+def test_a_while_in_words_is_a_weight_and_its_context_stays_a_note():
+    assert parse("[T] Write the report.\n[Hours]").weight == 3
+    assert parse("[T] Write the report.\n[Several hours]").weight == 5
+    assert parse("[T] Write the report.\n[Hours and hours]").weight == 5
+    assert parse("[T] Write the report.\n[All afternoon]").weight == 3
+    entry = parse("[T] Write the report.\n[Hours on the charts]")
+    assert entry.weight == 3
+    assert entry.note == "on the charts"
+
+
+def test_a_time_fact_leaves_the_rest_of_the_note_alone():
+    entry = parse("[T] Write the report.\n[2h]\nMostly the appendix")
+    assert entry.minutes == 120
+    assert entry.note == "Mostly the appendix"
+
+
+def test_prose_that_mentions_a_time_is_still_a_note():
+    entry = parse("[T] Write the report.\nTook 2h, not [1h] as planned")
+    assert entry.minutes is None
+    assert entry.note == "Took 2h, not [1h] as planned"

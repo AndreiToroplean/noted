@@ -190,7 +190,9 @@ can be corrected out of it. Stored as `OvertimeBaseline`, behind `GET`/`PUT /ove
 The day's total is always known, explicitly or by default. So entry durations are not
 stored and not guessed individually — they're **solved for on read**, against that total.
 
-An entry may specify its timing in several ways, all optional:
+An entry may specify its timing in several ways, all optional, each on a line of its own
+under the entry and read into fields rather than kept as note (`read_timing` in
+`noted-api/importer.py`):
 
 | The entry says      | Written            | Effect                                  |
 | ------------------- | ------------------ | --------------------------------------- |

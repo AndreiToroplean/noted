@@ -112,3 +112,12 @@ def test_a_plus_declares_the_project(client):
 
 def test_an_empty_line_is_refused(client):
     assert parse(client, "   ").status_code == 422
+
+
+def test_a_time_fact_on_the_second_line_is_read_into_fields(client):
+    item = parse(client, "Wrote it up.\n[9:00 -> 10:30]").json()
+    assert item["explicit_start"] == "09:00:00"
+    assert item["explicit_end"] == "10:30:00"
+    assert item["note"] is None
+    assert parse(client, "Wrote it up.\n[45m]").json()["explicit_minutes"] == 45
+    assert parse(client, "Wrote it up.\n[Hours]").json()["approx_weight"] == 3

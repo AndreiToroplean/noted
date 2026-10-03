@@ -175,6 +175,11 @@ class ParsedEntry:
     note: str | None
     #: Filled in from the checkbox beside the cell.
     done: bool = False
+    #: The entry's own timing, from a line of its note — see `read_timing`.
+    minutes: int | None = None
+    start: dt.time | None = None
+    end: dt.time | None = None
+    weight: float | None = None
 
 
 def parse_entry(content: str) -> ParsedEntry:
@@ -200,7 +205,53 @@ def parse_entry(content: str) -> ParsedEntry:
         project = raw.replace("+", "")
         text = text[match.end() :]
 
-    return ParsedEntry("task", category, project, declares, text.strip(), note)
+    entry = ParsedEntry("task", category, project, declares, text.strip(), note)
+    read_timing(entry)
+    return entry
+
+
+#: A while, in words rather than a figure: how many unmarked entries' worth of
+#: the day's remainder each is (specification §6.4). The numbers are tuning, not
+#: a contract; longer phrases first, since `hours` begins two of them.
+WEIGHTS = [
+    ("hours and hours", 5),
+    ("several hours", 5),
+    ("all afternoon", 3),
+    ("hours", 3),
+]
+
+
+def read_timing(entry: ParsedEntry):
+    """Lift the first line of the note that is a time fact into the entry's timing.
+
+    The journal put an entry's timing on a line of its own under it, bracketed
+    like a clock marker: `[1h30]`, `[-> 17:30]`, `[9:00 -> 11:00]`, `[Hours]`.
+    Read, the line is gone from the note; anything else in it is prose and stays.
+    """
+    if not entry.note:
+        return
+    lines = entry.note.split("\n")
+    for index, line in enumerate(lines):
+        match = re.fullmatch(r"\[([^\][]*)\]", line.strip())
+        if not match:
+            continue
+        inner = match.group(1).strip()
+        rest = None
+        if (minutes := parse_duration(inner)) is not None:
+            entry.minutes = minutes
+        elif ends := re.fullmatch(rf"({CLOCK})?\s*->\s*({CLOCK})", inner):
+            entry.start = parse_clock(ends.group(1)) if ends.group(1) else None
+            entry.end = parse_clock(ends.group(2))
+        elif weight := next(
+            ((phrase, w) for phrase, w in WEIGHTS if inner.lower().startswith(phrase)), None
+        ):
+            entry.weight = weight[1]
+            rest = inner[len(weight[0]) :].strip() or None
+        else:
+            continue
+        kept = lines[:index] + ([rest] if rest else []) + lines[index + 1 :]
+        entry.note = "\n".join(kept).strip() or None
+        return
 
 
 def gap_entry() -> ParsedEntry:
@@ -857,6 +908,10 @@ def run(
                         project_id=project_id,
                         text=parsed.text,
                         note=parsed.note,
+                        explicit_minutes=parsed.minutes,
+                        explicit_start=parsed.start,
+                        explicit_end=parsed.end,
+                        approx_weight=parsed.weight,
                     )
                 )
                 counts["meta" if parsed.kind == "meta" else "entries"] += 1
