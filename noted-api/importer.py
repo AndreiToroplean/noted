@@ -3,8 +3,9 @@
 The format is specified in `docs/legacy-journal-format.md`; this reads it.
 
 The import is **re-runnable on purpose**. Getting the legacy parsing right takes
-several passes, so `--reset` wipes everything it previously wrote and starts
-again rather than trying to reconcile. Nothing here is a one-way door.
+several passes, so `--reset` wipes the whole database back to the seed and
+starts again rather than trying to reconcile.
+Nothing here is a one-way door.
 
     python importer.py "C:\\path\\to\\Journal.ods" --reset
 
@@ -49,6 +50,7 @@ from sqlmodel import Session, SQLModel, select
 
 import db
 from models import Break, Day, DayStatus, Entry, Project, Settings
+from seed import seed
 
 RULES_PATH = "importer-rules.toml"
 REPORT_PATH = "data/import-report.txt"
@@ -697,13 +699,11 @@ def minutes_of(clock: dt.time) -> int:
     return clock.hour * 60 + clock.minute
 
 
-# What the spreadsheet owns. Settings, categories and the overtime baseline are
-# the owner's own and survive a reset.
-IMPORTED = [SQLModel.metadata.tables[model.__name__.lower()] for model in (Entry, Break, Day, Project)]
-
-
 def wipe(session: Session):
-    """Drop and rebuild the tables the import writes, so it can be run again.
+    """Drop and rebuild every table, then seed them, so the import can be run again.
+
+    Nothing survives: settings, categories and the overtime baseline start over
+    from the seed, as for a new user.
 
     Dropping rather than deleting because the models move while the parsing is
     still being got right: a database written before a column existed would keep
@@ -711,8 +711,9 @@ def wipe(session: Session):
     """
     session.commit()
     engine = session.get_bind()
-    SQLModel.metadata.drop_all(engine, tables=IMPORTED)
-    SQLModel.metadata.create_all(engine, tables=IMPORTED)
+    SQLModel.metadata.drop_all(engine)
+    SQLModel.metadata.create_all(engine)
+    seed(session)
 
 
 def run(

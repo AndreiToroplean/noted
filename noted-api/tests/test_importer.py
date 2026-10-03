@@ -93,8 +93,8 @@ def test_a_reset_rebuilds_the_tables_it_owns(tmp_path):
     assert stale in {column["name"] for column in inspect(engine).get_columns("day")}
 
 
-def test_a_reset_keeps_what_the_importer_does_not_own(tmp_path):
-    # Settings and categories are the owner's, not the spreadsheet's.
+def test_a_reset_starts_everything_over_from_the_seed(tmp_path):
+    # Nothing survives: the database comes back as a new user would find it.
     from sqlmodel import Session, SQLModel, create_engine, select
 
     import models
@@ -104,12 +104,22 @@ def test_a_reset_keeps_what_the_importer_does_not_own(tmp_path):
     SQLModel.metadata.create_all(engine)
     with Session(engine) as session:
         seed.seed(session)
-        kept = session.exec(select(models.Category)).all()
-        assert kept, "the seed should have put categories there"
+        friday = session.get_one(models.Settings, 4)
+        friday.expected_minutes = 6 * 60
+        session.add(friday)
+        baseline = session.get_one(models.OvertimeBaseline, models.OvertimeBaseline.ROW_ID)
+        baseline.minutes = 90
+        session.add(baseline)
+        session.get_one(models.Category, "T").meaning = ""
+        session.add(models.Category(name="S", colour="#000000"))
+        session.commit()
+
         importer.wipe(session)
-        assert [row.name for row in session.exec(select(models.Category))] == [
-            row.name for row in kept
-        ]
+        assert session.get_one(models.Settings, 4).expected_minutes == 6 * 60
+        assert session.get_one(models.OvertimeBaseline, models.OvertimeBaseline.ROW_ID).minutes == 0
+        rows = {row.name: row for row in session.exec(select(models.Category))}
+        assert set(rows) == {row.name for row in seed.CATEGORIES}
+        assert rows["T"].meaning == "Ticket"
 
 
 def rows_of(*cells):
