@@ -4,7 +4,10 @@
   highlight on its neighbour.
 -->
 @for (weeks of [appData.weekList()]; track weeks) {
+  <!-- Right-click a tab, or focus it and press Delete, to delete that week. -->
   <mat-tab-group
+    (contextmenu)="onContextMenu($event)"
+    (keydown)="onKeydown($event)"
     [selectedIndex]="selectedIndex()"
     (selectedIndexChange)="selectWeek($event)"
     headerPosition="below"
@@ -14,3 +17,18 @@
     }
   </mat-tab-group>
 }
+
+<div
+  class="pointer-events-none fixed h-0 w-0"
+  aria-hidden="true"
+  [style.left.px]="menuAt().x"
+  [style.top.px]="menuAt().y"
+  [matMenuTriggerFor]="weekMenu"
+  #weekMenuTrigger="matMenuTrigger"
+></div>
+<mat-menu #weekMenu="matMenu">
+  <button mat-menu-item data-delete-week (click)="confirmDelete(menuWeek())">
+    <mat-icon>delete_forever</mat-icon>
+    Delete week…
+  </button>
+</mat-menu>

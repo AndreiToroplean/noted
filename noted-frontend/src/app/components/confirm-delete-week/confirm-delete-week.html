@@ -1,0 +1,10 @@
+<div data-confirm-delete-week>
+  <h2 mat-dialog-title>Delete the week of {{ week | date }}?</h2>
+  <mat-dialog-content>
+    Everything written in it goes, for good. This cannot be undone.
+  </mat-dialog-content>
+  <mat-dialog-actions align="end">
+    <button mat-button [mat-dialog-close]="false" cdkFocusInitial data-keep>Cancel</button>
+    <button mat-flat-button class="danger" [mat-dialog-close]="true" data-delete>Delete</button>
+  </mat-dialog-actions>
+</div>

@@ -257,3 +257,9 @@ body {
   border: 1px dashed var(--app-outline);
   border-radius: var(--mat-sys-corner-extra-small);
 }
+
+/* A button for something that can't be taken back. */
+.mat-mdc-unelevated-button.danger {
+  --mat-button-filled-container-color: var(--checkbox-not-done);
+  --mat-button-filled-label-text-color: var(--app-on-surface);
+}

@@ -399,3 +399,46 @@ describe('AppData undo', () => {
     expect(data.canUndo()).toBe(false);
   });
 });
+
+describe('AppData deleting a week', () => {
+  let data: AppData;
+  let http: HttpTestingController;
+
+  beforeEach(async () => {
+    TestBed.configureTestingModule({
+      providers: [provideHttpClient(), provideHttpClientTesting()],
+    });
+    data = TestBed.inject(AppData);
+    http = TestBed.inject(HttpTestingController);
+    TestBed.tick();
+    http.expectOne(`${API_BASE}/categories`).flush([]);
+    http.expectOne(`${API_BASE}/weeks`).flush(['2026-02-16', MONDAY, '2026-02-02']);
+    await settle();
+    http.match(() => true).forEach(request => request.flush(week()));
+    await settle();
+  });
+
+  it('deletes it on the server and moves to the week before it', async () => {
+    data.selectedWeek.set(MONDAY);
+    const done = data.deleteWeek(MONDAY);
+    const request = http.expectOne(`${API_BASE}/journal/${MONDAY}`);
+    expect(request.request.method).toBe('DELETE');
+    request.flush(null, { status: 204, statusText: 'No Content' });
+    await done;
+    expect(data.selectedWeek()).toBe('2026-02-02');
+    TestBed.tick();
+    http.expectOne(`${API_BASE}/weeks`).flush(['2026-02-16', '2026-02-02']);
+    await settle();
+    expect(data.weekList()).toEqual(['2026-02-16', '2026-02-02']);
+    http.match(() => true).forEach(request => request.flush(week()));
+  });
+
+  it('forgets a started week that was never saved, without asking the server', async () => {
+    data.openWeek('2026-02-23');
+    await data.deleteWeek('2026-02-23');
+    http.expectNone(request => request.method === 'DELETE');
+    expect(data.weekList()).not.toContain('2026-02-23');
+    expect(data.selectedWeek()).toBe('2026-02-16');
+    http.match(() => true).forEach(request => request.flush(week()));
+  });
+});

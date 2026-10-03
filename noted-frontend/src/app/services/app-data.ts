@@ -125,6 +125,27 @@ export class AppData {
   }
 
   /**
+   * Delete a week for good. Not undoable — it is gone from the server — which is
+   * why the footer always asks first. A week started here and never written to
+   * was never on the server, so it is only forgotten. If it was the week being
+   * edited, the one before it takes its place.
+   */
+  async deleteWeek(week: IsoDate): Promise<void> {
+    const list = this.weekList();
+    const index = list.indexOf(week);
+    const saved = this.weeks.value().includes(week);
+
+    if (this.selectedWeek() === week) {
+      this.selectedWeek.set(list[index + 1] ?? list[index - 1] ?? null);
+    }
+    this.opened.update(opened => opened.filter(other => other !== week));
+    if (!saved) return;
+
+    await firstValueFrom(this.http.delete(`${API_BASE}/journal/${week}`));
+    this.weeks.reload();
+  }
+
+  /**
    * Read a typed line and add what it turned out to be to the end of a day.
    * Rejects with the API's own explanation when the line cannot be read, so
    * the editor can show it where it was typed.
