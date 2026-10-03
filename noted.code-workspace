@@ -2,16 +2,20 @@
   "folders": [
     {
       "name": "Noted Frontend",
-      "path": "./noted-frontend",
+      "path": "./noted-frontend"
     },
     {
       "name": "Noted API",
-      "path": "./noted-api",
+      "path": "./noted-api"
     },
     {
       "name": "Noted",
-      "path": ".",
+      "path": "."
     },
+    {
+      "name": "My Settings",
+      "path": "../../Users/andre/Documents/dev/my-settings"
+    }
   ],
   "settings": {},
 }
