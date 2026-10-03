@@ -3,6 +3,8 @@ import {
   ChangeDetectorRef,
   Component,
   ElementRef,
+  Injector,
+  afterNextRender,
   computed,
   effect,
   inject,
@@ -88,6 +90,7 @@ export class Day {
   private readonly appData = inject(AppData);
   private readonly selection = inject(Selection);
   private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
+  private readonly injector = inject(Injector);
 
   protected readonly keyOf = itemKey;
 
@@ -325,10 +328,13 @@ export class Day {
 
   /** Esc leaves the item it closed on selected, so the arrows go on from it. */
   protected selectAfterEdit(item: DayItem) {
-    const key = itemKey(item);
+    this.select(itemKey(item));
+  }
+
+  /** Select an item and focus it once it is drawn, which a new one is not yet. */
+  private select(key: string) {
     this.selection.only(this.day().date, key);
-    this.focusOption(key);
-    const el = this.host.nativeElement.querySelector(`[data-key="${key}"]`);
+    afterNextRender(() => this.focusOption(key), { injector: this.injector });
   }
 
   private focusOption(key: string) {
@@ -435,6 +441,7 @@ export class Day {
       this.drafts.drop(itemKey(entry));
       this.editError.set(null);
       this.editing.set(null);
+      this.select(itemKey(entry));
     } catch (error) {
       this.editError.set(error instanceof Error ? error.message : String(error));
     } finally {
@@ -556,16 +563,24 @@ export class Day {
   protected async add(typed: EntryText) {
     this.addBusy.set(true);
     try {
+      const before = this.itemsNow().length;
       await this.appData.addTyped(this.day().date, typed);
       this.drafts.drop(this.newDraftKey());
       this.addError.set(null);
-      // Straight on to the next line: a day is usually typed in one go.
-      this.newFrom.set({ ...BLANK });
+      this.adding.set(null);
+      // Left on what was added; a time sets the day's hours and adds nothing.
+      const added = this.itemsNow();
+      if (added.length > before) this.select(itemKey(added[added.length - 1]));
     } catch (error) {
       this.addError.set(error instanceof Error ? error.message : String(error));
     } finally {
       this.addBusy.set(false);
     }
+  }
+
+  /** The day's items as the store has them, ahead of the next redraw. */
+  private itemsNow(): DayItem[] {
+    return this.appData.week()?.days.find(day => day.date === this.day().date)?.items ?? [];
   }
 
   /** A new line left half-typed in this day, if any. */

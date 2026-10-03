@@ -277,17 +277,20 @@ describe('Day adding an entry', () => {
     await settle();
   });
 
-  it('adds the line to the day and stays open for the next one', async () => {
+  it('adds the line to the day, closing on it selected', async () => {
     const fixture = await render();
     const field = open(fixture);
     finish(field, '[T] Fixed it');
     http.expectOne(`${API_BASE}/parse`).flush(entry('T', { text: 'Fixed it' }));
     await settle();
+    fixture.componentRef.setInput('day', appData.week()!.days[0]);
     fixture.detectChanges();
+    await fixture.whenStable();
 
     expect(appData.week()!.days[0].items).toHaveLength(1);
-    const reopened = fixture.nativeElement.querySelector('textarea') as HTMLTextAreaElement;
-    expect(reopened.value).toBe('');
+    expect(fixture.nativeElement.querySelector('textarea')).toBeNull();
+    const added = fixture.nativeElement.querySelector('[role="option"]') as HTMLElement;
+    expect(added.getAttribute('aria-selected')).toBe('true');
   });
 
   it('adds a break instead after Ctrl+B, then goes back to entries', async () => {
@@ -405,6 +408,10 @@ describe('Day editing an entry', () => {
     await settle();
     fixture.detectChanges();
     expect(stored()).toMatchObject({ text: 'Fixed it', category: 'M' });
+    // Saved, it is left selected, for the arrows to go on from.
+    const option = fixture.nativeElement.querySelector('[role="option"]') as HTMLElement;
+    expect(option.getAttribute('aria-selected')).toBe('true');
+    expect(document.activeElement).toBe(option);
   });
 
   it('stays open and says why when the line cannot be read', async () => {

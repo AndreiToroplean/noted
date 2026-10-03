@@ -2,12 +2,10 @@ import {
   Component,
   ElementRef,
   afterNextRender,
-  effect,
   inject,
   input,
   linkedSignal,
   output,
-  untracked,
   viewChild,
 } from '@angular/core';
 
@@ -37,8 +35,7 @@ export interface EditorMove {
  * hands back what was typed, for the day to keep as a draft.
  *
  * The row at the foot of a day writes new entries with it too: there Ctrl+B
- * turns to making a break instead, and a new `value` after each line is added
- * starts the next one.
+ * turns to making a break instead.
  *
  * Opened on such a draft, it knows the entry as saved too: Ctrl+Z, once the
  * field is back to the draft, goes back to the saved entry, and Ctrl+Y brings
@@ -87,14 +84,6 @@ export class InlineEntryEditor {
       const enterAt = this.enterAt();
       const firstLine = field.value.split('\n')[0].length;
       this.place(enterAt === 'start' ? 0 : enterAt === 'end' ? field.value.length : firstLine);
-    });
-    // A fresh value starts over. Written into the field straight away, as a
-    // binding may not see a change from a value it never drew.
-    let opened = false;
-    effect(() => {
-      const value = this.value();
-      if (opened) untracked(() => (this.field().nativeElement.value = joined(value)));
-      opened = true;
     });
   }
 
