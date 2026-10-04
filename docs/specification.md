@@ -153,7 +153,7 @@ A day has a **status** — working, or one of the non-working kinds the spreadsh
 
 ## 8. The week view
 
-Five day columns. **Saturday and Sunday appear only when they have content**, with a button and shortcut to enable the weekend for a given week.
+Five day columns. **Saturday and Sunday appear only when they have content**, or when the current week is opened on a weekend, with a button and shortcut to enable the weekend for a given week.
 
 ### Visual states
 

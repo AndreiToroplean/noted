@@ -337,6 +337,36 @@ describe('AppData showing the weekend', () => {
     expect(data.weekendShown()).toBe(true);
     http.match(() => true);
   });
+
+  async function openThisWeek() {
+    TestBed.configureTestingModule({
+      providers: [provideHttpClient(), provideHttpClientTesting()],
+    });
+    const data = TestBed.inject(AppData);
+    const http = TestBed.inject(HttpTestingController);
+    TestBed.tick();
+    http.expectOne(`${API_BASE}/weeks`).flush([MONDAY, '2026-02-02']);
+    await settle();
+    http.expectOne(`${API_BASE}/journal/${MONDAY}`).flush(week());
+    await settle();
+    return { data, http };
+  }
+
+  it('shows the weekend of this week, empty, when opened on the weekend', async () => {
+    const { data, http } = await openThisWeek();
+    expect(data.weekendShown()).toBe(true);
+
+    data.selectedWeek.set('2026-02-02');
+    expect(data.weekendShown()).toBe(false);
+    http.match(() => true);
+  });
+
+  it('leaves an empty weekend hidden on a weekday', async () => {
+    vi.setSystemTime(new Date('2026-02-13T12:00'));
+    const { data, http } = await openThisWeek();
+    expect(data.weekendShown()).toBe(false);
+    http.match(() => true);
+  });
 });
 
 describe('AppData typing into a day', () => {

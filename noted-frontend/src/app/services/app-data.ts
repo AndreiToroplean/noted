@@ -121,16 +121,21 @@ export class AppData {
   /** The week being edited. Every change to it is eventually written back whole. */
   readonly week = linkedSignal<Week | undefined>(() => this.loaded.value());
 
+  /** Whether the journal was opened on a Saturday or Sunday. */
+  private readonly openedOnWeekend = [0, 6].includes(new Date().getDay());
+
   /**
    * The open week's weekend shown: asked for from the week's menu, or loaded
-   * with something on it, which counts as asking. Either way it stays until
-   * hidden from the menu, however empty it gets. Forgotten on leaving the week.
+   * with something on it, or this week opened on the weekend, which all count
+   * as asking. Either way it stays until hidden from the menu, however empty it
+   * gets. Forgotten on leaving the week.
    */
   readonly weekendShown = linkedSignal({
     source: () => ({ chosen: this.selectedWeek(), loaded: this.loaded.value() }),
     computation: ({ chosen, loaded }, previous) => {
       const asked = previous?.source.chosen === chosen && previous.value;
-      return asked || (loaded?.week === chosen && weekendInUse(loaded));
+      const today = chosen === this.thisWeek && this.openedOnWeekend;
+      return asked || today || (loaded?.week === chosen && weekendInUse(loaded));
     },
   });
 

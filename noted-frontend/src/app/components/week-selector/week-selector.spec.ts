@@ -80,6 +80,8 @@ describe('WeekSelector', () => {
 
   describe('the weekend', () => {
     async function render(sundayItems = 0, sundayArrival: string | null = null) {
+      // A weekday, since this week opened on the weekend shows it from the start.
+      vi.setSystemTime(new Date('2026-02-13T12:00'));
       TestBed.configureTestingModule({
         providers: [provideHttpClient(), provideHttpClientTesting(), provideDateFormat()],
       });
