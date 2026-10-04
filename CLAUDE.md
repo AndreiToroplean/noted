@@ -95,7 +95,7 @@ repo-wide changes.
 
 Commit in small, reviewable steps rather than one large change at the end.
 
-**Branch** — work lands on `master`. The remote is `origin`.
+**Branch** — work lands on `main`. The remote is `origin`.
 
 ## Historical data
 
