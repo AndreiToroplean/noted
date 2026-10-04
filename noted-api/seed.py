@@ -14,11 +14,9 @@ be run by hand to build a fresh one:
 It only ever fills in what is missing. Anything the user has edited is left
 exactly as it is, so running it again is safe and never overwrites real data.
 
-What `seed.toml` holds is a default, not anyone's in particular. A
-`seed-local.toml` beside the database is read *instead* of it, whole: a drop-in
-replacement rather than a list of exceptions, so there is nothing to merge and
-no second format to learn. It is gitignored — one person's working day is
-theirs, not something the app ships.
+A gitignored `seed-local.toml` beside the database is read *instead* of
+`seed.toml`, whole: a replacement rather than a list of exceptions, so there is
+nothing to merge and no second format to learn.
 """
 
 import sys

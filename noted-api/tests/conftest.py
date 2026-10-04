@@ -13,10 +13,5 @@ import seed  # noqa: E402
 
 @pytest.fixture(autouse=True)
 def shipped_seed(tmp_path, monkeypatch):
-    """Seed from `seed.toml`, whatever the person running the tests has locally.
-
-    `seed-local.toml` is a real file on the machine of anyone whose hours are
-    not the defaults, and the suite must not read it: tests describe the app,
-    not its owner.
-    """
+    """Seed from `seed.toml`, never from a `seed-local.toml` on this machine."""
     monkeypatch.setattr(seed, "LOCAL_PATH", tmp_path / "no-seed-local.toml")
