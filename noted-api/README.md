@@ -22,6 +22,13 @@ Serves on `http://127.0.0.1:8000`; interactive docs at `/docs`. The database is 
 category vocabulary, and an overtime total starting at zero. `python seed.py` builds or
 tops up that database without touching anything already in it.
 
+That content lives in `seed.toml`, and what it ships with is a default rather than
+anyone's in particular. To start from your own hours or your own category vocabulary,
+copy it to `seed-local.toml` and edit it: when that file is there it is read instead, as
+a whole. It is gitignored, like the importer's own files below, and it is read whenever a
+database is seeded — including a `--reset` import, so re-importing a real journal does
+not hand it somebody else's schedule.
+
 ## Endpoints
 
 | Method  | Path                  | What                                              |

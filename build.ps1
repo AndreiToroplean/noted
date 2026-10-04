@@ -21,6 +21,7 @@ pyinstaller noted-api/noted.py `
   --paths noted-api `
   --icon "$(Resolve-Path noted-api/noted.ico)" `
   --add-data "${frontend};frontend" `
+  --add-data "$(Resolve-Path noted-api/seed.toml);." `
   --distpath dist `
   --workpath build `
   --specpath build

@@ -5,73 +5,81 @@ default hours for each weekday, the category vocabulary, and the point the
 overtime total counts from. That content belongs in version control, while the
 database holding the actual journal never does — `data/` is gitignored.
 
-So it lives here as code. `seed()` runs automatically the first time the app
-opens the database, and can be run by hand to build a fresh one:
+So it lives as data, in `seed.toml` beside this file, and this reads it.
+`seed()` runs automatically the first time the app opens the database, and can
+be run by hand to build a fresh one:
 
     python seed.py
 
 It only ever fills in what is missing. Anything the user has edited is left
 exactly as it is, so running it again is safe and never overwrites real data.
+
+What `seed.toml` holds is a default, not anyone's in particular. A
+`seed-local.toml` beside the database is read *instead* of it, whole: a drop-in
+replacement rather than a list of exceptions, so there is nothing to merge and
+no second format to learn. It is gitignored — one person's working day is
+theirs, not something the app ships.
 """
 
-import datetime as dt
+import sys
+import tomllib
+from pathlib import Path
+from typing import NamedTuple
 
 from sqlmodel import Session, select
 
 from models import Category, OvertimeBaseline, Settings
 
-#: Nine to five, Friday ending at four, the weekend non-working.
-SETTINGS = [
-    Settings(
-        weekday=weekday,
-        arrival=dt.time(9, 0),
-        break_start=dt.time(12, 0),
-        break_end=dt.time(13, 0),
-        departure=dt.time(16, 0) if weekday == 4 else dt.time(17, 0),
-        expected_minutes=6 * 60 if weekday == 4 else 7 * 60,
-    )
-    for weekday in range(5)
-] + [Settings(weekday=weekday) for weekday in (5, 6)]
 
-#: The category vocabulary.
-#:
-#: Colours are the ones the spreadsheet's conditional formatting used. The
-#: meanings it never recorded — these are the owner's, reconstructed from the
-#: entries actually filed under each tag, and they are what the letters are for.
-CATEGORIES = [
-    # The feature work itself, but only in response to a tracked issue.
-    Category(name="T", colour="#7f6000", meaning="Ticket"),
-    Category(name="M", colour="#351c75", meaning="Meeting"),
-    # Written communication, as against the spoken kind that is a meeting:
-    # emails, telling the team something, sending a release out.
-    Category(name="C", colour="#104769", meaning="Communication"),
-    # Writing things down — logging issues, organising TODOs, admin.
-    Category(name="L", colour="#2e3f49", meaning="Logging"),
-    # Learning and looking into things.
-    Category(name="K", colour="#002f35", meaning="Knowledge"),
-    # Writing and preparing one's own pull requests.
-    Category(name="R", colour="#40701c", meaning="Resolved"),
-    Category(name="CR", colour="#974845", meaning="Code review"),
-    # Coding outside a tracked issue: tooling and setup, the work that makes
-    # the rest of the work easier.
-    Category(name="Co", colour="#9c894d", meaning="Code"),
-    # Used, but never given a colour of its own, so it takes the plain surface.
-    Category(name="Tr", colour="#2c2115", meaning="Travel"),
-    # Blocked by a machine that would not cooperate. What the letter originally
-    # stood for is lost; what it marked is not.
-    Category(name="D", colour="#000000", meaning="Blocked"),
-]
+def shipped_path() -> Path:
+    """`seed.toml`, which travels inside the exe once packaged."""
+    bundle = getattr(sys, "_MEIPASS", None)
+    return Path(bundle) / "seed.toml" if bundle else Path(__file__).with_name("seed.toml")
+
+
+def local_path() -> Path:
+    """A replacement seed, beside the exe as the database is. Gitignored."""
+    if getattr(sys, "frozen", False):
+        return Path(sys.executable).parent / "seed-local.toml"
+    return Path(__file__).with_name("seed-local.toml")
+
+
+SHIPPED_PATH = shipped_path()
+LOCAL_PATH = local_path()
+
+
+class Content(NamedTuple):
+    """What a new database is filled with."""
+
+    settings: list[Settings]
+    categories: list[Category]
+
+
+def load() -> Content:
+    """Read the seed: the local replacement if there is one, else the shipped one."""
+    path = LOCAL_PATH if LOCAL_PATH.exists() else SHIPPED_PATH
+    with path.open("rb") as handle:
+        raw = tomllib.load(handle)
+    return Content(
+        settings=[
+            Settings(weekday=int(weekday), **row)
+            for weekday, row in sorted(raw["settings"].items())
+        ],
+        categories=[Category(**row) for row in raw["categories"]],
+    )
 
 
 def seed(session: Session):
     """Fill in everything a new database needs, leaving edits untouched."""
+    content = load()
+
     known_weekdays = set(session.exec(select(Settings.weekday)).all())
-    for row in SETTINGS:
+    for row in content.settings:
         if row.weekday not in known_weekdays:
             session.add(Settings.model_validate(row))
 
     known_categories = {row.name: row for row in session.exec(select(Category))}
-    for row in CATEGORIES:
+    for row in content.categories:
         known = known_categories.get(row.name)
         if known is None:
             session.add(Category.model_validate(row))

@@ -30,17 +30,24 @@ the route, so nothing downstream has to wonder. Keep that pattern: reject bad in
 it enters.
 
 **Layout.** `models.py` is the stored schema (SQLModel tables), `schemas.py` is what
-crosses the wire, `db.py` owns the engine, `seed.py` the content a new database starts
-with, `importer.py` reads the old spreadsheet, `app.py` the routes. The two model layers are
+crosses the wire, `db.py` owns the engine, `seed.toml` holds the content a new database
+starts with and `seed.py` reads it, `importer.py` reads the old spreadsheet, `app.py` the
+routes. The two model layers are
 deliberately separate: a week is written back whole, so entries arrive without ids — their
 order in the list *is* their position — and come back with ids on read.
 
 **The database** is one SQLite file at `data/noted.db` (beside the exe once packaged),
 gitignored, and never committed.
-What *is* committed is `seed.py`: the default hours, the category vocabulary and the
-overtime baseline a new user starts from. It runs on first open and by hand via
+What *is* committed is `seed.toml`: the default hours, the category vocabulary and the
+overtime baseline a new user starts from. `seed.py` reads it on first open and by hand via
 `python seed.py`, and only ever fills in what is missing, so it never overwrites an edit.
 Anything a user is expected to change belongs there rather than in the code that reads it.
+
+What it ships is a default, not anyone's in particular. A gitignored `seed-local.toml`
+beside the database is read *instead* of it, whole — a drop-in replacement rather than a
+list of exceptions, so there is nothing to merge. Tests pin the shipped seed through an
+autouse fixture in `conftest.py`, and assert against what `seed.load()` returns rather
+than against literals, so the values stay free to move.
 
 **The importer** is re-runnable: `--reset` wipes what it wrote and starts again, because
 getting the legacy parsing right takes several passes. Judgement calls about the owner's

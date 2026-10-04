@@ -1,0 +1,111 @@
+# The database a new user starts from. Read by `seed.py`.
+#
+# A `seed-local.toml` beside the database is read instead of this file, whole —
+# copy this one and edit it to start from your own hours or your own vocabulary.
+
+# Default hours, one row per weekday, Monday first. Nine to five with an hour
+# for lunch, Friday ending at four, the weekend non-working. A weekday left
+# empty expects nothing.
+[settings.0]
+arrival = 09:00:00
+break_start = 12:00:00
+break_end = 13:00:00
+departure = 17:00:00
+expected_minutes = 420
+
+[settings.1]
+arrival = 09:00:00
+break_start = 12:00:00
+break_end = 13:00:00
+departure = 17:00:00
+expected_minutes = 420
+
+[settings.2]
+arrival = 09:00:00
+break_start = 12:00:00
+break_end = 13:00:00
+departure = 17:00:00
+expected_minutes = 420
+
+[settings.3]
+arrival = 09:00:00
+break_start = 12:00:00
+break_end = 13:00:00
+departure = 17:00:00
+expected_minutes = 420
+
+[settings.4]
+arrival = 09:00:00
+break_start = 12:00:00
+break_end = 13:00:00
+departure = 16:00:00
+expected_minutes = 360
+
+[settings.5]
+
+[settings.6]
+
+# The category vocabulary. Colours are the ones the spreadsheet's conditional
+# formatting used; the meanings it never recorded, and they are what the letters
+# are for.
+
+# The feature work itself, but only in response to a tracked issue.
+[[categories]]
+name = "T"
+colour = "#7f6000"
+meaning = "Ticket"
+
+[[categories]]
+name = "M"
+colour = "#351c75"
+meaning = "Meeting"
+
+# Written communication, as against the spoken kind that is a meeting: emails,
+# telling the team something, sending a release out.
+[[categories]]
+name = "C"
+colour = "#104769"
+meaning = "Communication"
+
+# Writing things down — logging issues, organising TODOs, admin.
+[[categories]]
+name = "L"
+colour = "#2e3f49"
+meaning = "Logging"
+
+# Learning and looking into things.
+[[categories]]
+name = "K"
+colour = "#002f35"
+meaning = "Knowledge"
+
+# Writing and preparing one's own pull requests.
+[[categories]]
+name = "R"
+colour = "#40701c"
+meaning = "Resolved"
+
+[[categories]]
+name = "CR"
+colour = "#974845"
+meaning = "Code review"
+
+# Coding outside a tracked issue: tooling and setup, the work that makes the
+# rest of the work easier.
+[[categories]]
+name = "Co"
+colour = "#9c894d"
+meaning = "Code"
+
+# Used, but never given a colour of its own, so it takes the plain surface.
+[[categories]]
+name = "Tr"
+colour = "#2c2115"
+meaning = "Travel"
+
+# Blocked by a machine that would not cooperate. What the letter originally
+# stood for is lost; what it marked is not.
+[[categories]]
+name = "D"
+colour = "#000000"
+meaning = "Blocked"

@@ -114,11 +114,14 @@ def test_a_reset_starts_everything_over_from_the_seed(tmp_path):
         session.add(models.Category(name="S", colour="#000000"))
         session.commit()
 
+        content = seed.load()
         importer.wipe(session)
-        assert session.get_one(models.Settings, 4).expected_minutes == 6 * 60
+        assert session.get_one(models.Settings, 4).expected_minutes == (
+            content.settings[4].expected_minutes
+        )
         assert session.get_one(models.OvertimeBaseline, models.OvertimeBaseline.ROW_ID).minutes == 0
         rows = {row.name: row for row in session.exec(select(models.Category))}
-        assert set(rows) == {row.name for row in seed.CATEGORIES}
+        assert set(rows) == {row.name for row in content.categories}
         assert rows["T"].meaning == "Ticket"
 
 
