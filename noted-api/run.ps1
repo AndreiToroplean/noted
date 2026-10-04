@@ -1,15 +1,8 @@
 Set-StrictMode -Version Latest
+$ErrorActionPreference = 'Stop'
 
-# Ensure the script runs from the api directory so the `app` module can be imported
+# Serves the API for development, reloading on change. The `app` module is imported from here.
 Set-Location $PSScriptRoot
 
-if (-not (Test-Path -Path .venv)) {
-  Write-Host "Creating virtual environment..."
-  python -m virtualenv .venv
-  . .venv/Scripts/Activate.ps1
-  pip install -r requirements.txt
-} else {
-  . .venv/Scripts/Activate.ps1
-}
-
+. ./venv.ps1
 python -m uvicorn app:app --reload

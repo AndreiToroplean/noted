@@ -7,11 +7,13 @@ $ErrorActionPreference = 'Stop'
 Set-Location $PSScriptRoot
 
 Push-Location noted-frontend
+npm install
+if ($LASTEXITCODE) { throw 'Installing the frontend packages failed.' }
 npm run build
 if ($LASTEXITCODE) { throw 'Frontend build failed.' }
 Pop-Location
 
-. noted-api/.venv/Scripts/Activate.ps1
+. noted-api/venv.ps1
 
 $frontend = Resolve-Path noted-frontend/dist/noted-frontend/browser
 pyinstaller noted-api/noted.py `
